@@ -1,0 +1,44 @@
+# IDE
+.idea/
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Java
+target/
+*.class
+
+# Node
+node_modules/
+dist/
+coverage/
+
+# Playwright
+playwright-report/
+test-results/
+blob-report/
+
+# Cypress
+cypress/videos/
+cypress/screenshots/
+
+# Allure
+allure-results/
+allure-report/
+
+# Environment / Secrets
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+
+# JMeter
+*.jtl
+
+# Temporary files
+*.tmp
+*.temp
