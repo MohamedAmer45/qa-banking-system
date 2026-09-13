@@ -1,6 +1,7 @@
 package com.bankingsystem.qa.utils;
 
 import org.openqa.selenium.By;
+import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 
@@ -8,6 +9,7 @@ import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 
 import java.time.Duration;
+import java.util.List;
 
 public class WaitUtils {
 
@@ -93,6 +95,38 @@ public class WaitUtils {
                 ExpectedConditions.titleContains(
                         text
                 )
+        );
+    }
+
+    public List<WebElement> waitForMoreThan(
+            By locator,
+            int number
+    ) {
+
+        return wait.until(
+                ExpectedConditions
+                        .numberOfElementsToBeMoreThan(
+                                locator,
+                                number
+                        )
+        );
+    }
+
+    public boolean waitForJavaScriptCondition(
+            String script
+    ) {
+
+        return wait.until(
+                driver -> {
+
+                    Object result =
+                            ((JavascriptExecutor) driver)
+                                    .executeScript(script);
+
+                    return Boolean.TRUE.equals(
+                            result
+                    );
+                }
         );
     }
 }
