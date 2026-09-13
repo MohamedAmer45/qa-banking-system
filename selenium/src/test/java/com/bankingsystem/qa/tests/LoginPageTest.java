@@ -67,6 +67,12 @@ public class LoginPageTest extends BaseTest {
                 loginPage.isErrorMessageDisplayed(),
                 "An error message should be displayed for invalid credentials."
         );
+
+        Assert.assertTrue(
+                loginPage.getErrorMessage()
+                        .contains("Sign in failed"),
+                "The login failure message should indicate that sign in failed."
+        );
     }
 
     @Test

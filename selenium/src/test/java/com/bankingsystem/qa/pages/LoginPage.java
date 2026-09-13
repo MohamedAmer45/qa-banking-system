@@ -75,9 +75,7 @@ public class LoginPage extends BasePage {
 
     public LoginPage clickLogin() {
 
-        click(
-                loginButton
-        );
+        click(loginButton);
 
         return this;
     }
@@ -96,23 +94,17 @@ public class LoginPage extends BasePage {
 
     public boolean isIdentifierFieldDisplayed() {
 
-        return isDisplayed(
-                identifierInput
-        );
+        return isDisplayed(identifierInput);
     }
 
     public boolean isPasswordFieldDisplayed() {
 
-        return isDisplayed(
-                passwordInput
-        );
+        return isDisplayed(passwordInput);
     }
 
     public boolean isLoginButtonDisplayed() {
 
-        return isDisplayed(
-                loginButton
-        );
+        return isDisplayed(loginButton);
     }
 
     public boolean isLoaded() {
@@ -132,16 +124,12 @@ public class LoginPage extends BasePage {
 
     public boolean isErrorMessageDisplayed() {
 
-        return isDisplayed(
-                errorMessage
-        );
+        return isDisplayed(errorMessage);
     }
 
     public String getErrorMessage() {
 
-        return getText(
-                errorMessage
-        );
+        return getText(errorMessage);
     }
 
     public String getIdentifierValue() {
@@ -162,16 +150,12 @@ public class LoginPage extends BasePage {
 
     public void clearIdentifier() {
 
-        clear(
-                identifierInput
-        );
+        clear(identifierInput);
     }
 
     public void clearPassword() {
 
-        clear(
-                passwordInput
-        );
+        clear(passwordInput);
     }
 
     private String normalizeUrl(
