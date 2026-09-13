@@ -19,6 +19,16 @@ public class DashboardPage extends BasePage {
                     "[data-view='overview']"
             );
 
+    private final By accountsNavigation =
+            By.cssSelector(
+                    "[data-view='accounts']"
+            );
+
+    private final By overviewContent =
+            By.cssSelector(
+                    "#view .hero-card"
+            );
+
     private final By logoutButton =
             By.xpath(
                     "//button[contains(.,'Sign out')]"
@@ -30,10 +40,37 @@ public class DashboardPage extends BasePage {
 
     public boolean isLoaded() {
 
-        return isDisplayed(appShell)
-                && isDisplayed(pageTitle)
-                && isDisplayed(userChip)
-                && isDisplayed(overviewNavigation);
+        try {
+
+            wait.waitForVisible(appShell);
+
+            wait.waitForVisible(userChip);
+
+            wait.waitForClickable(
+                    overviewNavigation
+            );
+
+            wait.waitForText(
+                    pageTitle,
+                    "Overview"
+            );
+
+            /*
+             * Important:
+             * Do not consider the dashboard fully loaded
+             * until the async Overview content has finished
+             * rendering.
+             */
+            wait.waitForVisible(
+                    overviewContent
+            );
+
+            return true;
+
+        } catch (Exception e) {
+
+            return false;
+        }
     }
 
     public String getPageTitleText() {
@@ -49,6 +86,21 @@ public class DashboardPage extends BasePage {
     public boolean isLogoutButtonDisplayed() {
 
         return isDisplayed(logoutButton);
+    }
+
+    public AccountsPage openAccounts() {
+
+        wait.waitForClickable(
+                accountsNavigation
+        );
+
+        click(
+                accountsNavigation
+        );
+
+        return new AccountsPage(
+                driver
+        );
     }
 
     public void logout() {
