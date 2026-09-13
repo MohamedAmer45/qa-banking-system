@@ -1,13 +1,7 @@
 package com.bankingsystem.qa.tests;
 
-import com.bankingsystem.qa.base.BaseTest;
-
+import com.bankingsystem.qa.base.CustomerTestBase;
 import com.bankingsystem.qa.pages.AccountsPage;
-import com.bankingsystem.qa.pages.DashboardPage;
-import com.bankingsystem.qa.pages.LoginPage;
-import com.bankingsystem.qa.pages.MfaPage;
-
-import com.bankingsystem.qa.utils.TestCredentials;
 
 import org.testng.Assert;
 import org.testng.annotations.BeforeMethod;
@@ -15,54 +9,12 @@ import org.testng.annotations.Test;
 
 import java.util.List;
 
-public class AccountCreationTest extends BaseTest {
+public class AccountCreationTest extends CustomerTestBase {
 
     private AccountsPage accountsPage;
 
-    @BeforeMethod
-    public void loginAndOpenAccounts() {
-
-        LoginPage loginPage =
-                new LoginPage(
-                        getDriver()
-                );
-
-        loginPage.open();
-
-        loginPage.clearIdentifier();
-        loginPage.clearPassword();
-
-        loginPage.login(
-                TestCredentials.customerEmail(),
-                TestCredentials.customerPassword()
-        );
-
-
-        MfaPage mfaPage =
-                new MfaPage(
-                        getDriver()
-                );
-
-        Assert.assertTrue(
-                mfaPage.isLoaded(),
-                "MFA page should be displayed."
-        );
-
-        mfaPage.verify(
-                TestCredentials.mfaCode()
-        );
-
-
-        DashboardPage dashboardPage =
-                new DashboardPage(
-                        getDriver()
-                );
-
-        Assert.assertTrue(
-                dashboardPage.isLoaded(),
-                "Dashboard should load successfully."
-        );
-
+    @BeforeMethod(alwaysRun = true)
+    public void openAccountsPage() {
 
         accountsPage =
                 dashboardPage.openAccounts();
@@ -136,26 +88,21 @@ public class AccountCreationTest extends BaseTest {
         int accountCountBefore =
                 accountsPage.getAccountCount();
 
-
         accountsPage.createAccount(
                 "SAVINGS",
                 "GBP"
         );
 
-
         int accountCountAfter =
-                accountsPage
-                        .waitForAccountCountToIncrease(
-                                accountCountBefore
-                        );
-
+                accountsPage.waitForAccountCountToIncrease(
+                        accountCountBefore
+                );
 
         Assert.assertEquals(
                 accountCountAfter,
                 accountCountBefore + 1,
                 "Exactly one new account should be created."
         );
-
 
         Assert.assertTrue(
                 accountsPage
@@ -165,4 +112,3 @@ public class AccountCreationTest extends BaseTest {
         );
     }
 }
-

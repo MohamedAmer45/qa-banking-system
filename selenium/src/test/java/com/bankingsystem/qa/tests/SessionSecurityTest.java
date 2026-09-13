@@ -1,68 +1,14 @@
 package com.bankingsystem.qa.tests;
 
-import com.bankingsystem.qa.base.BaseTest;
-
-import com.bankingsystem.qa.pages.DashboardPage;
+import com.bankingsystem.qa.base.CustomerTestBase;
 import com.bankingsystem.qa.pages.LoginPage;
-import com.bankingsystem.qa.pages.MfaPage;
-
-import com.bankingsystem.qa.utils.TestCredentials;
 
 import org.openqa.selenium.JavascriptExecutor;
 
 import org.testng.Assert;
-import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
-public class SessionSecurityTest extends BaseTest {
-
-    private DashboardPage dashboardPage;
-
-    @BeforeMethod
-    public void loginCustomer() {
-
-        LoginPage loginPage =
-                new LoginPage(
-                        getDriver()
-                );
-
-        loginPage.open();
-
-        loginPage.clearIdentifier();
-        loginPage.clearPassword();
-
-        loginPage.login(
-                TestCredentials.customerEmail(),
-                TestCredentials.customerPassword()
-        );
-
-
-        MfaPage mfaPage =
-                new MfaPage(
-                        getDriver()
-                );
-
-        Assert.assertTrue(
-                mfaPage.isLoaded(),
-                "MFA page should be displayed."
-        );
-
-        mfaPage.verify(
-                TestCredentials.mfaCode()
-        );
-
-
-        dashboardPage =
-                new DashboardPage(
-                        getDriver()
-                );
-
-        Assert.assertTrue(
-                dashboardPage.isLoaded(),
-                "Dashboard should load before session tests execute."
-        );
-    }
-
+public class SessionSecurityTest extends CustomerTestBase {
 
     @Test
     public void authenticationTokenShouldExistAfterLogin() {
