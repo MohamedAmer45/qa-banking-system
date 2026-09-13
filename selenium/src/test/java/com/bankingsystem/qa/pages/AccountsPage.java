@@ -37,6 +37,37 @@ public class AccountsPage extends BasePage {
                     ".account-card .account-meta"
             );
 
+    private final By accountControlRows =
+            By.cssSelector(
+                    ".table tbody tr"
+            );
+
+    private final By accountStatusBadges =
+            By.cssSelector(
+                    ".table tbody tr td .badge"
+            );
+
+    private final By dailyLimitCells =
+            By.cssSelector(
+                    ".table tbody tr td:nth-child(5)"
+            );
+
+    private final By activeAccountRows =
+            By.xpath(
+                    "//table[contains(@class,'table')]//tbody/tr[" +
+                    ".//span[contains(@class,'badge') and " +
+                    "contains(normalize-space(.),'ACTIVE')]" +
+                    "]"
+            );
+
+    private final By freezeButtons =
+            By.xpath(
+                    "//table[contains(@class,'table')]//tbody/tr[" +
+                    ".//span[contains(@class,'badge') and " +
+                    "contains(normalize-space(.),'ACTIVE')]" +
+                    "]//button[contains(normalize-space(.),'Freeze')]"
+            );
+
     private final By accountForm =
             By.id("account-form");
 
@@ -52,7 +83,9 @@ public class AccountsPage extends BasePage {
 
     private final By createAccountButton =
             By.xpath(
-                    "//form[@id='account-form']//button[contains(normalize-space(.),'Open account')]"
+                    "//form[@id='account-form']//button[" +
+                    "contains(normalize-space(.),'Open account')" +
+                    "]"
             );
 
     private final By modalCloseButton =
@@ -106,46 +139,64 @@ public class AccountsPage extends BasePage {
         ).size();
     }
 
-    public List<String> getAccountTypes() {
+    public int getAccountControlRowCount() {
 
         wait.waitForPresent(
-                accountTypes
+                accountControlRows
         );
 
         return driver.findElements(
-                        accountTypes
-                )
-                .stream()
-                .map(WebElement::getText)
-                .toList();
+                accountControlRows
+        ).size();
+    }
+
+    public List<String> getAccountTypes() {
+
+        return getTexts(
+                accountTypes
+        );
     }
 
     public List<String> getAccountBalances() {
 
-        wait.waitForPresent(
+        return getTexts(
                 accountBalances
         );
-
-        return driver.findElements(
-                        accountBalances
-                )
-                .stream()
-                .map(WebElement::getText)
-                .toList();
     }
 
     public List<String> getAccountMetadata() {
 
-        wait.waitForPresent(
+        return getTexts(
                 accountMetadata
         );
+    }
+
+    public List<String> getAccountStatuses() {
+
+        return getTexts(
+                accountStatusBadges
+        );
+    }
+
+    public List<String> getDailyLimits() {
+
+        return getTexts(
+                dailyLimitCells
+        );
+    }
+
+    public int getActiveAccountCount() {
 
         return driver.findElements(
-                        accountMetadata
-                )
-                .stream()
-                .map(WebElement::getText)
-                .toList();
+                activeAccountRows
+        ).size();
+    }
+
+    public int getFreezeButtonCount() {
+
+        return driver.findElements(
+                freezeButtons
+        ).size();
     }
 
     public AccountsPage openAccountModal() {
@@ -249,15 +300,8 @@ public class AccountsPage extends BasePage {
     ) {
 
         openAccountModal();
-
-        selectAccountType(
-                accountType
-        );
-
-        selectCurrency(
-                currency
-        );
-
+        selectAccountType(accountType);
+        selectCurrency(currency);
         submitAccountCreation();
 
         return this;
@@ -291,5 +335,21 @@ public class AccountsPage extends BasePage {
         );
 
         return this;
+    }
+
+    private List<String> getTexts(
+            By locator
+    ) {
+
+        wait.waitForPresent(
+                locator
+        );
+
+        return driver.findElements(
+                        locator
+                )
+                .stream()
+                .map(WebElement::getText)
+                .toList();
     }
 }
