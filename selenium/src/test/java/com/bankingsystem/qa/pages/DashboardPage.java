@@ -24,6 +24,11 @@ public class DashboardPage extends BasePage {
                     "[data-view='accounts']"
             );
 
+    private final By transfersNavigation =
+            By.cssSelector(
+                    "[data-view='transfers']"
+            );
+
     private final By beneficiariesNavigation =
             By.cssSelector(
                     "[data-view='beneficiaries']"
@@ -108,6 +113,21 @@ public class DashboardPage extends BasePage {
         );
 
         return new AccountsPage(
+                driver
+        );
+    }
+
+    public TransfersPage openTransfers() {
+
+        wait.waitForClickable(
+                transfersNavigation
+        );
+
+        click(
+                transfersNavigation
+        );
+
+        return new TransfersPage(
                 driver
         );
     }
