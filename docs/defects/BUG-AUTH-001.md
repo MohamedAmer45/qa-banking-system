@@ -135,3 +135,61 @@ After successful login and MFA:
    with each other.
 5. The Transfers module must load consistently.
 6. TransfersReadOnlyTest should then be re-enabled.
+
+---
+
+## Additional Affected Module — Cards
+
+The same authentication/session defect also affects the Cards module.
+
+The Cards frontend loads its dependencies concurrently:
+
+- GET /api/cards
+- GET /api/accounts
+
+During Selenium execution, the customer successfully authenticated and reached
+the dashboard, but GET /api/accounts intermittently returned HTTP 401 while the
+Cards module was loading.
+
+Because the frontend treats any authenticated HTTP 401 response as session
+failure, the application clears the session and the Cards renderer does not
+finish loading.
+
+### Automation Evidence
+
+Detected by:
+
+CardsReadOnlyTest
+
+Setup failure:
+
+Cards page should load successfully.
+
+Expected: true
+Actual: false
+
+The five Cards functional tests are skipped because module initialization fails
+before they can execute.
+
+### Updated Impact
+
+BUG-AUTH-001 is not limited to Transfers.
+
+Confirmed affected modules currently include:
+
+- Transfers
+- Cards
+
+Any module that performs multiple authenticated requests may potentially be
+affected until the underlying session handling defect is resolved.
+
+### Updated Resolution Requirement
+
+After successful login and MFA, the same valid authenticated session must
+reliably support all API requests, including simultaneous requests from:
+
+- Transfers
+- Cards
+
+CardsReadOnlyTest and TransfersReadOnlyTest should be re-enabled after the
+session defect is fixed.

@@ -15,44 +15,31 @@ public class DashboardPage extends BasePage {
             By.cssSelector(".user-chip");
 
     private final By overviewNavigation =
-            By.cssSelector(
-                    "[data-view='overview']"
-            );
+            By.cssSelector("[data-view='overview']");
 
     private final By accountsNavigation =
-            By.cssSelector(
-                    "[data-view='accounts']"
-            );
+            By.cssSelector("[data-view='accounts']");
 
     private final By transfersNavigation =
-            By.cssSelector(
-                    "[data-view='transfers']"
-            );
+            By.cssSelector("[data-view='transfers']");
 
     private final By beneficiariesNavigation =
-            By.cssSelector(
-                    "[data-view='beneficiaries']"
-            );
+            By.cssSelector("[data-view='beneficiaries']");
 
     private final By transactionsNavigation =
-            By.cssSelector(
-                    "[data-view='transactions']"
-            );
+            By.cssSelector("[data-view='transactions']");
 
     private final By statementsNavigation =
-            By.cssSelector(
-                    "[data-view='statements']"
-            );
+            By.cssSelector("[data-view='statements']");
+
+    private final By cardsNavigation =
+            By.cssSelector("[data-view='cards']");
 
     private final By overviewContent =
-            By.cssSelector(
-                    "#view .hero-card"
-            );
+            By.cssSelector("#view .hero-card");
 
     private final By logoutButton =
-            By.xpath(
-                    "//button[contains(.,'Sign out')]"
-            );
+            By.xpath("//button[contains(.,'Sign out')]");
 
     public DashboardPage(WebDriver driver) {
         super(driver);
@@ -62,26 +49,11 @@ public class DashboardPage extends BasePage {
 
         try {
 
-            wait.waitForVisible(
-                    appShell
-            );
-
-            wait.waitForVisible(
-                    userChip
-            );
-
-            wait.waitForClickable(
-                    overviewNavigation
-            );
-
-            wait.waitForText(
-                    pageTitle,
-                    "Overview"
-            );
-
-            wait.waitForVisible(
-                    overviewContent
-            );
+            wait.waitForVisible(appShell);
+            wait.waitForVisible(userChip);
+            wait.waitForClickable(overviewNavigation);
+            wait.waitForText(pageTitle, "Overview");
+            wait.waitForVisible(overviewContent);
 
             return true;
 
@@ -92,105 +64,66 @@ public class DashboardPage extends BasePage {
     }
 
     public String getPageTitleText() {
-
-        return getText(
-                pageTitle
-        );
+        return getText(pageTitle);
     }
 
     public String getLoggedInUserText() {
-
-        return getText(
-                userChip
-        );
+        return getText(userChip);
     }
 
     public boolean isLogoutButtonDisplayed() {
-
-        return isDisplayed(
-                logoutButton
-        );
+        return isDisplayed(logoutButton);
     }
 
     public AccountsPage openAccounts() {
 
-        wait.waitForClickable(
-                accountsNavigation
-        );
+        wait.waitForClickable(accountsNavigation);
+        click(accountsNavigation);
 
-        click(
-                accountsNavigation
-        );
-
-        return new AccountsPage(
-                driver
-        );
+        return new AccountsPage(driver);
     }
 
     public TransfersPage openTransfers() {
 
-        wait.waitForClickable(
-                transfersNavigation
-        );
+        wait.waitForClickable(transfersNavigation);
+        click(transfersNavigation);
 
-        click(
-                transfersNavigation
-        );
-
-        return new TransfersPage(
-                driver
-        );
+        return new TransfersPage(driver);
     }
 
     public BeneficiariesPage openBeneficiaries() {
 
-        wait.waitForClickable(
-                beneficiariesNavigation
-        );
+        wait.waitForClickable(beneficiariesNavigation);
+        click(beneficiariesNavigation);
 
-        click(
-                beneficiariesNavigation
-        );
-
-        return new BeneficiariesPage(
-                driver
-        );
+        return new BeneficiariesPage(driver);
     }
 
     public TransactionsPage openTransactions() {
 
-        wait.waitForClickable(
-                transactionsNavigation
-        );
+        wait.waitForClickable(transactionsNavigation);
+        click(transactionsNavigation);
 
-        click(
-                transactionsNavigation
-        );
-
-        return new TransactionsPage(
-                driver
-        );
+        return new TransactionsPage(driver);
     }
 
     public StatementsPage openStatements() {
 
-        wait.waitForClickable(
-                statementsNavigation
-        );
+        wait.waitForClickable(statementsNavigation);
+        click(statementsNavigation);
 
-        click(
-                statementsNavigation
-        );
+        return new StatementsPage(driver);
+    }
 
-        return new StatementsPage(
-                driver
-        );
+    public CardsPage openCards() {
+
+        wait.waitForClickable(cardsNavigation);
+        click(cardsNavigation);
+
+        return new CardsPage(driver);
     }
 
     public void logout() {
-
-        click(
-                logoutButton
-        );
+        click(logoutButton);
     }
 }
