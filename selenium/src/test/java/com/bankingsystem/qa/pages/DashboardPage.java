@@ -34,6 +34,11 @@ public class DashboardPage extends BasePage {
                     "[data-view='beneficiaries']"
             );
 
+    private final By transactionsNavigation =
+            By.cssSelector(
+                    "[data-view='transactions']"
+            );
+
     private final By overviewContent =
             By.cssSelector(
                     "#view .hero-card"
@@ -143,6 +148,21 @@ public class DashboardPage extends BasePage {
         );
 
         return new BeneficiariesPage(
+                driver
+        );
+    }
+
+    public TransactionsPage openTransactions() {
+
+        wait.waitForClickable(
+                transactionsNavigation
+        );
+
+        click(
+                transactionsNavigation
+        );
+
+        return new TransactionsPage(
                 driver
         );
     }

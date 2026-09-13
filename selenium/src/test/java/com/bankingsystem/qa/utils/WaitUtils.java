@@ -129,4 +129,15 @@ public class WaitUtils {
                 }
         );
     }
+
+    public boolean waitForStaleness(
+            WebElement element
+    ) {
+
+        return wait.until(
+                ExpectedConditions.stalenessOf(
+                        element
+                )
+        );
+    }
 }
