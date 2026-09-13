@@ -24,6 +24,11 @@ public class DashboardPage extends BasePage {
                     "[data-view='accounts']"
             );
 
+    private final By beneficiariesNavigation =
+            By.cssSelector(
+                    "[data-view='beneficiaries']"
+            );
+
     private final By overviewContent =
             By.cssSelector(
                     "#view .hero-card"
@@ -42,9 +47,13 @@ public class DashboardPage extends BasePage {
 
         try {
 
-            wait.waitForVisible(appShell);
+            wait.waitForVisible(
+                    appShell
+            );
 
-            wait.waitForVisible(userChip);
+            wait.waitForVisible(
+                    userChip
+            );
 
             wait.waitForClickable(
                     overviewNavigation
@@ -55,12 +64,6 @@ public class DashboardPage extends BasePage {
                     "Overview"
             );
 
-            /*
-             * Important:
-             * Do not consider the dashboard fully loaded
-             * until the async Overview content has finished
-             * rendering.
-             */
             wait.waitForVisible(
                     overviewContent
             );
@@ -75,17 +78,23 @@ public class DashboardPage extends BasePage {
 
     public String getPageTitleText() {
 
-        return getText(pageTitle);
+        return getText(
+                pageTitle
+        );
     }
 
     public String getLoggedInUserText() {
 
-        return getText(userChip);
+        return getText(
+                userChip
+        );
     }
 
     public boolean isLogoutButtonDisplayed() {
 
-        return isDisplayed(logoutButton);
+        return isDisplayed(
+                logoutButton
+        );
     }
 
     public AccountsPage openAccounts() {
@@ -103,8 +112,25 @@ public class DashboardPage extends BasePage {
         );
     }
 
+    public BeneficiariesPage openBeneficiaries() {
+
+        wait.waitForClickable(
+                beneficiariesNavigation
+        );
+
+        click(
+                beneficiariesNavigation
+        );
+
+        return new BeneficiariesPage(
+                driver
+        );
+    }
+
     public void logout() {
 
-        click(logoutButton);
+        click(
+                logoutButton
+        );
     }
 }
