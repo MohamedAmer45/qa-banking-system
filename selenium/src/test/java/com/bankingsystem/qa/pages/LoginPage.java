@@ -7,42 +7,27 @@ import org.openqa.selenium.WebDriver;
 
 public class LoginPage extends BasePage {
 
-    /*
-     * Locators intentionally support several common locator conventions.
-     *
-     * Once the Banking System DOM is finalized, these should be replaced
-     * with the application's exact stable data-testid selectors.
-     */
+    private final By identifierInput =
+            By.cssSelector(
+                    "#login-form input[name='email']"
+            );
 
-    private final By identifierInput = By.cssSelector(
-            "[data-testid='login-identifier'], " +
-            "[data-testid='login-email'], " +
-            "#email, " +
-            "#username, " +
-            "input[name='email'], " +
-            "input[name='username']"
-    );
+    private final By passwordInput =
+            By.cssSelector(
+                    "#login-form input[name='password']"
+            );
 
-    private final By passwordInput = By.cssSelector(
-            "[data-testid='login-password'], " +
-            "#password, " +
-            "input[name='password']"
-    );
+    private final By loginButton =
+            By.cssSelector(
+                    "#login-form button[type='submit']"
+            );
 
-    private final By loginButton = By.cssSelector(
-            "[data-testid='login-submit'], " +
-            "button[type='submit']"
-    );
-
-    private final By errorMessage = By.cssSelector(
-            "[data-testid='login-error'], " +
-            "[role='alert'], " +
-            ".error-message, " +
-            ".alert-danger"
-    );
+    private final By errorMessage =
+            By.cssSelector(
+                    "#toast-root .toast.error"
+            );
 
     public LoginPage(WebDriver driver) {
-
         super(driver);
     }
 
@@ -55,7 +40,10 @@ public class LoginPage extends BasePage {
                 ConfigReader.get("login.path");
 
         driver.get(
-                normalizeUrl(baseUrl, loginPath)
+                normalizeUrl(
+                        baseUrl,
+                        loginPath
+                )
         );
 
         return this;
@@ -85,12 +73,16 @@ public class LoginPage extends BasePage {
         return this;
     }
 
-    public void clickLogin() {
+    public LoginPage clickLogin() {
 
-        click(loginButton);
+        click(
+                loginButton
+        );
+
+        return this;
     }
 
-    public void login(
+    public LoginPage login(
             String identifier,
             String password
     ) {
@@ -98,6 +90,8 @@ public class LoginPage extends BasePage {
         enterIdentifier(identifier);
         enterPassword(password);
         clickLogin();
+
+        return this;
     }
 
     public boolean isIdentifierFieldDisplayed() {
@@ -128,10 +122,55 @@ public class LoginPage extends BasePage {
                 && isLoginButtonDisplayed();
     }
 
+    public String getPasswordFieldType() {
+
+        return getAttribute(
+                passwordInput,
+                "type"
+        );
+    }
+
+    public boolean isErrorMessageDisplayed() {
+
+        return isDisplayed(
+                errorMessage
+        );
+    }
+
     public String getErrorMessage() {
 
         return getText(
                 errorMessage
+        );
+    }
+
+    public String getIdentifierValue() {
+
+        return getAttribute(
+                identifierInput,
+                "value"
+        );
+    }
+
+    public String getPasswordValue() {
+
+        return getAttribute(
+                passwordInput,
+                "value"
+        );
+    }
+
+    public void clearIdentifier() {
+
+        clear(
+                identifierInput
+        );
+    }
+
+    public void clearPassword() {
+
+        clear(
+                passwordInput
         );
     }
 
