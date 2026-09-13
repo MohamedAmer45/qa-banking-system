@@ -19,6 +19,11 @@ public class DashboardPage extends BasePage {
                     "[data-view='overview']"
             );
 
+    private final By logoutButton =
+            By.xpath(
+                    "//button[contains(.,'Sign out')]"
+            );
+
     public DashboardPage(WebDriver driver) {
         super(driver);
     }
@@ -39,5 +44,15 @@ public class DashboardPage extends BasePage {
     public String getLoggedInUserText() {
 
         return getText(userChip);
+    }
+
+    public boolean isLogoutButtonDisplayed() {
+
+        return isDisplayed(logoutButton);
+    }
+
+    public void logout() {
+
+        click(logoutButton);
     }
 }
