@@ -6,18 +6,18 @@ This document defines the functional requirements of the Banking System used by 
 
 Each requirement has a unique ID that will later be referenced by:
 
-* Test scenarios
-* Test cases
-* Selenium tests
-* Cypress tests
-* Playwright tests
-* Jest tests
-* Postman collections
-* REST Assured tests
-* Database tests
-* JMeter performance tests
-* Cucumber scenarios
-* CI/CD pipelines
+- Test scenarios
+- Test cases
+- Selenium tests
+- Cypress tests
+- Playwright tests
+- Jest tests
+- Postman collections
+- REST Assured tests
+- Database tests
+- JMeter performance tests
+- Cucumber scenarios
+- CI/CD pipelines
 
 ---
 
