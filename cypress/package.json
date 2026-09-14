@@ -11,7 +11,10 @@
     "cy:edge": "cypress run --browser edge",
     "cy:firefox": "cypress run --browser firefox",
     "cy:headed": "cypress run --headed",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "cy:regression": "cypress run",
+    "cy:regression:chrome": "cypress run --browser chrome",
+    "validate": "npm run typecheck && npm run cy:regression:chrome"
   },
   "keywords": [],
   "author": "",
