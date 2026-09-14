@@ -20,7 +20,10 @@
     "report:merge:html": "mochawesome-merge cypress/results/mochawesome/*.json -o cypress/results/mochawesome.json",
     "report:html": "marge cypress/results/mochawesome.json --reportDir cypress/results/html --reportFilename index",
     "report:merge:junit": "jrm cypress/results/junit/combined.xml cypress/results/junit/*.xml",
-    "report:all": "npm run report:clean && npm run typecheck && npm run report:run && npm run report:merge:html && npm run report:html && npm run report:merge:junit"
+    "report:all": "npm run report:clean && npm run typecheck && npm run report:run && npm run report:merge:html && npm run report:html && npm run report:merge:junit",
+    "cy:smoke:chrome": "cypress run --browser chrome --spec cypress/e2e/smoke.cy.ts",
+    "cy:smoke:edge": "cypress run --browser edge --spec cypress/e2e/smoke.cy.ts",
+    "cy:smoke:firefox": "cypress run --browser firefox --spec cypress/e2e/smoke.cy.ts"
   },
   "keywords": [],
   "author": "",
