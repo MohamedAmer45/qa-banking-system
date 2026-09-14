@@ -1,4 +1,4 @@
-# BUG-AUTH-001 — Concurrent authenticated requests intermittently return HTTP 401
+# BUG-AUTH-001 ï¿½ Concurrent authenticated requests intermittently return HTTP 401
 
 ## Summary
 
@@ -138,7 +138,7 @@ After successful login and MFA:
 
 ---
 
-## Additional Affected Module — Cards
+## Additional Affected Module ï¿½ Cards
 
 The same authentication/session defect also affects the Cards module.
 

@@ -2406,3 +2406,87 @@ How can the final state be verified?
 ```
 
 This principle will guide all later manual, automated, API, database, and performance testing.
+
+<!-- NOVABANK-TEST-DATA-SYNC-START -->
+
+## Current Deterministic Test Data
+
+### Accounts
+
+| Type | Masked Number | Initial Balance |
+|---|---|---:|
+| Checking | `**** 4821` | `$12,840.75` |
+| Savings | `**** 7742` | `$32,500.00` |
+
+Initial total:
+
+`$45,340.75`
+
+### Seed Transactions
+
+- Salary deposit: `$5,200`
+- Electricity bill: `$86.35`
+- Card purchase: `$42.90`
+
+### Transfer Recipients
+
+- Alex Johnson
+- Sam Lee
+
+### Billers
+
+- Electricity
+- Water
+- Internet
+- Mobile
+
+### Cards
+
+| Card | Number | Initial Status |
+|---|---|---|
+| Visa Debit | `**** 4242` | active |
+| Virtual Card | `**** 8831` | frozen |
+
+### Existing Loan
+
+| Field | Value |
+|---|---|
+| Type | Personal Loan |
+| Balance | `$6,450` |
+| APR | `7.9%` |
+| Next payment | `$320` |
+| Due date | `2026-10-05` |
+
+Loan range:
+
+`$1,000 - $50,000`
+
+Terms:
+
+- 12 months
+- 24 months
+- 36 months
+
+### Admin Data
+
+| Metric | Value |
+|---|---:|
+| Customers | 1,248 |
+| Accounts | 1,984 |
+| Transactions today | 378 |
+| Total deposits | 8,420,000 |
+| Flagged transactions | 7 |
+
+### State Management
+
+Current authentication state:
+
+`sessionStorage`
+
+Current banking UI state:
+
+`localStorage`
+
+Tests that mutate state must isolate, reset, or restore that state where necessary.
+
+<!-- NOVABANK-TEST-DATA-SYNC-END -->

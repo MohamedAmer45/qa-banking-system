@@ -1577,3 +1577,51 @@ The core rule is:
 No critical banking requirement should exist
 without visible, traceable test coverage.
 ```
+
+<!-- NOVABANK-RTM-SYNC-START -->
+
+## Current Build Requirements Traceability
+
+| Requirement Area | Manual Coverage | Selenium | Current Status |
+|---|---|---|---|
+| Customer session | Covered | Automated | Available |
+| Admin session | Covered | Automated | Available |
+| Logout | Covered | Automated | Available |
+| Session security | Covered | Automated | Available |
+| Role authorization | Covered | Automated | Available |
+| Dashboard | Covered | Automated | Available |
+| Accounts read-only | Covered | Automated | Available |
+| Transactions | Covered | Automated | Available |
+| Transfers | Covered | Automated | Available |
+| Transfer validation | Covered | Automated | Available |
+| Bills | Covered | Automated | Available |
+| Bill validation | Covered | Automated | Available |
+| Cards | Covered | Automated | Available |
+| Card freeze/unfreeze | Covered | Automated | Available |
+| Loans | Covered | Automated | Available |
+| Loan boundaries | Covered | Automated | Available |
+| Notifications | Covered | Automated | Available |
+| Profile | Covered | Automated | Available |
+| Admin summary | Covered | Automated | Available |
+| MFA | Designed | Retained / Blocked | Build gap |
+| Beneficiary management | Designed | Retained / Blocked | Build gap |
+| Account creation | Designed | Retained / Blocked | Build gap |
+| Extended account controls | Designed | Retained / Blocked | Build gap |
+| Dedicated statements | Designed | Retained / Blocked | Build gap |
+| Persistent database | Planned | Not executable | Build gap |
+| SQL validation | Planned | Not executable | Build gap |
+
+### Status Rules
+
+Available:
+Feature exists and can be tested.
+
+Build gap:
+Requirement exists but current implementation does not provide the feature.
+
+Blocked:
+Test is valid but cannot execute because required functionality is absent.
+
+Blocked tests are not Passed or Failed.
+
+<!-- NOVABANK-RTM-SYNC-END -->

@@ -1105,3 +1105,51 @@ Remains testable and maintainable
 ```
 
 Critical financial functionality shall be validated across multiple layers rather than relying only on UI success messages.
+
+<!-- NOVABANK-CURRENT-BUILD-START -->
+
+## Current NovaBank QA Build
+
+Live application:
+
+`https://novabank-banking-system.vercel.app`
+
+NovaBank is a banking-system QA portfolio project covering:
+
+- Manual testing
+- Selenium + Java
+- Cypress + TypeScript
+- Playwright + TypeScript
+- Postman
+- REST Assured
+- SQL/database testing
+- JMeter
+- Jest
+- Cucumber BDD
+- GitHub Actions
+- Jenkins
+
+Current deployed modules:
+
+`Dashboard -> Accounts -> Transfers -> Transactions -> Bills -> Cards -> Loans -> Notifications -> Profile -> Admin`
+
+### Authentication
+
+The current QA deployment uses deterministic customer/admin demo sessions rather than production banking credentials.
+
+### Current Build Gaps
+
+The following intended banking functionality remains part of the project requirements but is not available in the current deployed build:
+
+- MFA
+- Beneficiary management
+- Account creation
+- Extended account controls
+- Dedicated statements
+- Persistent database-backed banking state
+
+Associated requirements, scenarios, test cases, and automation are preserved and marked blocked rather than deleted.
+
+See `docs/current-build-status.md` for the implementation and coverage status.
+
+<!-- NOVABANK-CURRENT-BUILD-END -->

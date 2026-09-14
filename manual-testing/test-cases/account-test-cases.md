@@ -2470,3 +2470,272 @@ An account balance is not just a value displayed on a page.
 It is the result of every financial event affecting the account,
 and every layer of the Banking System must agree on that result.
 ```
+
+<!-- NOVABANK-TEST-CASES-SYNC-START -->
+
+## Current Build Test Cases
+
+### CB-TC-001 - Customer Session
+
+Precondition: NovaBank session page is open.
+
+Steps:
+
+1. Click `Enter as customer`.
+2. Observe the dashboard.
+
+Expected:
+
+- Dashboard loads.
+- Customer role is shown.
+- Admin navigation is hidden.
+
+Status: Executable.
+
+### CB-TC-002 - Admin Session
+
+Steps:
+
+1. Open NovaBank.
+2. Click `Enter as admin`.
+
+Expected:
+
+- Dashboard loads.
+- Admin role is shown.
+- Admin navigation becomes visible.
+
+Status: Executable.
+
+### CB-TC-003 - Logout
+
+Precondition: User has an active session.
+
+Steps:
+
+1. Click `Log out`.
+
+Expected:
+
+- Session is cleared.
+- Session-selection page is displayed.
+
+Status: Executable.
+
+### CB-TC-004 - Account Display
+
+Expected:
+
+- Checking account is displayed.
+- Savings account is displayed.
+- Account numbers are masked.
+- Balances use USD.
+
+Status: Executable.
+
+### CB-TC-005 - Valid Transfer
+
+Data:
+
+`$100`
+
+Expected:
+
+- Transfer succeeds.
+- Confirmation appears.
+- Source balance is reduced.
+- Transaction activity is generated.
+
+Status: Executable.
+
+### CB-TC-006 - Transfer Maximum Boundary
+
+Data:
+
+`$10,000`
+
+Expected:
+
+Transfer succeeds.
+
+Status: Executable.
+
+### CB-TC-007 - Transfer Above Maximum
+
+Data:
+
+`$10,000.01`
+
+Expected:
+
+Transfer is rejected with transfer-limit validation.
+
+Status: Executable.
+
+### CB-TC-008 - Invalid Transfer Amount
+
+Data:
+
+`0`
+
+`-1`
+
+Expected:
+
+Transfer is rejected.
+
+Status: Executable.
+
+### CB-TC-009 - Valid Bill Payment
+
+Data:
+
+Electricity, `$50`
+
+Expected:
+
+Payment succeeds.
+
+Status: Executable.
+
+### CB-TC-010 - Minimum Bill Payment
+
+Data:
+
+`$0.01`
+
+Expected:
+
+Payment is accepted when sufficient funds exist.
+
+Status: Executable.
+
+### CB-TC-011 - Invalid Bill Payment
+
+Data:
+
+`0`, negative amount, or amount greater than available balance.
+
+Expected:
+
+Payment is rejected.
+
+Status: Executable.
+
+### CB-TC-012 - Freeze Card
+
+Expected:
+
+- Active card becomes frozen.
+- Action changes to Unfreeze.
+
+Status: Executable.
+
+### CB-TC-013 - Unfreeze Card
+
+Expected:
+
+Frozen card becomes active.
+
+Status: Executable.
+
+### CB-TC-014 - Minimum Loan
+
+Data:
+
+`$1,000`
+
+Expected:
+
+Amount is valid.
+
+Status: Executable.
+
+### CB-TC-015 - Maximum Loan
+
+Data:
+
+`$50,000`
+
+Expected:
+
+Amount is valid.
+
+Status: Executable.
+
+### CB-TC-016 - Invalid Loan Boundaries
+
+Data:
+
+`$999`
+
+`$50,001`
+
+Expected:
+
+Values are invalid.
+
+Status: Executable.
+
+### CB-TC-017 - Valid Loan Application
+
+Data:
+
+`$5,000`, 24 months.
+
+Expected:
+
+Loan application is submitted successfully.
+
+Status: Executable.
+
+### CB-TC-018 - Customer Authorization
+
+Expected:
+
+Customer must not see Admin navigation.
+
+Status: Executable.
+
+### CB-TC-019 - Admin Authorization
+
+Expected:
+
+Admin can access Admin console.
+
+Status: Executable.
+
+### CB-TC-020 - Session Storage Removal
+
+Steps:
+
+1. Start customer session.
+2. Remove session storage.
+3. Refresh page.
+
+Expected:
+
+Application returns to session-selection state.
+
+Status: Executable.
+
+## Blocked Existing Cases
+
+Existing cases related to the following functionality remain valid but currently use the status `Blocked`:
+
+- Credential login
+- MFA
+- Beneficiary CRUD
+- Account creation
+- Extended account controls
+- Dedicated statements
+- Persistent database verification
+- SQL data validation
+
+Blocked reason:
+
+`Required functionality is unavailable in the current deployed build.`
+
+These cases must not be deleted simply to produce a passing test suite.
+
+<!-- NOVABANK-TEST-CASES-SYNC-END -->

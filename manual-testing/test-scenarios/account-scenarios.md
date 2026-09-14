@@ -2689,3 +2689,57 @@ Are account-state changes authorized and audited?
 ```
 
 A banking account is the central financial object in the system, so incorrect account behavior can invalidate almost every other banking module.
+
+<!-- NOVABANK-TEST-SCENARIOS-SYNC-START -->
+
+## Current Build Test Scenarios
+
+| ID | Module | Scenario | Status |
+|---|---|---|---|
+| CB-TS-001 | Session | Open NovaBank session page | Executable |
+| CB-TS-002 | Session | Enter as customer | Executable |
+| CB-TS-003 | Session | Enter as admin | Executable |
+| CB-TS-004 | Session | Log out | Executable |
+| CB-TS-005 | Authorization | Customer cannot see Admin module | Executable |
+| CB-TS-006 | Authorization | Admin can access Admin module | Executable |
+| CB-TS-007 | Dashboard | View account overview | Executable |
+| CB-TS-008 | Dashboard | View recent transactions | Executable |
+| CB-TS-009 | Accounts | View Checking and Savings | Executable |
+| CB-TS-010 | Accounts | Verify account masking | Executable |
+| CB-TS-011 | Transactions | View transaction history | Executable |
+| CB-TS-012 | Transfer | Complete valid transfer | Executable |
+| CB-TS-013 | Transfer | Reject zero amount | Executable |
+| CB-TS-014 | Transfer | Reject negative amount | Executable |
+| CB-TS-015 | Transfer | Accept $10,000 boundary | Executable |
+| CB-TS-016 | Transfer | Reject $10,000.01 | Executable |
+| CB-TS-017 | Transfer | Reject insufficient funds | Executable |
+| CB-TS-018 | Bills | Pay valid bill | Executable |
+| CB-TS-019 | Bills | Reject invalid amount | Executable |
+| CB-TS-020 | Bills | Accept $0.01 minimum | Executable |
+| CB-TS-021 | Cards | View masked cards | Executable |
+| CB-TS-022 | Cards | Freeze active card | Executable |
+| CB-TS-023 | Cards | Unfreeze frozen card | Executable |
+| CB-TS-024 | Loans | View existing loan | Executable |
+| CB-TS-025 | Loans | Submit valid application | Executable |
+| CB-TS-026 | Loans | Validate $1,000 minimum | Executable |
+| CB-TS-027 | Loans | Validate $50,000 maximum | Executable |
+| CB-TS-028 | Loans | Reject values outside boundaries | Executable |
+| CB-TS-029 | Notifications | View notifications | Executable |
+| CB-TS-030 | Profile | View profile and role | Executable |
+| CB-TS-031 | Admin | View admin metrics | Executable |
+| CB-TS-032 | Security | Clear session and verify access ends | Executable |
+| CB-TS-033 | MFA | Perform MFA verification | Blocked |
+| CB-TS-034 | Beneficiaries | View beneficiary records | Blocked |
+| CB-TS-035 | Beneficiaries | Create beneficiary | Blocked |
+| CB-TS-036 | Beneficiaries | Update beneficiary | Blocked |
+| CB-TS-037 | Beneficiaries | Delete beneficiary | Blocked |
+| CB-TS-038 | Accounts | Create bank account | Blocked |
+| CB-TS-039 | Accounts | Execute extended account controls | Blocked |
+| CB-TS-040 | Statements | View dedicated statement | Blocked |
+| CB-TS-041 | Statements | Download statement | Blocked |
+| CB-TS-042 | Database | Verify persisted account data with SQL | Blocked |
+| CB-TS-043 | Database | Verify persisted transactions with SQL | Blocked |
+
+Blocked scenarios remain valid test-design assets.
+
+<!-- NOVABANK-TEST-SCENARIOS-SYNC-END -->

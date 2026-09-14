@@ -1,4 +1,4 @@
-# BUG-BEN-001 — Deleted beneficiary remains after reload
+# BUG-BEN-001 ï¿½ Deleted beneficiary remains after reload
 
 ## Summary
 

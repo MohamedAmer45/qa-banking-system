@@ -1,4 +1,4 @@
-# BUG-ACC-001 — Open Account form does not submit
+# BUG-ACC-001 ï¿½ Open Account form does not submit
 
 ## Summary
 

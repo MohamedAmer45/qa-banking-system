@@ -371,3 +371,58 @@ This allows every test result to be traced back to the original system requireme
 | AUDIT  | Audit Logging               |
 | DB     | Database Integrity          |
 | SYS    | General System Requirements |
+
+<!-- NOVABANK-REQUIREMENTS-SYNC-START -->
+
+## Current Build Requirements Synchronization
+
+The original banking-system requirements remain the intended product specification.
+
+A missing implementation does not automatically remove or redefine a requirement.
+
+### Implemented in Current Build
+
+| Requirement Area | Status |
+|---|---|
+| Customer demo session | Implemented |
+| Admin demo session | Implemented |
+| Logout | Implemented |
+| Role-based navigation | Implemented |
+| Dashboard | Implemented |
+| Account display | Implemented |
+| Masked account numbers | Implemented |
+| Transactions | Implemented |
+| Transfers | Implemented |
+| Bills | Implemented |
+| Cards | Implemented |
+| Card freeze/unfreeze | Implemented |
+| Loans | Implemented |
+| Notifications | Implemented |
+| Profile | Implemented |
+| Admin summary | Implemented |
+
+### Current Implementation Gaps
+
+| Requirement Area | Status |
+|---|---|
+| Email/password authentication | Build gap |
+| MFA | Build gap |
+| Beneficiary management | Build gap |
+| Account creation | Build gap |
+| Extended account controls | Build gap |
+| Dedicated statements | Build gap |
+| Persistent database records | Build gap |
+
+### Authentication Deviation
+
+Target/full banking requirement:
+
+`Credentials -> authentication -> MFA where required -> banking session`
+
+Current QA implementation:
+
+`Role selection -> deterministic customer/admin session`
+
+The current demo-session mechanism is a QA-environment implementation choice. It does not permanently remove authentication-security requirements from the intended banking-system scope.
+
+<!-- NOVABANK-REQUIREMENTS-SYNC-END -->

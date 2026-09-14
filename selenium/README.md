@@ -351,3 +351,66 @@ The framework forms part of a larger Banking System QA portfolio covering:
 * BDD
 * CI/CD
 * Automated reporting
+
+<!-- NOVABANK-SELENIUM-MIGRATION-START -->
+
+## Rebuilt NovaBank UI Migration
+
+The Selenium suite has been synchronized with the currently deployed NovaBank application.
+
+### Previous Authentication Flow
+
+`Email/password -> MFA -> Dashboard`
+
+### Current QA Authentication Flow
+
+`Session selection -> Customer/Admin -> Dashboard`
+
+### Migrated Selenium Coverage
+
+- Session page
+- Customer authentication
+- Admin authentication
+- Logout
+- Session security
+- Dashboard
+- Accounts
+- Transactions
+- Transfers
+- Transfer boundaries
+- Bills
+- Bill validation
+- Cards
+- Card freeze/unfreeze
+- Loans
+- Loan boundaries
+- Notifications
+- Profile
+- Admin console
+- Role authorization
+
+### Blocked Legacy Coverage
+
+The following existing automation remains retained but blocked:
+
+- MFA
+- Beneficiaries
+- Account creation
+- Extended account controls
+- Dedicated statements
+
+These tests remain because their underlying banking requirements remain valid.
+
+### State Isolation
+
+Current business state is stored in `localStorage`.
+
+Authentication is stored in `sessionStorage`.
+
+Tests that change balances, cards, transactions, loan applications, or notifications should restore or isolate state.
+
+### Application
+
+`https://novabank-banking-system.vercel.app`
+
+<!-- NOVABANK-SELENIUM-MIGRATION-END -->

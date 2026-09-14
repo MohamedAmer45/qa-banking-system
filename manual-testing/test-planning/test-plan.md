@@ -1574,3 +1574,128 @@ It must also behave safely and predictably when:
 * Financial values reach their boundaries.
 
 For all critical financial workflows, correctness, consistency, authorization, and traceability take priority over cosmetic or convenience features.
+
+<!-- NOVABANK-TEST-PLAN-SYNC-START -->
+
+## Current Build Test Plan Synchronization
+
+### Test Object
+
+NovaBank Banking System QA Application
+
+Production URL:
+
+`https://novabank-banking-system.vercel.app`
+
+### Objectives
+
+Validate:
+
+- Functional behavior
+- Positive workflows
+- Negative workflows
+- Boundary values
+- Role authorization
+- Session handling
+- UI behavior
+- API behavior
+- Regression behavior
+- Cross-browser behavior
+- Integration behavior
+- Automation maintainability
+- Performance where applicable
+- Data behavior where applicable
+
+### Current In-Scope Modules
+
+- Customer demo session
+- Admin demo session
+- Logout
+- Dashboard
+- Accounts
+- Transactions
+- Transfers
+- Bills
+- Cards
+- Loans
+- Notifications
+- Profile
+- Admin
+- Authorization
+- Session security
+
+### Temporarily Blocked Areas
+
+- Email/password login
+- MFA
+- Beneficiaries
+- Account creation
+- Extended account controls
+- Dedicated statements
+- Persistent database validation
+- SQL persistence testing
+
+Blocked functionality remains within overall project scope.
+
+### Testing Types
+
+- Smoke
+- Functional
+- Regression
+- Negative
+- Boundary-value
+- Authorization
+- Security/session
+- UI
+- API
+- Cross-browser
+- Exploratory
+- Integration
+- End-to-end where supported
+- Performance where supported
+
+### Automation Stack
+
+- Selenium + Java + TestNG + Maven
+- Cypress + TypeScript
+- Playwright + TypeScript
+- Postman
+- REST Assured
+- Jest
+- Cucumber
+- JMeter
+- GitHub Actions
+- Jenkins
+
+### Entry Criteria
+
+- Production QA application is reachable.
+- Health endpoint responds successfully.
+- Required current-build modules are available.
+- Automation dependencies are installed.
+- Required browser/runtime is available.
+- Test state strategy is defined.
+
+### Exit Criteria
+
+- Smoke suite passes.
+- Critical executable banking flows are tested.
+- Migrated regression tests pass.
+- Defects are documented.
+- Blocked functionality is clearly identified.
+- Failures are classified correctly as product, test, data, or environment issues.
+- Required evidence and reports are retained.
+
+### State Consideration
+
+The current application uses browser-local deterministic state.
+
+Tests that mutate balances, transactions, cards, loans, or notifications must use isolated state or restore/reset state.
+
+### Database Limitation
+
+The deployed build currently does not use persistent PostgreSQL-backed banking state.
+
+SQL/database persistence testing remains part of the project plan but is blocked until a persistent database layer is introduced.
+
+<!-- NOVABANK-TEST-PLAN-SYNC-END -->

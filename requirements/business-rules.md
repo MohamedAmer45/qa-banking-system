@@ -1297,3 +1297,74 @@ A single requirement may reference multiple business rules, and a single busines
 | BR-VAL   | Validation          |
 | BR-ERR   | Error Handling      |
 | BR-SEC   | Security            |
+
+<!-- NOVABANK-BUSINESS-RULES-SYNC-START -->
+
+## Current Build Business Rules
+
+### Sessions and Authorization
+
+1. Users can enter the QA application as customer or admin.
+2. Customer sessions must not expose the Admin navigation module.
+3. Admin sessions may access the Admin console.
+4. Protected API resources require an authorized demo session.
+5. Logout must remove active browser session state.
+
+### Accounts
+
+1. The deterministic customer contains Checking and Savings accounts.
+2. Displayed account identifiers must remain masked.
+3. Current balances are represented in USD.
+
+### Transfers
+
+1. Transfer amount must be greater than `0`.
+2. Maximum single transfer is `$10,000`.
+3. `$10,000` is a valid boundary.
+4. `$10,000.01` must be rejected.
+5. Transfer amount must not exceed available source-account balance.
+6. Successful transfers must generate transaction activity.
+
+### Bills
+
+1. Bill amount must be greater than `0`.
+2. Bill amount must not exceed the available Checking-account balance.
+3. Minimum valid amount is `$0.01`.
+4. Current billers are Electricity, Water, Internet, and Mobile.
+
+### Cards
+
+1. Card numbers must remain masked.
+2. Supported states are `active` and `frozen`.
+3. Active cards may be frozen.
+4. Frozen cards may be unfrozen.
+5. Card-control labels must reflect current state.
+
+### Loans
+
+1. Minimum application amount is `$1,000`.
+2. Maximum application amount is `$50,000`.
+3. `$999` is invalid.
+4. `$50,001` is invalid.
+5. Supported terms are 12, 24, and 36 months.
+6. Valid applications enter an under-review state.
+
+### Admin
+
+Admin console access requires the admin role.
+
+Seeded admin metrics:
+
+| Metric | Value |
+|---|---:|
+| Customers | 1,248 |
+| Accounts | 1,984 |
+| Transactions today | 378 |
+| Total deposits | 8,420,000 |
+| Flagged transactions | 7 |
+
+### Legacy / Intended Rules
+
+Business rules related to MFA, beneficiary management, account creation, account controls, statements, and persistent database operations remain part of the intended full banking scope and are blocked against the current build.
+
+<!-- NOVABANK-BUSINESS-RULES-SYNC-END -->
