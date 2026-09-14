@@ -26,24 +26,13 @@ class LoansPage {
 
 
   visitAsCustomer(): void {
-
     cy.visit("/");
-
-    cy.get(this.customerLogin)
-      .should("be.visible")
-      .and("be.enabled")
-      .click();
-
+    cy.loginAsCustomer();
   }
 
 
   openLoans(): void {
-
-    cy.get(this.loansNav)
-      .should("be.visible")
-      .and("be.enabled")
-      .click();
-
+    cy.openModule("loans");
   }
 
 
@@ -116,3 +105,5 @@ class LoansPage {
 }
 
 export default new LoansPage();
+
+

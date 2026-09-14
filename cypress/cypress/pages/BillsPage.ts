@@ -23,24 +23,13 @@ class BillsPage {
 
 
   visitAsCustomer(): void {
-
     cy.visit("/");
-
-    cy.get(this.customerLogin)
-      .should("be.visible")
-      .and("be.enabled")
-      .click();
-
+    cy.loginAsCustomer();
   }
 
 
   openBills(): void {
-
-    cy.get(this.billsNav)
-      .should("be.visible")
-      .and("be.enabled")
-      .click();
-
+    cy.openModule("bills");
   }
 
 
@@ -108,3 +97,5 @@ class BillsPage {
 }
 
 export default new BillsPage();
+
+

@@ -17,24 +17,13 @@ class ProfilePage {
 
 
   visitAsCustomer(): void {
-
     cy.visit("/");
-
-    cy.get(this.customerLogin)
-      .should("be.visible")
-      .and("be.enabled")
-      .click();
-
+    cy.loginAsCustomer();
   }
 
 
   openProfile(): void {
-
-    cy.get(this.profileNav)
-      .should("be.visible")
-      .and("be.enabled")
-      .click();
-
+    cy.openModule("profile");
   }
 
 
@@ -71,3 +60,5 @@ class ProfilePage {
 }
 
 export default new ProfilePage();
+
+

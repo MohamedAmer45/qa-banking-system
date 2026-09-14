@@ -17,24 +17,13 @@ class CardsPage {
 
 
   visitAsCustomer(): void {
-
     cy.visit("/");
-
-    cy.get(this.customerLogin)
-      .should("be.visible")
-      .and("be.enabled")
-      .click();
-
+    cy.loginAsCustomer();
   }
 
 
   openCards(): void {
-
-    cy.get(this.cardsNav)
-      .should("be.visible")
-      .and("be.enabled")
-      .click();
-
+    cy.openModule("cards");
   }
 
 
@@ -76,3 +65,5 @@ class CardsPage {
 }
 
 export default new CardsPage();
+
+

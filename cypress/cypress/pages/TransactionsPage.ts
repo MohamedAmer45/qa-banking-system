@@ -17,24 +17,13 @@ class TransactionsPage {
 
 
   visitAsCustomer(): void {
-
     cy.visit("/");
-
-    cy.get(this.customerLogin)
-      .should("be.visible")
-      .and("be.enabled")
-      .click();
-
+    cy.loginAsCustomer();
   }
 
 
   openTransactions(): void {
-
-    cy.get(this.transactionsNav)
-      .should("be.visible")
-      .and("be.enabled")
-      .click();
-
+    cy.openModule("transactions");
   }
 
 
@@ -70,3 +59,5 @@ class TransactionsPage {
 }
 
 export default new TransactionsPage();
+
+

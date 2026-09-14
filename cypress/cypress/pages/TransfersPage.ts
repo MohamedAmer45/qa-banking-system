@@ -27,17 +27,12 @@ class TransfersPage {
 
   visitAsCustomer(): void {
     cy.visit("/");
-
-    cy.get(this.customerLogin)
-      .should("be.visible")
-      .click();
+    cy.loginAsCustomer();
   }
 
 
   openTransfers(): void {
-    cy.get(this.transfersNav)
-      .should("be.visible")
-      .click();
+    cy.openModule("transfers");
   }
 
 
@@ -108,3 +103,5 @@ class TransfersPage {
 }
 
 export default new TransfersPage();
+
+

@@ -21,19 +21,12 @@ class AccountsPage {
 
   visitAsCustomer(): void {
     cy.visit("/");
-
-    cy.get(this.customerLoginButton)
-      .should("be.visible")
-      .and("be.enabled")
-      .click();
+    cy.loginAsCustomer();
   }
 
 
   openAccounts(): void {
-    cy.get(this.accountsNavButton)
-      .should("be.visible")
-      .and("be.enabled")
-      .click();
+    cy.openModule("accounts");
   }
 
 
@@ -67,3 +60,5 @@ class AccountsPage {
 }
 
 export default new AccountsPage();
+
+

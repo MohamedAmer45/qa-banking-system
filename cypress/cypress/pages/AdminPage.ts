@@ -25,32 +25,17 @@ class AdminPage {
 
 
   loginAsCustomer(): void {
-
-    cy.get(this.customerLogin)
-      .should("be.visible")
-      .and("be.enabled")
-      .click();
-
+    cy.loginAsCustomer();
   }
 
 
   loginAsAdmin(): void {
-
-    cy.get(this.adminLogin)
-      .should("be.visible")
-      .and("be.enabled")
-      .click();
-
+    cy.loginAsAdmin();
   }
 
 
   openAdmin(): void {
-
-    cy.get(this.adminNav)
-      .should("be.visible")
-      .and("be.enabled")
-      .click();
-
+    cy.openModule("admin");
   }
 
 
@@ -76,3 +61,4 @@ class AdminPage {
 }
 
 export default new AdminPage();
+

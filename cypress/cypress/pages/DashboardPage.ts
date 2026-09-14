@@ -2,11 +2,7 @@ class DashboardPage {
 
   visitAsCustomer(): void {
     cy.visit("/");
-
-    cy.get("#login button.enter[data-role='customer']")
-      .should("be.visible")
-      .and("be.enabled")
-      .click();
+    cy.loginAsCustomer();
   }
 
 
@@ -44,12 +40,25 @@ class DashboardPage {
 
 
   openModule(label: string): void {
-    this.getNavigationButton(label)
-      .should("be.visible")
-      .and("be.enabled")
-      .click();
+
+    const module =
+      label.toLowerCase() as
+        | "dashboard"
+        | "accounts"
+        | "transfers"
+        | "transactions"
+        | "bills"
+        | "cards"
+        | "loans"
+        | "notifications"
+        | "profile"
+        | "admin";
+
+    cy.openModule(module);
   }
 
 }
 
 export default new DashboardPage();
+
+
