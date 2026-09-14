@@ -1,213 +1,228 @@
 package com.bankingsystem.qa.tests;
 
 import com.bankingsystem.qa.base.CustomerTestBase;
-import com.bankingsystem.qa.pages.TransfersPage;
-
+import com.bankingsystem.qa.pages.TransfersCurrentPage;
 import org.testng.Assert;
-import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
 import java.util.List;
 
 public class TransfersReadOnlyTest extends CustomerTestBase {
 
-    private TransfersPage transfersPage;
+    private TransfersCurrentPage openTransfersPage() {
 
+        dashboardPage.openTransfers();
 
-    @BeforeMethod(alwaysRun = true)
-    public void openTransfersPage() {
-
-        transfersPage =
-                dashboardPage.openTransfers();
+        TransfersCurrentPage transfersPage =
+                new TransfersCurrentPage(
+                        getDriver()
+                );
 
         Assert.assertTrue(
                 transfersPage.isLoaded(),
                 "Transfers page should load successfully."
         );
+
+        return transfersPage;
     }
 
-
     @Test(
-            enabled = false,
-            description = "Known defect BUG-AUTH-001: concurrent authenticated requests intermittently return 401."
+            groups = {"smoke", "transfers"},
+            description = "Transfers page loads successfully"
     )
-    public void transfersPageShouldOpenSuccessfully() {
+    public void transfersPageShouldLoadSuccessfully() {
+
+        TransfersCurrentPage transfersPage =
+                openTransfersPage();
 
         Assert.assertEquals(
                 transfersPage.getPageTitleText(),
                 "Transfers",
-                "Page title should be Transfers."
-        );
-
-        Assert.assertTrue(
-                transfersPage.isTransferHistoryDisplayed(),
-                "Transfer history section should be displayed."
+                "Transfers page heading should be displayed."
         );
     }
 
-
     @Test(
-            enabled = false,
-            description = "Known defect BUG-AUTH-001: concurrent authenticated requests intermittently return 401."
+            groups = {"smoke", "transfers"},
+            description = "Transfer source accounts are displayed"
     )
-    public void newTransferModalShouldDisplayRequiredControls() {
+    public void sourceAccountsShouldBeDisplayed() {
 
-        transfersPage.openNewTransferModal();
+        TransfersCurrentPage transfersPage =
+                openTransfersPage();
+
+        List<String> accounts =
+                transfersPage.getFromAccountOptions();
 
         Assert.assertTrue(
-                transfersPage.isTransferFormDisplayed(),
-                "New Transfer form should be displayed."
+                accounts.size() >= 2,
+                "At least two source accounts should be available."
         );
 
         Assert.assertTrue(
-                transfersPage.getSourceAccountOptions().size() > 0,
-                "At least one active source account should be available."
+                accounts.stream()
+                        .anyMatch(account ->
+                                account.contains("Checking")
+                        ),
+                "Checking account should be available."
         );
 
         Assert.assertTrue(
-                transfersPage.isAmountFieldDisplayed(),
-                "Amount field should be displayed."
-        );
-
-        Assert.assertTrue(
-                transfersPage.isScheduleFieldDisplayed(),
-                "Schedule field should be displayed."
-        );
-
-        Assert.assertTrue(
-                transfersPage.isMemoFieldDisplayed(),
-                "Memo field should be displayed."
-        );
-
-        Assert.assertTrue(
-                transfersPage.isSubmitButtonDisplayed(),
-                "Review and submit button should be displayed."
+                accounts.stream()
+                        .anyMatch(account ->
+                                account.contains("Savings")
+                        ),
+                "Savings account should be available."
         );
     }
 
-
     @Test(
-            enabled = false,
-            description = "Known defect BUG-AUTH-001: concurrent authenticated requests intermittently return 401."
+            groups = {"smoke", "transfers"},
+            description = "Transfer recipients are displayed"
     )
-    public void destinationTypeShouldToggleDestinationControls() {
+    public void recipientsShouldBeDisplayed() {
 
-        transfersPage.openNewTransferModal();
+        TransfersCurrentPage transfersPage =
+                openTransfersPage();
 
-        List<String> destinationTypes =
-                transfersPage.getDestinationTypeOptions();
-
-        Assert.assertTrue(
-                destinationTypes.contains("Beneficiary"),
-                "Beneficiary destination type should be available."
-        );
+        List<String> recipients =
+                transfersPage.getRecipientOptions();
 
         Assert.assertTrue(
-                destinationTypes.contains("My account"),
-                "Own-account destination type should be available."
-        );
-
-
-        Assert.assertTrue(
-                transfersPage.isBeneficiaryFieldDisplayed(),
-                "Beneficiary field should be visible by default."
-        );
-
-        Assert.assertFalse(
-                transfersPage.isOwnAccountFieldDisplayed(),
-                "Own-account field should initially be hidden."
-        );
-
-
-        transfersPage.selectDestinationType(
-                "own"
+                recipients.size() >= 2,
+                "At least two recipients should be available."
         );
 
         Assert.assertTrue(
-                transfersPage.isOwnAccountFieldDisplayed(),
-                "Own-account field should be displayed after selecting My account."
-        );
-
-        Assert.assertFalse(
-                transfersPage.isBeneficiaryFieldDisplayed(),
-                "Beneficiary field should be hidden for own-account transfers."
+                recipients.contains(
+                        "Alex Johnson"
+                ),
+                "Alex Johnson should be available."
         );
 
         Assert.assertTrue(
-                transfersPage.getOwnAccountOptionCount() > 0,
-                "At least one destination account should be available."
-        );
-
-
-        transfersPage.selectDestinationType(
-                "beneficiary"
-        );
-
-        Assert.assertTrue(
-                transfersPage.isBeneficiaryFieldDisplayed(),
-                "Beneficiary field should reappear."
-        );
-
-        Assert.assertFalse(
-                transfersPage.isOwnAccountFieldDisplayed(),
-                "Own-account field should be hidden again."
+                recipients.contains(
+                        "Sam Lee"
+                ),
+                "Sam Lee should be available."
         );
     }
 
-
     @Test(
-            enabled = false,
-            description = "Known defect BUG-AUTH-001: concurrent authenticated requests intermittently return 401."
+            groups = {"regression", "transfers"},
+            description = "Customer can select a source account"
     )
-    public void transferAmountAndMemoConstraintsShouldMatchRequirements() {
+    public void customerShouldSelectSourceAccount() {
 
-        transfersPage.openNewTransferModal();
+        TransfersCurrentPage transfersPage =
+                openTransfersPage();
 
-        Assert.assertEquals(
-                transfersPage.getAmountMinimum(),
-                "0.01",
-                "Minimum transfer amount should be 0.01."
+        transfersPage.selectFromAccountByIndex(
+                1
         );
 
-        Assert.assertEquals(
-                transfersPage.getAmountStep(),
-                "0.01",
-                "Transfer amount should support two decimal places."
-        );
-
-        Assert.assertEquals(
-                transfersPage.getScheduleFieldType(),
-                "datetime-local",
-                "Schedule field should use datetime-local."
-        );
-
-        Assert.assertEquals(
-                transfersPage.getMemoMaxLength(),
-                "80",
-                "Transfer memo should be limited to 80 characters."
+        Assert.assertTrue(
+                transfersPage.getSelectedFromAccountText()
+                        .contains("Savings"),
+                "Savings account should be selected."
         );
     }
 
-
     @Test(
-            enabled = false,
-            description = "Known defect BUG-AUTH-001: concurrent authenticated requests intermittently return 401."
+            groups = {"regression", "transfers"},
+            description = "Customer can select a transfer recipient"
     )
-    public void transferFormShouldExposeQaFailureSimulation() {
+    public void customerShouldSelectRecipient() {
 
-        transfersPage.openNewTransferModal();
+        TransfersCurrentPage transfersPage =
+                openTransfersPage();
 
-        List<String> qaOptions =
-                transfersPage.getQaSimulationOptions();
-
-        Assert.assertTrue(
-                qaOptions.contains("Normal"),
-                "Normal transfer behavior should be available."
+        transfersPage.selectRecipient(
+                "Sam Lee"
         );
 
-        Assert.assertTrue(
-                qaOptions.contains("Force safe failure / rollback"),
-                "Safe failure simulation should be available."
+        Assert.assertEquals(
+                transfersPage.getSelectedRecipientText(),
+                "Sam Lee",
+                "Selected recipient should be Sam Lee."
+        );
+    }
+
+    @Test(
+            groups = {"regression", "transfers"},
+            description = "Valid transfer completes successfully"
+    )
+    public void validTransferShouldCompleteSuccessfully() {
+
+        TransfersCurrentPage transfersPage =
+                openTransfersPage();
+
+        transfersPage.transfer(
+                0,
+                "Alex Johnson",
+                "100"
+        );
+
+        transfersPage.waitForToastToContain(
+                "Transfer completed"
+        );
+
+        Assert.assertEquals(
+                transfersPage.getToastText(),
+                "Transfer completed.",
+                "Successful transfer confirmation should be displayed."
+        );
+    }
+
+    @Test(
+            groups = {"regression", "transfers", "validation"},
+            description = "Transfer above single transfer limit is rejected"
+    )
+    public void transferAboveLimitShouldBeRejected() {
+
+        TransfersCurrentPage transfersPage =
+                openTransfersPage();
+
+        transfersPage.transfer(
+                0,
+                "Alex Johnson",
+                "10000.01"
+        );
+
+        transfersPage.waitForToastToContain(
+                "Transfer limit exceeded"
+        );
+
+        Assert.assertEquals(
+                transfersPage.getToastText(),
+                "Transfer limit exceeded.",
+                "Transfer above $10,000 should be rejected."
+        );
+    }
+
+    @Test(
+            groups = {"regression", "transfers", "boundary"},
+            description = "Maximum transfer limit is accepted"
+    )
+    public void maximumTransferLimitShouldBeAccepted() {
+
+        TransfersCurrentPage transfersPage =
+                openTransfersPage();
+
+        transfersPage.transfer(
+                0,
+                "Sam Lee",
+                "10000"
+        );
+
+        transfersPage.waitForToastToContain(
+                "Transfer completed"
+        );
+
+        Assert.assertEquals(
+                transfersPage.getToastText(),
+                "Transfer completed.",
+                "$10,000 transfer should be allowed."
         );
     }
 }

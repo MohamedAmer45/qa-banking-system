@@ -1,134 +1,146 @@
 package com.bankingsystem.qa.tests;
 
 import com.bankingsystem.qa.base.BaseTest;
+import com.bankingsystem.qa.pages.DashboardPage;
 import com.bankingsystem.qa.pages.LoginPage;
-import com.bankingsystem.qa.utils.ConfigReader;
-
 import org.testng.Assert;
-import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
 public class LoginPageTest extends BaseTest {
 
-    private LoginPage loginPage;
+    @Test(
+            groups = {"smoke", "authentication"},
+            description = "Demo session page loads successfully"
+    )
+    public void loginPageShouldLoadSuccessfully() {
 
-    @BeforeMethod
-    public void openLoginPage() {
-
-        loginPage =
-                new LoginPage(
-                        getDriver()
-                );
+        LoginPage loginPage =
+                new LoginPage(getDriver());
 
         loginPage.open();
-    }
-
-    @Test
-    public void loginPageShouldLoadSuccessfully() {
 
         Assert.assertTrue(
                 loginPage.isLoaded(),
-                "Login form should be displayed."
+                "Demo session page should be displayed."
         );
     }
 
-    @Test
-    public void passwordFieldShouldBeMasked() {
+    @Test(
+            groups = {"smoke", "authentication"},
+            description = "Customer demo session option is displayed"
+    )
+    public void customerSessionOptionShouldBeDisplayed() {
 
-        Assert.assertEquals(
-                loginPage.getPasswordFieldType(),
-                "password",
-                "Password field should use type=password."
+        LoginPage loginPage =
+                new LoginPage(getDriver());
+
+        loginPage.open();
+
+        Assert.assertTrue(
+                loginPage.isCustomerButtonDisplayed(),
+                "Enter as customer button should be displayed."
         );
     }
 
-    @Test
-    public void shouldRejectInvalidCredentials() {
+    @Test(
+            groups = {"smoke", "authentication"},
+            description = "Admin demo session option is displayed"
+    )
+    public void adminSessionOptionShouldBeDisplayed() {
 
-        String invalidUsername =
-                ConfigReader.get(
-                        "invalid.username"
-                );
+        LoginPage loginPage =
+                new LoginPage(getDriver());
 
-        String invalidPassword =
-                ConfigReader.get(
-                        "invalid.password"
-                );
+        loginPage.open();
 
-        loginPage.clearIdentifier();
-        loginPage.clearPassword();
+        Assert.assertTrue(
+                loginPage.isAdminButtonDisplayed(),
+                "Enter as admin button should be displayed."
+        );
+    }
 
-        loginPage.login(
-                invalidUsername,
-                invalidPassword
+    @Test(
+            groups = {"smoke", "authentication"},
+            description = "Customer can start a demo banking session"
+    )
+    public void customerShouldEnterApplication() {
+
+        LoginPage loginPage =
+                new LoginPage(getDriver());
+
+        loginPage.open();
+        loginPage.enterAsCustomer();
+
+        DashboardPage dashboardPage =
+                new DashboardPage(getDriver());
+
+        Assert.assertTrue(
+                dashboardPage.isLoaded(),
+                "Customer dashboard should load."
         );
 
         Assert.assertTrue(
-                loginPage.isErrorMessageDisplayed(),
-                "An error message should be displayed for invalid credentials."
+                dashboardPage.getLoggedInUserText()
+                        .toLowerCase()
+                        .contains("customer"),
+                "Session should use customer role."
         );
 
-        Assert.assertTrue(
-                loginPage.getErrorMessage()
-                        .contains("Sign in failed"),
-                "The login failure message should indicate that sign in failed."
-        );
-    }
-
-    @Test
-    public void shouldNotAuthenticateWithEmptyCredentials() {
-
-        loginPage.clearIdentifier();
-        loginPage.clearPassword();
-
-        loginPage.clickLogin();
-
-        Assert.assertTrue(
-                loginPage.isIdentifierFieldDisplayed(),
-                "User should remain on the login form."
-        );
-
-        Assert.assertTrue(
-                loginPage.isPasswordFieldDisplayed(),
-                "Password field should remain visible."
+        Assert.assertFalse(
+                dashboardPage.isAdminNavigationDisplayed(),
+                "Customer should not have access to admin navigation."
         );
     }
 
-    @Test
-    public void identifierFieldShouldAcceptInput() {
+    @Test(
+            groups = {"regression", "authentication"},
+            description = "Admin can start an admin demo session"
+    )
+    public void adminShouldEnterApplication() {
 
-        String value =
-                "test.user@novabank.test";
+        LoginPage loginPage =
+                new LoginPage(getDriver());
 
-        loginPage.clearIdentifier();
+        loginPage.open();
+        loginPage.enterAsAdmin();
 
-        loginPage.enterIdentifier(
-                value
+        DashboardPage dashboardPage =
+                new DashboardPage(getDriver());
+
+        Assert.assertTrue(
+                dashboardPage.isLoaded(),
+                "Dashboard should load for admin."
         );
 
-        Assert.assertEquals(
-                loginPage.getIdentifierValue(),
-                value,
-                "Identifier field should contain the entered value."
+        Assert.assertTrue(
+                dashboardPage.getLoggedInUserText()
+                        .toLowerCase()
+                        .contains("admin"),
+                "Session should use admin role."
+        );
+
+        Assert.assertTrue(
+                dashboardPage.isAdminNavigationDisplayed(),
+                "Admin navigation should be displayed."
         );
     }
 
-    @Test
-    public void passwordFieldShouldAcceptInput() {
+    @Test(
+            groups = {"regression", "authentication"},
+            description = "Logout returns user to demo session page"
+    )
+    public void logoutShouldReturnToSessionPage() {
 
-        String value =
-                "TestPassword123!";
+        LoginPage loginPage =
+                new LoginPage(getDriver());
 
-        loginPage.clearPassword();
+        loginPage.open();
+        loginPage.enterAsCustomer();
+        loginPage.logout();
 
-        loginPage.enterPassword(
-                value
-        );
-
-        Assert.assertEquals(
-                loginPage.getPasswordValue(),
-                value,
-                "Password field should contain the entered value."
+        Assert.assertTrue(
+                loginPage.isLoaded(),
+                "Demo session page should return after logout."
         );
     }
 }

@@ -1,71 +1,93 @@
 package com.bankingsystem.qa.tests;
 
-import com.bankingsystem.qa.base.CustomerTestBase;
+import com.bankingsystem.qa.base.BaseTest;
 import com.bankingsystem.qa.pages.LoginPage;
-
 import org.openqa.selenium.JavascriptExecutor;
-
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
-public class SessionSecurityTest extends CustomerTestBase {
+public class SessionSecurityTest extends BaseTest {
 
-    @Test
-    public void authenticationTokenShouldExistAfterLogin() {
+    @Test(
+            groups = {"regression", "security"},
+            description = "Logging out clears the active demo session"
+    )
+    public void logoutShouldClearSession() {
+
+        LoginPage loginPage =
+                new LoginPage(getDriver());
+
+        loginPage.open();
+        loginPage.enterAsCustomer();
 
         JavascriptExecutor js =
                 (JavascriptExecutor) getDriver();
 
-        Object token =
+        Object tokenBeforeLogout =
                 js.executeScript(
-                        "return window.localStorage.getItem('novabank_token');"
+                        "return sessionStorage.getItem('nb_token');"
                 );
 
         Assert.assertNotNull(
-                token,
-                "Authentication token should exist after successful login."
+                tokenBeforeLogout,
+                "Session token should exist after authentication."
         );
 
-        Assert.assertFalse(
-                token.toString().isBlank(),
-                "Authentication token should not be empty."
+        loginPage.logout();
+
+        Object tokenAfterLogout =
+                js.executeScript(
+                        "return sessionStorage.getItem('nb_token');"
+                );
+
+        Assert.assertNull(
+                tokenAfterLogout,
+                "Session token should be removed after logout."
         );
     }
 
-
-    @Test
-    public void logoutShouldClearSessionAndReturnToLogin() {
-
-        Assert.assertTrue(
-                dashboardPage.isLogoutButtonDisplayed(),
-                "Sign out button should be displayed."
-        );
-
-        dashboardPage.logout();
-
+    @Test(
+            groups = {"regression", "security"},
+            description = "Removing session storage prevents continued authenticated access"
+    )
+    public void clearingSessionStorageShouldEndSession() {
 
         LoginPage loginPage =
-                new LoginPage(
-                        getDriver()
-                );
+                new LoginPage(getDriver());
 
-        Assert.assertTrue(
-                loginPage.isLoaded(),
-                "Login page should be displayed after logout."
-        );
-
+        loginPage.open();
+        loginPage.enterAsCustomer();
 
         JavascriptExecutor js =
                 (JavascriptExecutor) getDriver();
 
-        Object token =
-                js.executeScript(
-                        "return window.localStorage.getItem('novabank_token');"
-                );
+        js.executeScript(
+                "sessionStorage.clear();"
+        );
 
-        Assert.assertNull(
-                token,
-                "Authentication token should be removed after logout."
+        getDriver().navigate().refresh();
+
+        Assert.assertTrue(
+                loginPage.isLoaded(),
+                "Application should return to session selection page when session storage is cleared."
+        );
+    }
+
+    @Test(
+            groups = {"regression", "security"},
+            description = "Customer role cannot access admin navigation"
+    )
+    public void customerShouldNotSeeAdminNavigation() {
+
+        LoginPage loginPage =
+                new LoginPage(getDriver());
+
+        loginPage.open();
+        loginPage.enterAsCustomer();
+
+        Assert.assertFalse(
+                loginPage.isAdminNavigationDisplayed(),
+                "Admin navigation must not be visible to customer sessions."
         );
     }
 }

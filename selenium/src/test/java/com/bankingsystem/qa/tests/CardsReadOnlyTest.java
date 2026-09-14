@@ -1,158 +1,165 @@
 package com.bankingsystem.qa.tests;
 
 import com.bankingsystem.qa.base.CustomerTestBase;
-import com.bankingsystem.qa.pages.CardsPage;
-
+import com.bankingsystem.qa.pages.CardsCurrentPage;
 import org.testng.Assert;
-import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
 import java.util.List;
 
 public class CardsReadOnlyTest extends CustomerTestBase {
 
-    private CardsPage cardsPage;
+    private CardsCurrentPage openCardsPage() {
 
+        dashboardPage.openCards();
 
-    @BeforeMethod(alwaysRun = true)
-    public void openCardsPage() {
-
-        cardsPage =
-                dashboardPage.openCards();
+        CardsCurrentPage cardsPage =
+                new CardsCurrentPage(
+                        getDriver()
+                );
 
         Assert.assertTrue(
                 cardsPage.isLoaded(),
                 "Cards page should load successfully."
         );
+
+        return cardsPage;
     }
 
-
     @Test(
-            enabled = false,
-            description = "Known defect BUG-AUTH-001: authenticated API requests intermittently return 401."
+            groups = {"smoke", "cards"},
+            description = "Cards page loads successfully"
     )
-    public void cardsPageShouldOpenSuccessfully() {
+    public void cardsPageShouldLoadSuccessfully() {
+
+        CardsCurrentPage cardsPage =
+                openCardsPage();
 
         Assert.assertEquals(
                 cardsPage.getPageTitleText(),
                 "Cards",
-                "Page title should be Cards."
-        );
-
-        Assert.assertTrue(
-                cardsPage.hasCardsOrEmptyState(),
-                "Cards module should display issued cards or an empty state."
+                "Cards page heading should be displayed."
         );
     }
 
+    @Test(
+            groups = {"smoke", "cards"},
+            description = "Customer cards are displayed"
+    )
+    public void customerCardsShouldBeDisplayed() {
+
+        CardsCurrentPage cardsPage =
+                openCardsPage();
+
+        Assert.assertTrue(
+                cardsPage.getCardCount() >= 2,
+                "At least two cards should be displayed."
+        );
+    }
 
     @Test(
-            enabled = false,
-            description = "Known defect BUG-AUTH-001: authenticated API requests intermittently return 401."
+            groups = {"regression", "cards"},
+            description = "Expected card types are displayed"
     )
-    public void cardControlMatrixShouldMatchDisplayedCards() {
+    public void expectedCardTypesShouldBeDisplayed() {
+
+        CardsCurrentPage cardsPage =
+                openCardsPage();
+
+        List<String> cardTypes =
+                cardsPage.getCardTypes();
+
+        Assert.assertTrue(
+                cardTypes.contains(
+                        "Visa Debit"
+                ),
+                "Visa Debit card should be displayed."
+        );
+
+        Assert.assertTrue(
+                cardTypes.contains(
+                        "Virtual Card"
+                ),
+                "Virtual Card should be displayed."
+        );
+    }
+
+    @Test(
+            groups = {"regression", "cards", "security"},
+            description = "Displayed card numbers are masked"
+    )
+    public void cardNumbersShouldBeMasked() {
+
+        CardsCurrentPage cardsPage =
+                openCardsPage();
 
         Assert.assertEquals(
-                cardsPage.getControlMatrixRowCount(),
+                cardsPage.getCardNumbers().size(),
                 cardsPage.getCardCount(),
-                "Each displayed card should have one control-matrix row."
+                "Every card should display a card number."
+        );
+
+        Assert.assertTrue(
+                cardsPage.allCardNumbersAreMasked(),
+                "Every displayed card number should be masked."
         );
     }
 
-
     @Test(
-            enabled = false,
-            description = "Known defect BUG-AUTH-001: authenticated API requests intermittently return 401."
+            groups = {"regression", "cards"},
+            description = "Every card displays a valid status"
     )
-    public void displayedCardNumbersShouldBeMasked() {
+    public void everyCardShouldDisplayValidStatus() {
 
-        List<String> cardNumbers =
-                cardsPage.getDisplayedCardNumbers();
-
-        for (String number : cardNumbers) {
-
-            Assert.assertTrue(
-                    number.startsWith(
-                            "\u2022\u2022\u2022\u2022"
-                    ),
-                    "Card number should be masked. Value: " + number
-            );
-
-            Assert.assertTrue(
-                    number.matches(".*\\d{4}$"),
-                    "Only the final four card digits should remain visible. Value: "
-                            + number
-            );
-        }
-    }
-
-
-    @Test(
-            enabled = false,
-            description = "Known defect BUG-AUTH-001: authenticated API requests intermittently return 401."
-    )
-    public void displayedCardsShouldHaveStatuses() {
-
-        List<String> statuses =
-                cardsPage.getCardStatuses();
+        CardsCurrentPage cardsPage =
+                openCardsPage();
 
         Assert.assertEquals(
-                statuses.size(),
+                cardsPage.getCardStatuses().size(),
                 cardsPage.getCardCount(),
-                "Every displayed card should show a status."
+                "Every card should display a status."
         );
 
-        for (String status : statuses) {
-
-            Assert.assertFalse(
-                    status.isBlank(),
-                    "Card status should not be blank."
-            );
-        }
+        Assert.assertTrue(
+                cardsPage.allStatusesAreValid(),
+                "Card status should be active or frozen."
+        );
     }
 
-
     @Test(
-            enabled = false,
-            description = "Known defect BUG-AUTH-001: authenticated API requests intermittently return 401."
+            groups = {"regression", "cards"},
+            description = "Card action button corresponds to card status"
     )
-    public void requestCardModalShouldDisplayRequiredControls() {
+    public void cardActionShouldMatchStatus() {
 
-        cardsPage.openRequestCardModal();
+        CardsCurrentPage cardsPage =
+                openCardsPage();
 
-        Assert.assertTrue(
-                cardsPage.isRequestCardModalDisplayed(),
-                "Request Card modal should be displayed."
-        );
+        String status =
+                cardsPage.getCardStatus(
+                        "card_1"
+                );
 
-        Assert.assertTrue(
-                cardsPage.isLinkedAccountSelectDisplayed(),
-                "Linked account selector should be displayed."
-        );
+        String action =
+                cardsPage.getToggleButtonText(
+                        "card_1"
+                );
 
-        Assert.assertTrue(
-                cardsPage.isModalRequestButtonDisplayed(),
-                "Request Card submit button should be displayed."
-        );
+        if (status.equalsIgnoreCase("active")) {
 
+            Assert.assertTrue(
+                    action.toLowerCase()
+                            .contains("freeze"),
+                    "Active card should provide a Freeze action."
+            );
 
-        List<String> accounts =
-                cardsPage.getLinkedAccountOptions();
+        } else {
 
-        Assert.assertFalse(
-                accounts.isEmpty(),
-                "At least one active account should be available for card issuance."
-        );
-
-        for (String account : accounts) {
-
-            Assert.assertFalse(
-                    account.isBlank(),
-                    "Linked account option should not be blank."
+            Assert.assertTrue(
+                    action.toLowerCase()
+                            .contains("unfreeze"),
+                    "Frozen card should provide an Unfreeze action."
             );
         }
-
-
-        cardsPage.closeRequestCardModal();
     }
 }

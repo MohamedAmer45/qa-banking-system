@@ -1,111 +1,149 @@
 package com.bankingsystem.qa.tests;
 
 import com.bankingsystem.qa.base.CustomerTestBase;
-import com.bankingsystem.qa.pages.AccountsPage;
-
+import com.bankingsystem.qa.pages.AccountsCurrentPage;
 import org.testng.Assert;
-import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
 import java.util.List;
 
 public class AccountsReadOnlyTest extends CustomerTestBase {
 
-    private AccountsPage accountsPage;
+    private AccountsCurrentPage openAccountsPage() {
 
-    @BeforeMethod(alwaysRun = true)
-    public void openAccountsPage() {
+        dashboardPage.openAccounts();
 
-        accountsPage =
-                dashboardPage.openAccounts();
+        AccountsCurrentPage accountsPage =
+                new AccountsCurrentPage(
+                        getDriver()
+                );
 
         Assert.assertTrue(
                 accountsPage.isLoaded(),
                 "Accounts page should load successfully."
         );
+
+        return accountsPage;
     }
 
+    @Test(
+            groups = {"smoke", "accounts"},
+            description = "Accounts page loads successfully"
+    )
+    public void accountsPageShouldLoadSuccessfully() {
 
-    @Test
-    public void accountsPageShouldOpenSuccessfully() {
+        AccountsCurrentPage accountsPage =
+                openAccountsPage();
 
         Assert.assertEquals(
                 accountsPage.getPageTitleText(),
                 "Accounts",
-                "Page title should be Accounts."
+                "Accounts page heading should be displayed."
         );
     }
 
+    @Test(
+            groups = {"smoke", "accounts"},
+            description = "Customer has banking accounts displayed"
+    )
+    public void customerAccountsShouldBeDisplayed() {
 
-    @Test
-    public void customerShouldHaveAtLeastOneAccount() {
+        AccountsCurrentPage accountsPage =
+                openAccountsPage();
 
         Assert.assertTrue(
                 accountsPage.getAccountCount() > 0,
-                "Seeded customer should have at least one bank account."
+                "At least one customer account should be displayed."
         );
     }
 
+    @Test(
+            groups = {"regression", "accounts"},
+            description = "Checking and savings accounts are displayed"
+    )
+    public void expectedAccountTypesShouldBeDisplayed() {
 
-    @Test
-    public void accountCardsShouldDisplayCoreAccountInformation() {
+        AccountsCurrentPage accountsPage =
+                openAccountsPage();
 
-        int accountCount =
-                accountsPage.getAccountCount();
+        Assert.assertTrue(
+                accountsPage.containsAccountType(
+                        "Checking"
+                ),
+                "Checking account should be displayed."
+        );
 
-        List<String> accountTypes =
-                accountsPage.getAccountTypes();
+        Assert.assertTrue(
+                accountsPage.containsAccountType(
+                        "Savings"
+                ),
+                "Savings account should be displayed."
+        );
+    }
+
+    @Test(
+            groups = {"regression", "accounts"},
+            description = "Each account displays a balance"
+    )
+    public void accountBalancesShouldBeDisplayed() {
+
+        AccountsCurrentPage accountsPage =
+                openAccountsPage();
 
         List<String> balances =
                 accountsPage.getAccountBalances();
 
-        List<String> metadata =
-                accountsPage.getAccountMetadata();
-
-
-        Assert.assertEquals(
-                accountTypes.size(),
-                accountCount,
-                "Every account should display its account type."
-        );
-
         Assert.assertEquals(
                 balances.size(),
-                accountCount,
-                "Every account should display its balance."
+                accountsPage.getAccountCount(),
+                "Each account should have a displayed balance."
         );
-
-        Assert.assertEquals(
-                metadata.size(),
-                accountCount,
-                "Every account should display account metadata."
-        );
-
-
-        for (String accountType : accountTypes) {
-
-            Assert.assertFalse(
-                    accountType.isBlank(),
-                    "Account type should not be empty."
-            );
-        }
-
 
         for (String balance : balances) {
 
             Assert.assertFalse(
                     balance.isBlank(),
-                    "Account balance should not be empty."
+                    "Account balance should not be blank."
             );
         }
+    }
 
+    @Test(
+            groups = {"regression", "accounts"},
+            description = "Account balances display currency"
+    )
+    public void accountBalancesShouldDisplayCurrency() {
 
-        for (String accountMeta : metadata) {
+        AccountsCurrentPage accountsPage =
+                openAccountsPage();
 
-            Assert.assertFalse(
-                    accountMeta.isBlank(),
-                    "Account metadata should not be empty."
-            );
-        }
+        Assert.assertTrue(
+                accountsPage.allBalancesContainCurrency(),
+                "Every account balance should contain a currency symbol."
+        );
+    }
+
+    @Test(
+            groups = {"regression", "accounts", "security"},
+            description = "Account identifiers are masked"
+    )
+    public void accountNumbersShouldBeMasked() {
+
+        AccountsCurrentPage accountsPage =
+                openAccountsPage();
+
+        List<String> accountNumbers =
+                accountsPage.getAccountNumbers();
+
+        Assert.assertEquals(
+                accountNumbers.size(),
+                accountsPage.getAccountCount(),
+                "Each account should display an account identifier."
+        );
+
+        Assert.assertTrue(
+                accountsPage.allAccountNumbersAreMasked(),
+                "Every displayed account number should be masked."
+        );
     }
 }

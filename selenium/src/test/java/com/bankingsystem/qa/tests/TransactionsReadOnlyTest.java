@@ -1,221 +1,213 @@
 package com.bankingsystem.qa.tests;
 
 import com.bankingsystem.qa.base.CustomerTestBase;
-import com.bankingsystem.qa.pages.TransactionsPage;
-
+import com.bankingsystem.qa.pages.TransactionsCurrentPage;
 import org.testng.Assert;
-import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
 import java.util.List;
 
 public class TransactionsReadOnlyTest extends CustomerTestBase {
 
-    private TransactionsPage transactionsPage;
+    private TransactionsCurrentPage openTransactionsPage() {
 
+        dashboardPage.openTransactions();
 
-    @BeforeMethod(alwaysRun = true)
-    public void openTransactionsPage() {
-
-        transactionsPage =
-                dashboardPage.openTransactions();
+        TransactionsCurrentPage transactionsPage =
+                new TransactionsCurrentPage(
+                        getDriver()
+                );
 
         Assert.assertTrue(
                 transactionsPage.isLoaded(),
                 "Transactions page should load successfully."
         );
+
+        return transactionsPage;
     }
 
+    @Test(
+            groups = {"smoke", "transactions"},
+            description = "Transactions page loads successfully"
+    )
+    public void transactionsPageShouldLoadSuccessfully() {
 
-    @Test
-    public void transactionsPageShouldOpenSuccessfully() {
+        TransactionsCurrentPage transactionsPage =
+                openTransactionsPage();
 
         Assert.assertEquals(
                 transactionsPage.getPageTitleText(),
                 "Transactions",
-                "Page title should be Transactions."
-        );
-
-        Assert.assertTrue(
-                transactionsPage.hasTransactionTableOrEmptyState(),
-                "Transactions module should display either history rows or an empty state."
+                "Transactions heading should be displayed."
         );
     }
 
+    @Test(
+            groups = {"smoke", "transactions"},
+            description = "Customer transaction history is displayed"
+    )
+    public void transactionHistoryShouldBeDisplayed() {
 
-    @Test
-    public void customerShouldBeAbleToSelectTransactionAccount() {
-
-        List<String> accounts =
-                transactionsPage.getAccountOptions();
-
-        Assert.assertFalse(
-                accounts.isEmpty(),
-                "At least one account should be available for transaction history."
-        );
-
-        for (String account : accounts) {
-
-            Assert.assertFalse(
-                    account.isBlank(),
-                    "Account selector entries should not be blank."
-            );
-        }
-    }
-
-
-    @Test
-    public void transactionHistoryShouldExposeSupportedFilters() {
+        TransactionsCurrentPage transactionsPage =
+                openTransactionsPage();
 
         Assert.assertTrue(
-                transactionsPage.isReferenceFilterDisplayed(),
-                "Reference filter should be displayed."
-        );
-
-        Assert.assertTrue(
-                transactionsPage.isFromDateFilterDisplayed(),
-                "From-date filter should be displayed."
-        );
-
-        Assert.assertTrue(
-                transactionsPage.isToDateFilterDisplayed(),
-                "To-date filter should be displayed."
-        );
-
-        Assert.assertTrue(
-                transactionsPage.isMinimumAmountFilterDisplayed(),
-                "Minimum amount filter should be displayed."
-        );
-
-        Assert.assertTrue(
-                transactionsPage.isMaximumAmountFilterDisplayed(),
-                "Maximum amount filter should be displayed."
+                transactionsPage.getTransactionCount() > 0,
+                "At least one transaction should be displayed."
         );
     }
 
+    @Test(
+            groups = {"regression", "transactions"},
+            description = "Every transaction displays a date"
+    )
+    public void everyTransactionShouldDisplayDate() {
 
-    @Test
-    public void transactionTypeAndStatusFiltersShouldExposeExpectedOptions() {
-
-        List<String> transactionTypes =
-                transactionsPage.getTransactionTypeOptions();
-
-        Assert.assertTrue(
-                transactionTypes.contains("All types"),
-                "All types option should be available."
-        );
+        TransactionsCurrentPage transactionsPage =
+                openTransactionsPage();
 
         Assert.assertTrue(
-                transactionTypes.contains("TRANSFER"),
-                "TRANSFER type should be available."
+                transactionsPage.allTransactionsHaveDates(),
+                "Every transaction should have a date."
         );
+    }
+
+    @Test(
+            groups = {"regression", "transactions"},
+            description = "Every transaction displays a description"
+    )
+    public void everyTransactionShouldDisplayDescription() {
+
+        TransactionsCurrentPage transactionsPage =
+                openTransactionsPage();
 
         Assert.assertTrue(
-                transactionTypes.contains("DEPOSIT"),
-                "DEPOSIT type should be available."
+                transactionsPage.allTransactionsHaveDescriptions(),
+                "Every transaction should have a description."
         );
+    }
+
+    @Test(
+            groups = {"regression", "transactions"},
+            description = "Every transaction displays a status"
+    )
+    public void everyTransactionShouldDisplayStatus() {
+
+        TransactionsCurrentPage transactionsPage =
+                openTransactionsPage();
 
         Assert.assertTrue(
-                transactionTypes.contains("BILL_PAYMENT"),
-                "BILL_PAYMENT type should be available."
+                transactionsPage.allTransactionsHaveStatuses(),
+                "Every transaction should display a status."
         );
+    }
+
+    @Test(
+            groups = {"regression", "transactions"},
+            description = "Every transaction displays an amount"
+    )
+    public void everyTransactionShouldDisplayAmount() {
+
+        TransactionsCurrentPage transactionsPage =
+                openTransactionsPage();
 
         Assert.assertTrue(
-                transactionTypes.contains("LOAN_DISBURSEMENT"),
-                "LOAN_DISBURSEMENT type should be available."
+                transactionsPage.allTransactionsHaveAmounts(),
+                "Every transaction should display a currency amount."
         );
+    }
+
+    @Test(
+            groups = {"regression", "transactions"},
+            description = "Transaction table contains credit activity"
+    )
+    public void transactionHistoryShouldContainCredit() {
+
+        TransactionsCurrentPage transactionsPage =
+                openTransactionsPage();
 
         Assert.assertTrue(
-                transactionTypes.contains("LOAN_PAYMENT"),
-                "LOAN_PAYMENT type should be available."
+                transactionsPage.hasCreditTransaction(),
+                "Transaction history should contain at least one credit transaction."
         );
+    }
+
+    @Test(
+            groups = {"regression", "transactions"},
+            description = "Transaction table contains debit activity"
+    )
+    public void transactionHistoryShouldContainDebit() {
+
+        TransactionsCurrentPage transactionsPage =
+                openTransactionsPage();
 
         Assert.assertTrue(
-                transactionTypes.contains("REVERSAL"),
-                "REVERSAL type should be available."
+                transactionsPage.hasDebitTransaction(),
+                "Transaction history should contain at least one debit transaction."
         );
+    }
 
+    @Test(
+            groups = {"regression", "transactions"},
+            description = "Seeded transactions have completed status"
+    )
+    public void seededTransactionsShouldBeCompleted() {
+
+        TransactionsCurrentPage transactionsPage =
+                openTransactionsPage();
+
+        Assert.assertTrue(
+                transactionsPage.allStatusesAreCompleted(),
+                "Seeded transaction statuses should be completed."
+        );
+    }
+
+    @Test(
+            groups = {"regression", "transactions"},
+            description = "Transaction columns contain equal numbers of records"
+    )
+    public void transactionColumnsShouldRemainConsistent() {
+
+        TransactionsCurrentPage transactionsPage =
+                openTransactionsPage();
+
+        int transactionCount =
+                transactionsPage.getTransactionCount();
+
+        List<String> dates =
+                transactionsPage.getDates();
+
+        List<String> descriptions =
+                transactionsPage.getDescriptions();
 
         List<String> statuses =
-                transactionsPage.getTransactionStatusOptions();
+                transactionsPage.getStatuses();
 
-        Assert.assertTrue(
-                statuses.contains("All statuses"),
-                "All statuses option should be available."
-        );
-
-        Assert.assertTrue(
-                statuses.contains("COMPLETED"),
-                "COMPLETED status should be available."
-        );
-    }
-
-
-    @Test
-    public void transactionDateAndAmountFiltersShouldUseCorrectInputTypes() {
+        List<String> amounts =
+                transactionsPage.getAmounts();
 
         Assert.assertEquals(
-                transactionsPage.getFromDateType(),
-                "date",
-                "From filter should be a date input."
+                dates.size(),
+                transactionCount,
+                "Each transaction should contain a date."
         );
 
         Assert.assertEquals(
-                transactionsPage.getToDateType(),
-                "date",
-                "To filter should be a date input."
+                descriptions.size(),
+                transactionCount,
+                "Each transaction should contain a description."
         );
 
         Assert.assertEquals(
-                transactionsPage.getMinimumAmountType(),
-                "number",
-                "Minimum amount should be numeric."
+                statuses.size(),
+                transactionCount,
+                "Each transaction should contain a status."
         );
 
         Assert.assertEquals(
-                transactionsPage.getMaximumAmountType(),
-                "number",
-                "Maximum amount should be numeric."
-        );
-
-        Assert.assertEquals(
-                transactionsPage.getMinimumAmountStep(),
-                "0.01",
-                "Minimum amount should support two decimal places."
-        );
-
-        Assert.assertEquals(
-                transactionsPage.getMaximumAmountStep(),
-                "0.01",
-                "Maximum amount should support two decimal places."
-        );
-    }
-
-
-    @Test
-    public void clearFiltersShouldResetReferenceFilter() {
-
-        String reference =
-                "QA-TEST-REFERENCE";
-
-        transactionsPage.enterReference(
-                reference
-        );
-
-        Assert.assertEquals(
-                transactionsPage.getReferenceValue(),
-                reference,
-                "Reference filter should contain the entered value."
-        );
-
-
-        transactionsPage.clearFilters();
-
-
-        Assert.assertEquals(
-                transactionsPage.getReferenceValue(),
-                "",
-                "Reference filter should be empty after clearing filters."
+                amounts.size(),
+                transactionCount,
+                "Each transaction should contain an amount."
         );
     }
 }

@@ -2,128 +2,297 @@ package com.bankingsystem.qa.pages;
 
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.openqa.selenium.support.ui.WebDriverWait;
 
-public class DashboardPage extends BasePage {
+import java.time.Duration;
 
-    private final By appShell =
-            By.cssSelector(".app-shell");
+public class DashboardPage {
 
-    private final By pageTitle =
-            By.id("page-title");
+    private final WebDriver driver;
+    private final WebDriverWait wait;
 
-    private final By userChip =
-            By.cssSelector(".user-chip");
+    private final By heading =
+            By.cssSelector("#dashboard h1");
 
-    private final By overviewNavigation =
-            By.cssSelector("[data-view='overview']");
+    private final By loggedInUser =
+            By.id("who");
+
+    private final By totalBalance =
+            By.id("total");
 
     private final By accountsNavigation =
-            By.cssSelector("[data-view='accounts']");
+            By.cssSelector("#nav button[data-s='accounts']");
 
     private final By transfersNavigation =
-            By.cssSelector("[data-view='transfers']");
-
-    private final By beneficiariesNavigation =
-            By.cssSelector("[data-view='beneficiaries']");
+            By.cssSelector("#nav button[data-s='transfers']");
 
     private final By transactionsNavigation =
-            By.cssSelector("[data-view='transactions']");
+            By.cssSelector("#nav button[data-s='transactions']");
 
-    private final By statementsNavigation =
-            By.cssSelector("[data-view='statements']");
+    private final By billsNavigation =
+            By.cssSelector("#nav button[data-s='bills']");
 
     private final By cardsNavigation =
-            By.cssSelector("[data-view='cards']");
+            By.cssSelector("#nav button[data-s='cards']");
 
-    private final By overviewContent =
-            By.cssSelector("#view .hero-card");
+    private final By loansNavigation =
+            By.cssSelector("#nav button[data-s='loans']");
+
+    private final By notificationsNavigation =
+            By.cssSelector("#nav button[data-s='notifications']");
+
+    private final By profileNavigation =
+            By.cssSelector("#nav button[data-s='profile']");
 
     private final By logoutButton =
-            By.xpath("//button[contains(.,'Sign out')]");
+            By.id("logout");
+
+    private final By adminNavigation =
+            By.id("adminNav");
 
     public DashboardPage(WebDriver driver) {
-        super(driver);
+
+        this.driver = driver;
+
+        this.wait = new WebDriverWait(
+                driver,
+                Duration.ofSeconds(10)
+        );
     }
 
     public boolean isLoaded() {
 
         try {
 
-            wait.waitForVisible(appShell);
-            wait.waitForVisible(userChip);
-            wait.waitForClickable(overviewNavigation);
-            wait.waitForText(pageTitle, "Overview");
-            wait.waitForVisible(overviewContent);
+            String headingText =
+                    wait.until(
+                            ExpectedConditions.visibilityOfElementLocated(
+                                    heading
+                            )
+                    ).getText();
 
-            return true;
+            return "Dashboard".equals(headingText);
 
-        } catch (Exception e) {
+        } catch (Exception exception) {
 
             return false;
         }
     }
 
     public String getPageTitleText() {
-        return getText(pageTitle);
+
+        return wait.until(
+                ExpectedConditions.visibilityOfElementLocated(
+                        heading
+                )
+        ).getText();
     }
 
     public String getLoggedInUserText() {
-        return getText(userChip);
+
+        return wait.until(
+                ExpectedConditions.visibilityOfElementLocated(
+                        loggedInUser
+                )
+        ).getText();
     }
 
-    public boolean isLogoutButtonDisplayed() {
-        return isDisplayed(logoutButton);
+    public String getTotalBalance() {
+
+        return wait.until(
+                ExpectedConditions.visibilityOfElementLocated(
+                        totalBalance
+                )
+        ).getText();
     }
+
+    public boolean isAdminNavigationDisplayed() {
+
+        try {
+
+            return driver.findElement(adminNavigation)
+                    .isDisplayed();
+
+        } catch (Exception exception) {
+
+            return false;
+        }
+    }
+
+    private void openSection(
+            By navigation,
+            String sectionId
+    ) {
+
+        wait.until(
+                ExpectedConditions.elementToBeClickable(
+                        navigation
+                )
+        ).click();
+
+        wait.until(
+                ExpectedConditions.visibilityOfElementLocated(
+                        By.cssSelector(
+                                "#" + sectionId + ".section.on"
+                        )
+                )
+        );
+    }
+
+
+    // ========================================================
+    // ACCOUNTS
+    // ========================================================
 
     public AccountsPage openAccounts() {
 
-        wait.waitForClickable(accountsNavigation);
-        click(accountsNavigation);
+        openSection(
+                accountsNavigation,
+                "accounts"
+        );
 
         return new AccountsPage(driver);
     }
 
+
+    // ========================================================
+    // TRANSFERS
+    // ========================================================
+
     public TransfersPage openTransfers() {
 
-        wait.waitForClickable(transfersNavigation);
-        click(transfersNavigation);
+        openSection(
+                transfersNavigation,
+                "transfers"
+        );
 
         return new TransfersPage(driver);
     }
 
-    public BeneficiariesPage openBeneficiaries() {
 
-        wait.waitForClickable(beneficiariesNavigation);
-        click(beneficiariesNavigation);
-
-        return new BeneficiariesPage(driver);
-    }
+    // ========================================================
+    // TRANSACTIONS
+    // ========================================================
 
     public TransactionsPage openTransactions() {
 
-        wait.waitForClickable(transactionsNavigation);
-        click(transactionsNavigation);
+        openSection(
+                transactionsNavigation,
+                "transactions"
+        );
 
         return new TransactionsPage(driver);
     }
 
-    public StatementsPage openStatements() {
 
-        wait.waitForClickable(statementsNavigation);
-        click(statementsNavigation);
+    // ========================================================
+    // BILLS
+    // ========================================================
 
-        return new StatementsPage(driver);
+    public BillsPage openBills() {
+
+        openSection(
+                billsNavigation,
+                "bills"
+        );
+
+        return new BillsPage(driver);
     }
+
+
+    // ========================================================
+    // CARDS
+    // ========================================================
 
     public CardsPage openCards() {
 
-        wait.waitForClickable(cardsNavigation);
-        click(cardsNavigation);
+        openSection(
+                cardsNavigation,
+                "cards"
+        );
 
         return new CardsPage(driver);
     }
 
+
+    // ========================================================
+    // BENEFICIARIES
+    //
+    // The rebuilt application currently does not expose a
+    // separate Beneficiaries section.
+    //
+    // This method is intentionally retained so the existing
+    // Selenium framework continues to compile.
+    // The beneficiary tests will be updated/restored later.
+    // ========================================================
+
+    public BeneficiariesPage openBeneficiaries() {
+
+        return new BeneficiariesPage(driver);
+    }
+
+
+    // ========================================================
+    // STATEMENTS
+    //
+    // The rebuilt application currently exposes Transactions
+    // but not the previous dedicated Statements module.
+    //
+    // Keep this method for compatibility with existing tests.
+    // ========================================================
+
+    public StatementsPage openStatements() {
+
+        return new StatementsPage(driver);
+    }
+
+
+    // ========================================================
+    // CURRENT APPLICATION NAVIGATION
+    // ========================================================
+
+    public void openLoans() {
+
+        openSection(
+                loansNavigation,
+                "loans"
+        );
+    }
+
+    public void openNotifications() {
+
+        openSection(
+                notificationsNavigation,
+                "notifications"
+        );
+    }
+
+    public void openProfile() {
+
+        openSection(
+                profileNavigation,
+                "profile"
+        );
+    }
+
+
+    // ========================================================
+    // LOGOUT
+    // ========================================================
+
     public void logout() {
-        click(logoutButton);
+
+        wait.until(
+                ExpectedConditions.elementToBeClickable(
+                        logoutButton
+                )
+        ).click();
+
+        wait.until(
+                ExpectedConditions.visibilityOfElementLocated(
+                        By.id("login")
+                )
+        );
     }
 }

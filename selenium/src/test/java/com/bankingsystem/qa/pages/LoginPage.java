@@ -1,182 +1,199 @@
 package com.bankingsystem.qa.pages;
 
 import com.bankingsystem.qa.utils.ConfigReader;
-
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.openqa.selenium.support.ui.WebDriverWait;
 
-public class LoginPage extends BasePage {
+import java.time.Duration;
 
-    private final By identifierInput =
-            By.cssSelector(
-                    "#login-form input[name='email']"
-            );
+public class LoginPage {
 
-    private final By passwordInput =
-            By.cssSelector(
-                    "#login-form input[name='password']"
-            );
+    private final WebDriver driver;
+    private final WebDriverWait wait;
 
-    private final By loginButton =
-            By.cssSelector(
-                    "#login-form button[type='submit']"
-            );
+    private final By loginContainer = By.id("login");
 
-    private final By errorMessage =
-            By.cssSelector(
-                    "#toast-root .toast.error"
-            );
+    private final By customerButton =
+            By.cssSelector("#login button.enter[data-role='customer']");
+
+    private final By adminButton =
+            By.cssSelector("#login button.enter[data-role='admin']");
+
+    private final By appContainer = By.id("app");
+
+    private final By loggedInUser = By.id("who");
+
+    private final By logoutButton = By.id("logout");
+
+    private final By adminNavigation = By.id("adminNav");
 
     public LoginPage(WebDriver driver) {
-        super(driver);
+
+        this.driver = driver;
+
+        this.wait = new WebDriverWait(
+                driver,
+                Duration.ofSeconds(10)
+        );
+    }
+
+    private String getBaseUrl() {
+
+        try {
+
+            String value = ConfigReader.get("baseUrl");
+
+            if (value != null && !value.isBlank()) {
+                return value;
+            }
+
+        } catch (Exception ignored) {
+        }
+
+        return "https://novabank-banking-system.vercel.app";
     }
 
     public LoginPage open() {
 
-        String baseUrl =
-                ConfigReader.get("base.url");
+        driver.get(getBaseUrl());
 
-        String loginPath =
-                ConfigReader.get("login.path");
-
-        driver.get(
-                normalizeUrl(
-                        baseUrl,
-                        loginPath
+        wait.until(
+                ExpectedConditions.visibilityOfElementLocated(
+                        loginContainer
                 )
         );
 
         return this;
     }
 
-    public LoginPage enterIdentifier(
-            String identifier
-    ) {
-
-        type(
-                identifierInput,
-                identifier
-        );
-
-        return this;
-    }
-
-    public LoginPage enterPassword(
-            String password
-    ) {
-
-        type(
-                passwordInput,
-                password
-        );
-
-        return this;
-    }
-
-    public LoginPage clickLogin() {
-
-        click(loginButton);
-
-        return this;
-    }
-
-    public LoginPage login(
-            String identifier,
-            String password
-    ) {
-
-        enterIdentifier(identifier);
-        enterPassword(password);
-        clickLogin();
-
-        return this;
-    }
-
-    public boolean isIdentifierFieldDisplayed() {
-
-        return isDisplayed(identifierInput);
-    }
-
-    public boolean isPasswordFieldDisplayed() {
-
-        return isDisplayed(passwordInput);
-    }
-
-    public boolean isLoginButtonDisplayed() {
-
-        return isDisplayed(loginButton);
-    }
-
     public boolean isLoaded() {
 
-        return isIdentifierFieldDisplayed()
-                && isPasswordFieldDisplayed()
-                && isLoginButtonDisplayed();
+        try {
+
+            return wait.until(
+                    ExpectedConditions.visibilityOfElementLocated(
+                            loginContainer
+                    )
+            ).isDisplayed();
+
+        } catch (Exception exception) {
+
+            return false;
+        }
     }
 
-    public String getPasswordFieldType() {
+    public boolean isCustomerButtonDisplayed() {
 
-        return getAttribute(
-                passwordInput,
-                "type"
+        return wait.until(
+                ExpectedConditions.visibilityOfElementLocated(
+                        customerButton
+                )
+        ).isDisplayed();
+    }
+
+    public boolean isAdminButtonDisplayed() {
+
+        return wait.until(
+                ExpectedConditions.visibilityOfElementLocated(
+                        adminButton
+                )
+        ).isDisplayed();
+    }
+
+    public void enterAsCustomer() {
+
+        wait.until(
+                ExpectedConditions.elementToBeClickable(
+                        customerButton
+                )
+        ).click();
+
+        waitForApplication();
+    }
+
+    public void enterAsAdmin() {
+
+        wait.until(
+                ExpectedConditions.elementToBeClickable(
+                        adminButton
+                )
+        ).click();
+
+        waitForApplication();
+    }
+
+    private void waitForApplication() {
+
+        wait.until(driver -> {
+
+            String classes =
+                    driver.findElement(appContainer)
+                            .getAttribute("class");
+
+            return classes == null ||
+                    !classes.contains("hidden");
+        });
+
+        wait.until(driver -> {
+
+            String text =
+                    driver.findElement(loggedInUser)
+                            .getText();
+
+            return text != null &&
+                    !text.isBlank();
+        });
+    }
+
+    public boolean isApplicationDisplayed() {
+
+        try {
+
+            return driver.findElement(appContainer)
+                    .isDisplayed();
+
+        } catch (Exception exception) {
+
+            return false;
+        }
+    }
+
+    public String getLoggedInUserText() {
+
+        return wait.until(
+                ExpectedConditions.visibilityOfElementLocated(
+                        loggedInUser
+                )
+        ).getText();
+    }
+
+    public boolean isAdminNavigationDisplayed() {
+
+        try {
+
+            return driver.findElement(adminNavigation)
+                    .isDisplayed();
+
+        } catch (Exception exception) {
+
+            return false;
+        }
+    }
+
+    public void logout() {
+
+        wait.until(
+                ExpectedConditions.elementToBeClickable(
+                        logoutButton
+                )
+        ).click();
+
+        wait.until(
+                ExpectedConditions.visibilityOfElementLocated(
+                        loginContainer
+                )
         );
-    }
-
-    public boolean isErrorMessageDisplayed() {
-
-        return isDisplayed(errorMessage);
-    }
-
-    public String getErrorMessage() {
-
-        return getText(errorMessage);
-    }
-
-    public String getIdentifierValue() {
-
-        return getAttribute(
-                identifierInput,
-                "value"
-        );
-    }
-
-    public String getPasswordValue() {
-
-        return getAttribute(
-                passwordInput,
-                "value"
-        );
-    }
-
-    public void clearIdentifier() {
-
-        clear(identifierInput);
-    }
-
-    public void clearPassword() {
-
-        clear(passwordInput);
-    }
-
-    private String normalizeUrl(
-            String baseUrl,
-            String path
-    ) {
-
-        String normalizedBase =
-                baseUrl.endsWith("/")
-                        ? baseUrl.substring(
-                                0,
-                                baseUrl.length() - 1
-                        )
-                        : baseUrl;
-
-        String normalizedPath =
-                path.startsWith("/")
-                        ? path
-                        : "/" + path;
-
-        return normalizedBase
-                + normalizedPath;
     }
 }
