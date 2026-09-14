@@ -6,3 +6,6 @@ cypress/downloads/
 cypress/results/
 
 *.log
+
+.DS_Store
+Thumbs.db

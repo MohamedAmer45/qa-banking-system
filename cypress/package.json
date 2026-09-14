@@ -12,9 +12,9 @@
     "cy:firefox": "cypress run --browser firefox",
     "cy:headed": "cypress run --headed",
     "typecheck": "tsc --noEmit",
-    "cy:regression": "cypress run",
+    "cy:regression": "cypress run --browser chrome",
     "cy:regression:chrome": "cypress run --browser chrome",
-    "validate": "npm run typecheck && npm run cy:regression:chrome",
+    "validate": "npm run typecheck && npm run cy:regression",
     "report:clean": "rimraf cypress/results cypress/screenshots cypress/videos",
     "report:run": "cypress run --browser chrome",
     "report:merge:html": "mochawesome-merge cypress/results/mochawesome/*.json -o cypress/results/mochawesome.json",
@@ -23,7 +23,8 @@
     "report:all": "npm run report:clean && npm run typecheck && npm run report:run && npm run report:merge:html && npm run report:html && npm run report:merge:junit",
     "cy:smoke:chrome": "cypress run --browser chrome --spec cypress/e2e/smoke.cy.ts",
     "cy:smoke:edge": "cypress run --browser edge --spec cypress/e2e/smoke.cy.ts",
-    "cy:smoke:firefox": "cypress run --browser firefox --spec cypress/e2e/smoke.cy.ts"
+    "cy:smoke:firefox": "cypress run --browser firefox --spec cypress/e2e/smoke.cy.ts",
+    "cy:smoke": "cypress run --browser chrome --spec cypress/e2e/smoke.cy.ts"
   },
   "keywords": [],
   "author": "",
