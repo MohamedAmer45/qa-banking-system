@@ -1,20 +1,35 @@
 import { defineConfig } from "cypress";
 
 export default defineConfig({
+
+  reporter: "cypress-multi-reporters",
+
+  reporterOptions: {
+    configFile: "reporter-config.json"
+  },
+
   e2e: {
-    baseUrl: "https://novabank-banking-system.vercel.app",
 
-    specPattern: "cypress/e2e/**/*.cy.ts",
+    baseUrl:
+      "https://novabank-banking-system.vercel.app",
 
-    supportFile: "cypress/support/e2e.ts",
+    specPattern:
+      "cypress/e2e/**/*.cy.ts",
 
-    fixturesFolder: "cypress/fixtures",
+    supportFile:
+      "cypress/support/e2e.ts",
 
-    screenshotsFolder: "cypress/screenshots",
+    fixturesFolder:
+      "cypress/fixtures",
 
-    videosFolder: "cypress/videos",
+    screenshotsFolder:
+      "cypress/screenshots",
 
-    downloadsFolder: "cypress/downloads",
+    videosFolder:
+      "cypress/videos",
+
+    downloadsFolder:
+      "cypress/downloads",
 
     viewportWidth: 1440,
     viewportHeight: 900,
@@ -25,7 +40,10 @@ export default defineConfig({
     pageLoadTimeout: 60000,
 
     video: true,
+
     screenshotOnRunFailure: true,
+
+    trashAssetsBeforeRuns: true,
 
     retries: {
       runMode: 2,
@@ -33,7 +51,11 @@ export default defineConfig({
     },
 
     setupNodeEvents(on, config) {
+
       return config;
+
     }
+
   }
+
 });

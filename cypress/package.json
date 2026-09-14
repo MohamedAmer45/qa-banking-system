@@ -14,7 +14,13 @@
     "typecheck": "tsc --noEmit",
     "cy:regression": "cypress run",
     "cy:regression:chrome": "cypress run --browser chrome",
-    "validate": "npm run typecheck && npm run cy:regression:chrome"
+    "validate": "npm run typecheck && npm run cy:regression:chrome",
+    "report:clean": "rimraf cypress/results cypress/screenshots cypress/videos",
+    "report:run": "cypress run --browser chrome",
+    "report:merge:html": "mochawesome-merge cypress/results/mochawesome/*.json -o cypress/results/mochawesome.json",
+    "report:html": "marge cypress/results/mochawesome.json --reportDir cypress/results/html --reportFilename index",
+    "report:merge:junit": "jrm cypress/results/junit/combined.xml cypress/results/junit/*.xml",
+    "report:all": "npm run report:clean && npm run typecheck && npm run report:run && npm run report:merge:html && npm run report:html && npm run report:merge:junit"
   },
   "keywords": [],
   "author": "",
@@ -23,6 +29,13 @@
   "devDependencies": {
     "@types/node": "^26.5.1",
     "cypress": "^16.0.0",
+    "cypress-multi-reporters": "^2.0.5",
+    "junit-report-merger": "^9.0.4",
+    "mocha-junit-reporter": "^2.2.1",
+    "mochawesome": "^8.1.0",
+    "mochawesome-merge": "^5.1.1",
+    "mochawesome-report-generator": "^6.3.2",
+    "rimraf": "^6.1.3",
     "typescript": "^7.0.2"
   }
 }
