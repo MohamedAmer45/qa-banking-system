@@ -3,34 +3,43 @@ class DashboardPage {
   visitAsCustomer(): void {
     cy.visit("/");
 
-    cy.contains("button", /^Enter as customer$/i)
+    cy.get("#login button.enter[data-role='customer']")
       .should("be.visible")
+      .and("be.enabled")
       .click();
   }
 
 
-  getDashboardHeading(): Cypress.Chainable<JQuery<HTMLElement>> {
-    return cy.contains("h1", /^Dashboard$/i);
+  getDashboardHeading() {
+    return cy.get("#dashboard h1");
   }
 
 
-  getAccountOverview(): Cypress.Chainable<JQuery<HTMLElement>> {
-    return cy.contains(/Account overview and recent activity/i);
+  getAccountOverview() {
+    return cy.get("#dashboard p.muted");
   }
 
 
-  getTotalBalanceLabel(): Cypress.Chainable<JQuery<HTMLElement>> {
-    return cy.contains(/^Total balance$/i);
+  getTotalBalanceLabel() {
+    return cy.get("#dashboard .hero .muted");
   }
 
 
-  getRecentTransactionsHeading(): Cypress.Chainable<JQuery<HTMLElement>> {
-    return cy.contains("h2", /^Recent transactions$/i);
+  getTotalBalance() {
+    return cy.get("#total");
   }
 
 
-  getNavigationButton(label: string): Cypress.Chainable<JQuery<HTMLButtonElement>> {
-    return cy.contains("button", new RegExp(`^${label}$`, "i"));
+  getRecentTransactionsHeading() {
+    return cy.get("#dashboard .card h2");
+  }
+
+
+  getNavigationButton(label: string) {
+    return cy.contains(
+      "#nav button",
+      new RegExp(`^${label}$`, "i")
+    );
   }
 
 
