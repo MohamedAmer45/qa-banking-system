@@ -1,19 +1,17 @@
-﻿import { test, expect } from "@playwright/test";
+﻿import { test, expect } from "../../fixtures/testFixtures";
 
 test.describe("NovaBank - Application Smoke Tests", () => {
 
-  test("banking application loads successfully", async ({ page }) => {
+  test("banking application loads successfully", async ({ homePage }) => {
 
-    const response = await page.goto("/");
+    await homePage.open();
 
-    expect(response).not.toBeNull();
-    expect(response?.ok()).toBeTruthy();
+    await homePage.expectLoaded();
 
-    await expect(page.locator("body")).toBeVisible();
+    const title = await homePage.getPageTitle();
 
-    await expect(page).toHaveURL(
-      /novabank-banking-system\.vercel\.app/
-    );
+    expect(title).toBeTruthy();
+
   });
 
 });

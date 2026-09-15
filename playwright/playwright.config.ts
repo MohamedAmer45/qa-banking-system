@@ -1,5 +1,9 @@
 ﻿import { defineConfig, devices } from "@playwright/test";
 
+const baseURL =
+  process.env.BASE_URL ??
+  "https://novabank-banking-system.vercel.app";
+
 export default defineConfig({
   testDir: "./tests",
 
@@ -13,11 +17,17 @@ export default defineConfig({
 
   reporter: [
     ["list"],
-    ["html", { outputFolder: "playwright-report", open: "never" }],
+    [
+      "html",
+      {
+        outputFolder: "playwright-report",
+        open: "never",
+      },
+    ],
   ],
 
   use: {
-    baseURL: "https://novabank-banking-system.vercel.app",
+    baseURL,
 
     trace: "retain-on-failure",
 
