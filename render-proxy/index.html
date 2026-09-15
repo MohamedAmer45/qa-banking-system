@@ -1,0 +1,1878 @@
+﻿<!doctype html>
+<html lang="en">
+
+<head>
+
+  <meta charset="utf-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width,initial-scale=1"
+  >
+
+  <title>NovaBank QA</title>
+
+  <style>
+
+    :root {
+      --bg: #07111f;
+      --panel: #0e2035;
+      --line: #27435f;
+      --text: #eef6ff;
+      --muted: #9db1c6;
+      --accent: #55e6b5;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: #07111f;
+      color: var(--text);
+      font: 14px system-ui, sans-serif;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    .login {
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+    }
+
+    .box,
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 18px;
+    }
+
+    .box {
+      width: min(470px, 100%);
+      padding: 28px;
+    }
+
+    .logo {
+      width: 42px;
+      height: 42px;
+      border-radius: 12px;
+      background: var(--accent);
+      color: #06111d;
+      display: grid;
+      place-items: center;
+      font-weight: 900;
+      font-size: 21px;
+    }
+
+    .muted {
+      color: var(--muted);
+    }
+
+    .demo {
+      border: 1px dashed var(--line);
+      border-radius: 12px;
+      padding: 12px;
+      margin: 16px 0;
+    }
+
+    .btn {
+      border: 0;
+      border-radius: 9px;
+      padding: 10px 13px;
+      background: var(--accent);
+      color: #07121a;
+      font-weight: 750;
+      cursor: pointer;
+    }
+
+    .btn.alt {
+      background: #193650;
+      color: var(--text);
+      border: 1px solid var(--line);
+    }
+
+    header {
+      min-height: 66px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 800;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 220px 1fr;
+      min-height: calc(100vh - 66px);
+    }
+
+    aside {
+      padding: 16px 10px;
+      border-right: 1px solid var(--line);
+    }
+
+    nav button {
+      display: block;
+      width: 100%;
+      text-align: left;
+      background: transparent;
+      border: 0;
+      color: var(--muted);
+      padding: 10px 12px;
+      border-radius: 9px;
+      cursor: pointer;
+    }
+
+    nav button.on {
+      background: #122a42;
+      color: var(--text);
+    }
+
+    main {
+      padding: 22px;
+      max-width: 1200px;
+      width: 100%;
+      margin: auto;
+    }
+
+    .section {
+      display: none;
+    }
+
+    .section.on {
+      display: block;
+    }
+
+    h1 {
+      margin: 2px 0 6px;
+      font-size: 27px;
+    }
+
+    h2 {
+      font-size: 17px;
+      margin: 0 0 10px;
+    }
+
+    .grid {
+      display: grid;
+      gap: 14px;
+    }
+
+    .g2 {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .g3 {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .metric {
+      font-size: 28px;
+      font-weight: 800;
+    }
+
+    .hero {
+      background: #113957;
+      border: 1px solid #2b6670;
+      border-radius: 16px;
+      padding: 20px;
+      margin: 16px 0;
+    }
+
+    .row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .field {
+      display: grid;
+      gap: 6px;
+      margin: 12px 0;
+    }
+
+    input,
+    select {
+      width: 100%;
+      border: 1px solid var(--line);
+      background: #081725;
+      color: var(--text);
+      padding: 10px 12px;
+      border-radius: 9px;
+    }
+
+    .tag {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: #173c34;
+      color: #9ff2d3;
+      font-size: 12px;
+    }
+
+    .table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .table td,
+    .table th {
+      padding: 10px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+    }
+
+    .credit {
+      color: var(--accent);
+    }
+
+    .debit {
+      color: #ff9c82;
+    }
+
+    .toast {
+      position: fixed;
+      right: 18px;
+      bottom: 18px;
+      background: #14304a;
+      border: 1px solid var(--line);
+      padding: 11px 14px;
+      border-radius: 10px;
+    }
+
+  </style>
+
+</head>
+
+<body>
+
+<div
+  id="login"
+  class="login"
+>
+
+  <div class="box">
+
+    <div class="logo">
+      N
+    </div>
+
+    <h1>NovaBank</h1>
+
+    <p class="muted">
+      Deterministic banking QA sandbox. Choose a demo role to test customer and admin flows.
+    </p>
+
+    <div class="demo">
+      No real banking data or credentials are used. Demo state is isolated to this test application.
+    </div>
+
+    <div class="grid g2">
+
+      <button
+        class="btn enter"
+        data-role="customer"
+      >
+        Enter as customer
+      </button>
+
+      <button
+        class="btn alt enter"
+        data-role="admin"
+      >
+        Enter as admin
+      </button>
+
+    </div>
+
+  </div>
+
+</div>
+
+
+<div
+  id="app"
+  class="hidden"
+>
+
+<header>
+
+  <div class="brand">
+
+    <div
+      class="logo"
+      style="width:32px;height:32px;font-size:16px"
+    >
+      N
+    </div>
+
+    NovaBank
+
+    <span class="muted">
+      QA Sandbox
+    </span>
+
+  </div>
+
+  <div>
+
+    <span
+      id="who"
+      class="muted"
+    ></span>
+
+    <button
+      id="logout"
+      class="btn alt"
+    >
+      Log out
+    </button>
+
+  </div>
+
+</header>
+
+
+<div class="layout">
+
+<aside>
+
+<nav id="nav">
+
+  <button
+    data-s="dashboard"
+    class="on"
+  >
+    Dashboard
+  </button>
+
+  <button data-s="accounts">
+    Accounts
+  </button>
+
+  <button data-s="transfers">
+    Transfers
+  </button>
+
+  <button data-s="transactions">
+    Transactions
+  </button>
+
+  <button data-s="bills">
+    Bills
+  </button>
+
+  <button data-s="cards">
+    Cards
+  </button>
+
+  <button data-s="loans">
+    Loans
+  </button>
+
+  <button data-s="notifications">
+    Notifications
+  </button>
+
+  <button data-s="profile">
+    Profile
+  </button>
+
+  <button
+    data-s="admin"
+    id="adminNav"
+    class="hidden"
+  >
+    Admin
+  </button>
+
+</nav>
+
+</aside>
+
+
+<main>
+
+<section
+  id="dashboard"
+  class="section on"
+>
+
+  <h1>Dashboard</h1>
+
+  <p class="muted">
+    Account overview and recent activity.
+  </p>
+
+  <div class="hero">
+
+    <div class="muted">
+      Total balance
+    </div>
+
+    <div
+      id="total"
+      class="metric"
+    ></div>
+
+  </div>
+
+  <div
+    id="metrics"
+    class="grid g3"
+  ></div>
+
+  <div
+    class="card"
+    style="margin-top:14px"
+  >
+
+    <h2>
+      Recent transactions
+    </h2>
+
+    <div id="recent"></div>
+
+  </div>
+
+</section>
+
+
+<section
+  id="accounts"
+  class="section"
+>
+
+  <h1>Accounts</h1>
+
+  <div
+    id="accountCards"
+    class="grid g2"
+  ></div>
+
+</section>
+
+
+<section
+  id="transfers"
+  class="section"
+>
+
+  <h1>Transfers</h1>
+
+  <div class="grid g2">
+
+    <div class="card">
+
+      <form id="transferForm">
+
+        <div class="field">
+
+          <label>From</label>
+
+          <select id="from"></select>
+
+        </div>
+
+        <div class="field">
+
+          <label>Recipient</label>
+
+          <select id="recipient">
+
+            <option>
+              Alex Johnson
+            </option>
+
+            <option>
+              Sam Lee
+            </option>
+
+          </select>
+
+        </div>
+
+        <div class="field">
+
+          <label>Amount</label>
+
+          <input
+            id="transferAmount"
+            type="number"
+            min="0.01"
+            step="0.01"
+            required
+          >
+
+        </div>
+
+        <button class="btn">
+          Send transfer
+        </button>
+
+      </form>
+
+    </div>
+
+    <div class="card">
+
+      <h2>Rules</h2>
+
+      <p class="muted">
+        Maximum single transfer: $10,000. Amount must be positive and within the available balance.
+      </p>
+
+    </div>
+
+  </div>
+
+</section>
+
+
+<section
+  id="transactions"
+  class="section"
+>
+
+  <h1>Transactions</h1>
+
+  <div
+    class="card"
+    id="tx"
+  ></div>
+
+</section>
+
+
+<section
+  id="bills"
+  class="section"
+>
+
+  <h1>Bills</h1>
+
+  <div class="card">
+
+    <form id="billForm">
+
+      <div class="field">
+
+        <label>Biller</label>
+
+        <select id="biller">
+
+          <option>Electricity</option>
+
+          <option>Water</option>
+
+          <option>Internet</option>
+
+          <option>Mobile</option>
+
+        </select>
+
+      </div>
+
+      <div class="field">
+
+        <label>Amount</label>
+
+        <input
+          id="billAmount"
+          type="number"
+          min="0.01"
+          step="0.01"
+          required
+        >
+
+      </div>
+
+      <button class="btn">
+        Pay bill
+      </button>
+
+    </form>
+
+  </div>
+
+</section>
+
+
+<section
+  id="cards"
+  class="section"
+>
+
+  <h1>Cards</h1>
+
+  <div
+    id="cardCards"
+    class="grid g2"
+  ></div>
+
+</section>
+
+
+<section
+  id="loans"
+  class="section"
+>
+
+  <h1>Loans</h1>
+
+  <div class="grid g2">
+
+    <div
+      id="loanInfo"
+      class="card"
+    ></div>
+
+    <div class="card">
+
+      <form id="loanForm">
+
+        <div class="field">
+
+          <label>
+            Loan amount ($1,000–$50,000)
+          </label>
+
+          <input
+            id="loanAmount"
+            type="number"
+            min="1000"
+            max="50000"
+            required
+          >
+
+        </div>
+
+        <div class="field">
+
+          <label>Term</label>
+
+          <select id="term">
+
+            <option value="12">
+              12 months
+            </option>
+
+            <option value="24">
+              24 months
+            </option>
+
+            <option value="36">
+              36 months
+            </option>
+
+          </select>
+
+        </div>
+
+        <button class="btn">
+          Apply
+        </button>
+
+      </form>
+
+    </div>
+
+  </div>
+
+</section>
+
+
+<section
+  id="notifications"
+  class="section"
+>
+
+  <h1>Notifications</h1>
+
+  <div
+    id="notes"
+    class="grid"
+  ></div>
+
+</section>
+
+
+<section
+  id="profile"
+  class="section"
+>
+
+  <h1>Profile</h1>
+
+  <div
+    id="profileCard"
+    class="card"
+  ></div>
+
+</section>
+
+
+<section
+  id="admin"
+  class="section"
+>
+
+  <h1>Admin console</h1>
+
+  <div
+    id="adminData"
+    class="grid g3"
+  ></div>
+
+</section>
+
+</main>
+
+</div>
+
+</div>
+
+
+<div
+  id="toast"
+  class="toast hidden"
+></div>
+
+
+<script>
+
+const $ =
+  selector =>
+    document.querySelector(
+      selector
+    );
+
+
+const $$ =
+  selector => [
+    ...document.querySelectorAll(
+      selector
+    )
+  ];
+
+
+const money =
+  value =>
+    new Intl.NumberFormat(
+      "en-US",
+      {
+        style:
+          "currency",
+
+        currency:
+          "USD"
+      }
+    ).format(value);
+
+
+let token =
+  sessionStorage.nb_token ||
+  "";
+
+
+let user =
+  JSON.parse(
+    sessionStorage.nb_user ||
+    "null"
+  );
+
+
+const defaults = {
+
+  accounts: [
+
+    {
+      type:
+        "Checking",
+
+      number:
+        "**** 4821",
+
+      balance:
+        12840.75
+    },
+
+    {
+      type:
+        "Savings",
+
+      number:
+        "**** 7742",
+
+      balance:
+        32500
+    }
+
+  ],
+
+
+  transactions: [
+
+    {
+      date:
+        "2026-09-13",
+
+      description:
+        "Salary deposit",
+
+      type:
+        "credit",
+
+      amount:
+        5200,
+
+      status:
+        "completed"
+    },
+
+    {
+      date:
+        "2026-09-12",
+
+      description:
+        "Electricity bill",
+
+      type:
+        "debit",
+
+      amount:
+        86.35,
+
+      status:
+        "completed"
+    },
+
+    {
+      date:
+        "2026-09-11",
+
+      description:
+        "Card purchase",
+
+      type:
+        "debit",
+
+      amount:
+        42.9,
+
+      status:
+        "completed"
+    }
+
+  ],
+
+
+  cards: [
+
+    {
+      id:
+        "card_1",
+
+      type:
+        "Visa Debit",
+
+      number:
+        "**** 4242",
+
+      status:
+        "active"
+    },
+
+    {
+      id:
+        "card_2",
+
+      type:
+        "Virtual Card",
+
+      number:
+        "**** 8831",
+
+      status:
+        "frozen"
+    }
+
+  ],
+
+
+  loan: {
+
+    type:
+      "Personal Loan",
+
+    balance:
+      6450,
+
+    apr:
+      7.9,
+
+    nextPayment:
+      320,
+
+    dueDate:
+      "2026-10-05"
+
+  },
+
+
+  notes: [
+
+    "Your monthly statement is ready.",
+
+    "Card ending 4242 was used for $42.90."
+
+  ]
+
+};
+
+
+let state =
+  JSON.parse(
+    localStorage.nb_state ||
+    "null"
+  ) ||
+  structuredClone(
+    defaults
+  );
+
+
+const save =
+  () =>
+    localStorage.nb_state =
+      JSON.stringify(
+        state
+      );
+
+
+const toast =
+  text => {
+
+    const element =
+      $("#toast");
+
+    element.textContent =
+      text;
+
+    element.classList.remove(
+      "hidden"
+    );
+
+    setTimeout(
+      () =>
+        element.classList.add(
+          "hidden"
+        ),
+      2200
+    );
+
+  };
+
+
+async function api(
+  path,
+  options = {}
+) {
+
+  const headers = {
+    "Content-Type":
+      "application/json"
+  };
+
+  if (token) {
+
+    headers.Authorization =
+      "Bearer " +
+      token;
+
+  }
+
+  const response =
+    await fetch(
+      "/api" + path,
+      {
+        ...options,
+        headers
+      }
+    );
+
+  let json = {};
+
+  try {
+
+    json =
+      await response.json();
+
+  }
+  catch {
+
+  }
+
+  if (
+    !response.ok
+  ) {
+
+    throw Object.assign(
+      new Error(
+        json.error ||
+        "REQUEST_FAILED"
+      ),
+      {
+        status:
+          response.status,
+
+        data:
+          json
+      }
+    );
+
+  }
+
+  return json;
+
+}
+
+
+function table(
+  transactions
+) {
+
+  return `
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Description</th>
+          <th>Status</th>
+          <th>Amount</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${
+          transactions
+            .map(
+              transaction => `
+                <tr>
+                  <td>${transaction.date}</td>
+                  <td>${transaction.description}</td>
+                  <td>
+                    <span class="tag">
+                      ${transaction.status}
+                    </span>
+                  </td>
+                  <td class="${transaction.type}">
+                    ${
+                      transaction.type ===
+                      "debit"
+                        ? "-"
+                        : "+"
+                    }${money(transaction.amount)}
+                  </td>
+                </tr>
+              `
+            )
+            .join("")
+        }
+      </tbody>
+    </table>
+  `;
+
+}
+
+
+function render() {
+
+  if (!user) {
+    return;
+  }
+
+
+  $("#who").textContent =
+    user.name +
+    " · " +
+    user.role;
+
+
+  $("#adminNav")
+    .classList
+    .toggle(
+      "hidden",
+      user.role !==
+        "admin"
+    );
+
+
+  const total =
+    state.accounts.reduce(
+      (
+        sum,
+        account
+      ) =>
+        sum +
+        account.balance,
+      0
+    );
+
+
+  $("#total").textContent =
+    money(total);
+
+
+  $("#metrics").innerHTML =
+    state.accounts
+      .map(
+        account => `
+          <div class="card">
+            <div class="muted">
+              ${account.type}
+            </div>
+            <div class="metric">
+              ${money(account.balance)}
+            </div>
+          </div>
+        `
+      )
+      .join("") +
+    `
+      <div class="card">
+        <div class="muted">
+          Loan balance
+        </div>
+        <div class="metric">
+          ${money(state.loan.balance)}
+        </div>
+      </div>
+    `;
+
+
+  $("#recent").innerHTML =
+    table(
+      state.transactions.slice(
+        0,
+        3
+      )
+    );
+
+
+  $("#tx").innerHTML =
+    table(
+      state.transactions
+    );
+
+
+  $("#accountCards").innerHTML =
+    state.accounts
+      .map(
+        account => `
+          <div class="card">
+            <div class="row">
+              <div>
+                <h2>${account.type}</h2>
+                <div class="muted">
+                  ${account.number}
+                </div>
+              </div>
+              <div class="metric">
+                ${money(account.balance)}
+              </div>
+            </div>
+          </div>
+        `
+      )
+      .join("");
+
+
+  $("#from").innerHTML =
+    state.accounts
+      .map(
+        (
+          account,
+          index
+        ) => `
+          <option value="${index}">
+            ${account.type} — ${money(account.balance)}
+          </option>
+        `
+      )
+      .join("");
+
+
+  $("#cardCards").innerHTML =
+    state.cards
+      .map(
+        card => `
+          <div class="card">
+            <div class="row">
+              <div>
+                <h2>${card.type}</h2>
+                <div class="muted">
+                  ${card.number}
+                </div>
+              </div>
+              <span class="tag">
+                ${card.status}
+              </span>
+            </div>
+            <p>
+              <button
+                class="btn alt toggle"
+                data-id="${card.id}"
+              >
+                ${
+                  card.status ===
+                  "frozen"
+                    ? "Unfreeze"
+                    : "Freeze"
+                } card
+              </button>
+            </p>
+          </div>
+        `
+      )
+      .join("");
+
+
+  $("#loanInfo").innerHTML =
+    `
+      <h2>${state.loan.type}</h2>
+      <div class="metric">
+        ${money(state.loan.balance)}
+      </div>
+      <p class="muted">
+        APR ${state.loan.apr}% ·
+        Next ${money(state.loan.nextPayment)}
+        on ${state.loan.dueDate}
+      </p>
+    `;
+
+
+  $("#notes").innerHTML =
+    state.notes
+      .map(
+        note => `
+          <div class="card">
+            ${note}
+          </div>
+        `
+      )
+      .join("");
+
+
+  $("#profileCard").innerHTML =
+    `
+      <h2>${user.name}</h2>
+      <p>${user.email}</p>
+      <p class="muted">
+        Role: ${user.role}
+      </p>
+    `;
+
+
+  if (
+    user.role ===
+    "admin"
+  ) {
+
+    api(
+      "/admin/summary"
+    ).then(
+      summary => {
+
+        $("#adminData").innerHTML =
+          Object.entries(
+            summary
+          )
+            .map(
+              (
+                [
+                  key,
+                  value
+                ]
+              ) => `
+                <div class="card">
+                  <div class="muted">
+                    ${key.replaceAll("_", " ")}
+                  </div>
+                  <div class="metric">
+                    ${Number(value).toLocaleString()}
+                  </div>
+                </div>
+              `
+            )
+            .join("");
+
+      }
+    );
+
+  }
+
+}
+
+
+function gate() {
+
+  const authenticated =
+    !!(
+      token &&
+      user
+    );
+
+
+  $("#login")
+    .classList
+    .toggle(
+      "hidden",
+      authenticated
+    );
+
+
+  $("#app")
+    .classList
+    .toggle(
+      "hidden",
+      !authenticated
+    );
+
+
+  if (
+    authenticated
+  ) {
+
+    render();
+
+  }
+
+}
+
+
+$$(
+  ".enter"
+).forEach(
+  button => {
+
+    button.onclick =
+      async () => {
+
+        try {
+
+          const result =
+            await api(
+              "/session",
+              {
+                method:
+                  "POST",
+
+                body:
+                  JSON.stringify({
+                    role:
+                      button.dataset.role
+                  })
+              }
+            );
+
+
+          token =
+            result.token;
+
+
+          user =
+            result.user;
+
+
+          sessionStorage.nb_token =
+            token;
+
+
+          sessionStorage.nb_user =
+            JSON.stringify(
+              user
+            );
+
+
+          gate();
+
+        }
+        catch {
+
+          toast(
+            "Could not start demo session."
+          );
+
+        }
+
+      };
+
+  }
+);
+
+
+$("#logout").onclick =
+  async () => {
+
+    try {
+
+      await api(
+        "/logout",
+        {
+          method:
+            "POST"
+        }
+      );
+
+    }
+    catch {
+
+    }
+
+
+    sessionStorage.clear();
+
+    token = "";
+
+    user = null;
+
+    gate();
+
+  };
+
+
+$("#nav").onclick =
+  event => {
+
+    const button =
+      event.target.closest(
+        "button[data-s]"
+      );
+
+
+    if (!button) {
+      return;
+    }
+
+
+    $$("#nav button")
+      .forEach(
+        item =>
+          item.classList.remove(
+            "on"
+          )
+      );
+
+
+    button.classList.add(
+      "on"
+    );
+
+
+    $$(".section")
+      .forEach(
+        section =>
+          section.classList.remove(
+            "on"
+          )
+      );
+
+
+    $("#" + button.dataset.s)
+      .classList
+      .add(
+        "on"
+      );
+
+  };
+
+
+$("#transferForm").onsubmit =
+  async event => {
+
+    event.preventDefault();
+
+
+    const accountIndex =
+      Number(
+        $("#from").value
+      );
+
+
+    const amount =
+      Number(
+        $("#transferAmount").value
+      );
+
+
+    if (
+      amount <= 0
+    ) {
+
+      toast(
+        "Amount must be positive."
+      );
+
+      return;
+
+    }
+
+
+    if (
+      amount >
+      10000
+    ) {
+
+      toast(
+        "Transfer limit exceeded."
+      );
+
+      return;
+
+    }
+
+
+    if (
+      amount >
+      state.accounts[
+        accountIndex
+      ].balance
+    ) {
+
+      toast(
+        "Insufficient funds."
+      );
+
+      return;
+
+    }
+
+
+    try {
+
+      await api(
+        "/transfers",
+        {
+          method:
+            "POST",
+
+          body:
+            JSON.stringify({
+              amount
+            })
+        }
+      );
+
+
+      state.accounts[
+        accountIndex
+      ].balance -=
+        amount;
+
+
+      state.transactions.unshift({
+        date:
+          new Date()
+            .toISOString()
+            .slice(
+              0,
+              10
+            ),
+
+        description:
+          "Transfer to " +
+          $("#recipient").value,
+
+        type:
+          "debit",
+
+        amount,
+
+        status:
+          "completed"
+      });
+
+
+      save();
+
+      render();
+
+      event.target.reset();
+
+      toast(
+        "Transfer completed."
+      );
+
+    }
+    catch (
+      error
+    ) {
+
+      toast(
+        error.data?.error ||
+        "Transfer failed."
+      );
+
+    }
+
+  };
+
+
+$("#billForm").onsubmit =
+  async event => {
+
+    event.preventDefault();
+
+
+    const amount =
+      Number(
+        $("#billAmount").value
+      );
+
+
+    if (
+      amount <= 0 ||
+      amount >
+      state.accounts[0].balance
+    ) {
+
+      toast(
+        "Invalid bill amount."
+      );
+
+      return;
+
+    }
+
+
+    try {
+
+      await api(
+        "/bills/pay",
+        {
+          method:
+            "POST",
+
+          body:
+            JSON.stringify({
+              biller:
+                $("#biller").value,
+
+              amount
+            })
+        }
+      );
+
+
+      state.accounts[0].balance -=
+        amount;
+
+
+      state.transactions.unshift({
+        date:
+          new Date()
+            .toISOString()
+            .slice(
+              0,
+              10
+            ),
+
+        description:
+          $("#biller").value +
+          " bill",
+
+        type:
+          "debit",
+
+        amount,
+
+        status:
+          "completed"
+      });
+
+
+      save();
+
+      render();
+
+      event.target.reset();
+
+      toast(
+        "Bill paid."
+      );
+
+    }
+    catch (
+      error
+    ) {
+
+      toast(
+        error.data?.error ||
+        "Payment failed."
+      );
+
+    }
+
+  };
+
+
+document.onclick =
+  async event => {
+
+    const button =
+      event.target.closest(
+        ".toggle"
+      );
+
+
+    if (!button) {
+      return;
+    }
+
+
+    const card =
+      state.cards.find(
+        item =>
+          item.id ===
+          button.dataset.id
+      );
+
+
+    const next =
+      card.status ===
+      "frozen"
+        ? "active"
+        : "frozen";
+
+
+    try {
+
+      await api(
+        "/cards",
+        {
+          method:
+            "PATCH",
+
+          body:
+            JSON.stringify({
+              id:
+                card.id,
+
+              status:
+                next
+            })
+        }
+      );
+
+
+      card.status =
+        next;
+
+
+      save();
+
+      render();
+
+      toast(
+        "Card " +
+        next +
+        "."
+      );
+
+    }
+    catch (
+      error
+    ) {
+
+      toast(
+        error.data?.error ||
+        "Card update failed."
+      );
+
+    }
+
+  };
+
+
+$("#loanForm").onsubmit =
+  async event => {
+
+    event.preventDefault();
+
+
+    try {
+
+      const result =
+        await api(
+          "/loans/apply",
+          {
+            method:
+              "POST",
+
+            body:
+              JSON.stringify({
+                amount:
+                  Number(
+                    $("#loanAmount").value
+                  ),
+
+                termMonths:
+                  Number(
+                    $("#term").value
+                  )
+              })
+          }
+        );
+
+
+      state.notes.unshift(
+        "Loan application " +
+        result.id +
+        " is under review."
+      );
+
+
+      save();
+
+      render();
+
+      event.target.reset();
+
+      toast(
+        "Loan application submitted."
+      );
+
+    }
+    catch (
+      error
+    ) {
+
+      toast(
+        error.data?.error ||
+        "Loan application failed."
+      );
+
+    }
+
+  };
+
+
+gate();
+
+</script>
+
+</body>
+</html>

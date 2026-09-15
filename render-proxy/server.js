@@ -1,260 +1,775 @@
 ﻿"use strict";
 
 const http = require("http");
-const https = require("https");
-const { URL } = require("url");
+const fs = require("fs");
+const path = require("path");
+const crypto = require("crypto");
 
 const PORT =
   Number(process.env.PORT || 10000);
 
-const UPSTREAM =
-  new URL(
-    process.env.UPSTREAM_URL ||
-    "https://novabank-banking-system.vercel.app"
+const INDEX_FILE =
+  path.join(
+    __dirname,
+    "index.html"
   );
 
-const BYPASS_SECRET =
-  process.env.VERCEL_AUTOMATION_BYPASS_SECRET || "";
+
+function sendJson(
+  response,
+  status,
+  body
+) {
+
+  const payload =
+    body === null
+      ? ""
+      : JSON.stringify(body);
+
+  response.writeHead(
+    status,
+    {
+      "content-type":
+        "application/json; charset=utf-8",
+
+      "cache-control":
+        "no-store",
+
+      "access-control-allow-origin":
+        "*",
+
+      "access-control-allow-headers":
+        "Content-Type, Authorization, X-Test-Id",
+
+      "access-control-allow-methods":
+        "GET,POST,PATCH,OPTIONS"
+    }
+  );
+
+  response.end(payload);
+}
 
 
-function health(
+function sendHtml(
   response
 ) {
+
+  const html =
+    fs.readFileSync(
+      INDEX_FILE,
+      "utf8"
+    );
 
   response.writeHead(
     200,
     {
       "content-type":
-        "application/json; charset=utf-8",
+        "text/html; charset=utf-8",
 
       "cache-control":
         "no-store"
     }
   );
 
-  response.end(
-    JSON.stringify({
-      ok: true,
-      service: "novabank-qa-proxy"
-    })
-  );
-
+  response.end(html);
 }
 
 
-function proxy(
-  clientRequest,
-  clientResponse
+function readJson(
+  request
 ) {
 
-  const target =
-    new URL(
-      clientRequest.url,
-      UPSTREAM
-    );
+  return new Promise(
+    (resolve, reject) => {
 
+      let body = "";
 
-  const headers = {
-    ...clientRequest.headers,
+      request.on(
+        "data",
+        chunk => {
 
-    host:
-      UPSTREAM.host
-  };
+          body += chunk;
 
+          if (
+            body.length >
+            1_000_000
+          ) {
 
-  /*
-   * Authorize the server-side proxy with Vercel.
-   *
-   * The Playwright browser never needs to talk
-   * directly to Vercel.
-   */
-  if (BYPASS_SECRET) {
+            reject(
+              new Error(
+                "REQUEST_TOO_LARGE"
+              )
+            );
 
-    headers[
-      "x-vercel-protection-bypass"
-    ] =
-      BYPASS_SECRET;
-
-  }
-
-
-  delete headers.connection;
-  delete headers["proxy-connection"];
-  delete headers["keep-alive"];
-  delete headers.te;
-  delete headers.trailer;
-  delete headers.upgrade;
-
-
-  const upstreamRequest =
-    https.request(
-      {
-        protocol:
-          UPSTREAM.protocol,
-
-        hostname:
-          UPSTREAM.hostname,
-
-        port:
-          UPSTREAM.port || 443,
-
-        method:
-          clientRequest.method,
-
-        path:
-          target.pathname +
-          target.search,
-
-        headers
-      },
-      upstreamResponse => {
-
-        const responseHeaders = {
-          ...upstreamResponse.headers
-        };
-
-
-        /*
-         * Do not expose Vercel-domain cookies
-         * to the Render QA hostname.
-         */
-        delete responseHeaders[
-          "set-cookie"
-        ];
-
-
-        /*
-         * Rewrite any Vercel absolute redirect
-         * so the browser remains on Render.
-         */
-        if (
-          responseHeaders.location
-        ) {
-
-          try {
-
-            const location =
-              new URL(
-                responseHeaders.location,
-                UPSTREAM
-              );
-
-
-            if (
-              location.origin ===
-              UPSTREAM.origin
-            ) {
-
-              responseHeaders.location =
-                location.pathname +
-                location.search +
-                location.hash;
-
-            }
-
-          }
-          catch {
-
-            // Leave the original Location unchanged.
+            request.destroy();
 
           }
 
         }
-
-
-        clientResponse.writeHead(
-          upstreamResponse.statusCode || 502,
-          responseHeaders
-        );
-
-
-        upstreamResponse.pipe(
-          clientResponse
-        );
-
-      }
-    );
-
-
-  upstreamRequest.on(
-    "error",
-    error => {
-
-      console.error(
-        "Upstream request failed:",
-        error.message
       );
 
+      request.on(
+        "end",
+        () => {
 
-      if (
-        !clientResponse.headersSent
-      ) {
+          if (!body) {
 
-        clientResponse.writeHead(
-          502,
-          {
-            "content-type":
-              "application/json; charset=utf-8",
+            resolve({});
 
-            "cache-control":
-              "no-store"
+            return;
+
           }
-        );
 
-      }
+          try {
 
+            resolve(
+              JSON.parse(body)
+            );
 
-      clientResponse.end(
-        JSON.stringify({
-          error:
-            "UPSTREAM_UNAVAILABLE"
-        })
+          }
+          catch {
+
+            reject(
+              new Error(
+                "INVALID_JSON"
+              )
+            );
+
+          }
+
+        }
+      );
+
+      request.on(
+        "error",
+        reject
       );
 
     }
-  );
-
-
-  clientRequest.on(
-    "error",
-    () => {
-
-      upstreamRequest.destroy();
-
-    }
-  );
-
-
-  clientRequest.pipe(
-    upstreamRequest
   );
 
 }
 
 
+function getToken(
+  request
+) {
+
+  const authorization =
+    request.headers.authorization ||
+    "";
+
+  if (
+    !authorization.startsWith(
+      "Bearer "
+    )
+  ) {
+
+    return "";
+
+  }
+
+  return authorization.slice(7);
+}
+
+
+function roleFromToken(
+  token
+) {
+
+  if (
+    token ===
+    "novabank-customer-token"
+  ) {
+
+    return "customer";
+
+  }
+
+  if (
+    token ===
+    "novabank-admin-token"
+  ) {
+
+    return "admin";
+
+  }
+
+  return null;
+}
+
+
+function requireAuthentication(
+  request,
+  response
+) {
+
+  const role =
+    roleFromToken(
+      getToken(request)
+    );
+
+  if (!role) {
+
+    sendJson(
+      response,
+      401,
+      {
+        error:
+          "UNAUTHORIZED"
+      }
+    );
+
+    return null;
+
+  }
+
+  return role;
+}
+
+
+const users = {
+
+  customer: {
+    name:
+      "Alex Morgan",
+
+    email:
+      "alex.morgan@novabank.test",
+
+    role:
+      "customer"
+  },
+
+  admin: {
+    name:
+      "Jordan Admin",
+
+    email:
+      "admin@novabank.test",
+
+    role:
+      "admin"
+  }
+
+};
+
+
 const server =
   http.createServer(
-    (
+    async (
       request,
       response
     ) => {
 
-      if (
-        request.url ===
-        "/__proxy-health"
-      ) {
+      try {
 
-        health(response);
+        const url =
+          new URL(
+            request.url,
+            `http://${request.headers.host || "localhost"}`
+          );
 
-        return;
+        const pathname =
+          url.pathname;
+
+
+        if (
+          request.method ===
+          "OPTIONS"
+        ) {
+
+          response.writeHead(
+            204,
+            {
+              "access-control-allow-origin":
+                "*",
+
+              "access-control-allow-headers":
+                "Content-Type, Authorization, X-Test-Id",
+
+              "access-control-allow-methods":
+                "GET,POST,PATCH,OPTIONS"
+            }
+          );
+
+          response.end();
+
+          return;
+
+        }
+
+
+        if (
+          pathname ===
+          "/__proxy-health"
+        ) {
+
+          sendJson(
+            response,
+            200,
+            {
+              ok: true,
+              service:
+                "novabank-qa"
+            }
+          );
+
+          return;
+
+        }
+
+
+        if (
+          pathname ===
+            "/api/session" &&
+          request.method ===
+            "POST"
+        ) {
+
+          const body =
+            await readJson(
+              request
+            );
+
+          const role =
+            body.role;
+
+          if (
+            role !== "customer" &&
+            role !== "admin"
+          ) {
+
+            sendJson(
+              response,
+              400,
+              {
+                error:
+                  "INVALID_ROLE"
+              }
+            );
+
+            return;
+
+          }
+
+          sendJson(
+            response,
+            200,
+            {
+              token:
+                role === "admin"
+                  ? "novabank-admin-token"
+                  : "novabank-customer-token",
+
+              user:
+                users[role]
+            }
+          );
+
+          return;
+
+        }
+
+
+        if (
+          pathname ===
+            "/api/logout" &&
+          request.method ===
+            "POST"
+        ) {
+
+          const role =
+            requireAuthentication(
+              request,
+              response
+            );
+
+          if (!role) {
+            return;
+          }
+
+          response.writeHead(
+            204,
+            {
+              "cache-control":
+                "no-store"
+            }
+          );
+
+          response.end();
+
+          return;
+
+        }
+
+
+        if (
+          pathname ===
+            "/api/transfers" &&
+          request.method ===
+            "POST"
+        ) {
+
+          const role =
+            requireAuthentication(
+              request,
+              response
+            );
+
+          if (!role) {
+            return;
+          }
+
+          const body =
+            await readJson(
+              request
+            );
+
+          const amount =
+            Number(
+              body.amount
+            );
+
+          if (
+            !Number.isFinite(amount) ||
+            amount <= 0 ||
+            amount > 10000
+          ) {
+
+            sendJson(
+              response,
+              400,
+              {
+                error:
+                  "INVALID_TRANSFER"
+              }
+            );
+
+            return;
+
+          }
+
+          sendJson(
+            response,
+            201,
+            {
+              id:
+                `trf_${crypto.randomUUID()}`,
+
+              status:
+                "completed"
+            }
+          );
+
+          return;
+
+        }
+
+
+        if (
+          pathname ===
+            "/api/bills/pay" &&
+          request.method ===
+            "POST"
+        ) {
+
+          const role =
+            requireAuthentication(
+              request,
+              response
+            );
+
+          if (!role) {
+            return;
+          }
+
+          const body =
+            await readJson(
+              request
+            );
+
+          const amount =
+            Number(
+              body.amount
+            );
+
+          if (
+            !Number.isFinite(amount) ||
+            amount <= 0
+          ) {
+
+            sendJson(
+              response,
+              400,
+              {
+                error:
+                  "INVALID_BILL_AMOUNT"
+              }
+            );
+
+            return;
+
+          }
+
+          sendJson(
+            response,
+            201,
+            {
+              id:
+                `bill_${crypto.randomUUID()}`,
+
+              status:
+                "completed"
+            }
+          );
+
+          return;
+
+        }
+
+
+        if (
+          pathname ===
+            "/api/cards" &&
+          request.method ===
+            "PATCH"
+        ) {
+
+          const role =
+            requireAuthentication(
+              request,
+              response
+            );
+
+          if (!role) {
+            return;
+          }
+
+          const body =
+            await readJson(
+              request
+            );
+
+          if (
+            !body.id ||
+            ![
+              "active",
+              "frozen"
+            ].includes(
+              body.status
+            )
+          ) {
+
+            sendJson(
+              response,
+              400,
+              {
+                error:
+                  "INVALID_CARD_UPDATE"
+              }
+            );
+
+            return;
+
+          }
+
+          sendJson(
+            response,
+            200,
+            {
+              id:
+                body.id,
+
+              status:
+                body.status
+            }
+          );
+
+          return;
+
+        }
+
+
+        if (
+          pathname ===
+            "/api/loans/apply" &&
+          request.method ===
+            "POST"
+        ) {
+
+          const role =
+            requireAuthentication(
+              request,
+              response
+            );
+
+          if (!role) {
+            return;
+          }
+
+          const body =
+            await readJson(
+              request
+            );
+
+          const amount =
+            Number(
+              body.amount
+            );
+
+          const termMonths =
+            Number(
+              body.termMonths
+            );
+
+          if (
+            !Number.isFinite(amount) ||
+            amount < 1000 ||
+            amount > 50000 ||
+            ![
+              12,
+              24,
+              36
+            ].includes(
+              termMonths
+            )
+          ) {
+
+            sendJson(
+              response,
+              400,
+              {
+                error:
+                  "INVALID_LOAN_APPLICATION"
+              }
+            );
+
+            return;
+
+          }
+
+          sendJson(
+            response,
+            201,
+            {
+              id:
+                `loan_${crypto.randomUUID()}`,
+
+              status:
+                "under_review"
+            }
+          );
+
+          return;
+
+        }
+
+
+        if (
+          pathname ===
+            "/api/admin/summary" &&
+          request.method ===
+            "GET"
+        ) {
+
+          const role =
+            requireAuthentication(
+              request,
+              response
+            );
+
+          if (!role) {
+            return;
+          }
+
+          if (
+            role !==
+            "admin"
+          ) {
+
+            sendJson(
+              response,
+              403,
+              {
+                error:
+                  "FORBIDDEN"
+              }
+            );
+
+            return;
+
+          }
+
+          sendJson(
+            response,
+            200,
+            {
+              active_users:
+                1284,
+
+              open_accounts:
+                2310,
+
+              pending_reviews:
+                17
+            }
+          );
+
+          return;
+
+        }
+
+
+        if (
+          pathname.startsWith(
+            "/api/"
+          )
+        ) {
+
+          sendJson(
+            response,
+            404,
+            {
+              error:
+                "NOT_FOUND"
+            }
+          );
+
+          return;
+
+        }
+
+
+        sendHtml(
+          response
+        );
 
       }
+      catch (
+        error
+      ) {
 
+        console.error(
+          error
+        );
 
-      proxy(
-        request,
-        response
-      );
+        if (
+          !response.headersSent
+        ) {
+
+          sendJson(
+            response,
+            500,
+            {
+              error:
+                "INTERNAL_SERVER_ERROR"
+            }
+          );
+
+        }
+
+      }
 
     }
   );
@@ -266,11 +781,7 @@ server.listen(
   () => {
 
     console.log(
-      `NovaBank QA proxy listening on ${PORT}`
-    );
-
-    console.log(
-      `Upstream: ${UPSTREAM.origin}`
+      `NovaBank QA listening on port ${PORT}`
     );
 
   }
