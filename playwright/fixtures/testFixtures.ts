@@ -4,6 +4,7 @@
 } from "@playwright/test";
 
 import { AccountsPage } from "../pages/AccountsPage";
+import { AdminPage } from "../pages/AdminPage";
 import { AuthPage } from "../pages/AuthPage";
 import { BillsPage } from "../pages/BillsPage";
 import { CardsPage } from "../pages/CardsPage";
@@ -50,6 +51,9 @@ type BankingFixtures = {
 
   profilePage:
     ProfilePage;
+
+  adminPage:
+    AdminPage;
 
 };
 
@@ -162,6 +166,16 @@ export const test =
 
         await use(
           new ProfilePage(page)
+        );
+
+      },
+
+
+    adminPage:
+      async ({ page }, use) => {
+
+        await use(
+          new AdminPage(page)
         );
 
       }
