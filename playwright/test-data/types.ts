@@ -1,7 +1,6 @@
-﻿export interface UserCredentials {
-  username: string;
-  password: string;
-}
+﻿export type DemoRole =
+  | "customer"
+  | "admin";
 
 export interface TransferData {
   recipient: string;

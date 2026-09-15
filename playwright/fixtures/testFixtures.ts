@@ -1,15 +1,19 @@
 ﻿import { test as base, expect } from "@playwright/test";
+import { AuthPage } from "../pages/AuthPage";
 import { HomePage } from "../pages/HomePage";
 
 type BankingFixtures = {
   homePage: HomePage;
+  authPage: AuthPage;
 };
 
 export const test = base.extend<BankingFixtures>({
   homePage: async ({ page }, use) => {
-    const homePage = new HomePage(page);
+    await use(new HomePage(page));
+  },
 
-    await use(homePage);
+  authPage: async ({ page }, use) => {
+    await use(new AuthPage(page));
   },
 });
 
