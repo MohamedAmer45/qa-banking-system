@@ -195,42 +195,18 @@ test.describe(
         browser
       }) => {
 
-        const bypassSecret =
-          process.env
-            .VERCEL_AUTOMATION_BYPASS_SECRET;
+        const context = await browser.newContext({
+      baseURL:
+        process.env.BASE_URL ??
+        "https://novabank-qa-proxy.onrender.com",
+    });
 
-
-        if (!bypassSecret) {
-
-          throw new Error(
-            "VERCEL_AUTOMATION_BYPASS_SECRET is missing."
-          );
-
-        }
-
-
-        const context =
-          await browser.newContext({
-
-            extraHTTPHeaders: {
-
-              "x-vercel-protection-bypass":
-                bypassSecret,
-
-              "x-vercel-set-bypass-cookie":
-                "true"
-
-            }
-
-          });
-
-
-        const page =
+    const page =
           await context.newPage();
 
 
         await page.goto(
-          "https://novabank-banking-system.vercel.app/",
+          "/",
           {
             waitUntil:
               "domcontentloaded"

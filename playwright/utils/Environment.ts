@@ -6,7 +6,8 @@
   static get baseUrl(): string {
     return (
       process.env.BASE_URL ??
-      "https://novabank-banking-system.vercel.app"
+      "https://novabank-qa-proxy.onrender.com"
     );
   }
 }
+
