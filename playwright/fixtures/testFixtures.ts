@@ -10,6 +10,7 @@ import { CardsPage } from "../pages/CardsPage";
 import { DashboardPage } from "../pages/DashboardPage";
 import { HomePage } from "../pages/HomePage";
 import { LoansPage } from "../pages/LoansPage";
+import { NotificationsPage } from "../pages/NotificationsPage";
 import { TransactionsPage } from "../pages/TransactionsPage";
 import { TransfersPage } from "../pages/TransfersPage";
 
@@ -42,6 +43,9 @@ type BankingFixtures = {
 
   loansPage:
     LoansPage;
+
+  notificationsPage:
+    NotificationsPage;
 
 };
 
@@ -134,6 +138,16 @@ export const test =
 
         await use(
           new LoansPage(page)
+        );
+
+      },
+
+
+    notificationsPage:
+      async ({ page }, use) => {
+
+        await use(
+          new NotificationsPage(page)
         );
 
       }
