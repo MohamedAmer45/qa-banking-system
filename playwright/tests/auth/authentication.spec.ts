@@ -3,20 +3,31 @@
   expect
 } from "../../fixtures/testFixtures";
 
+
 test.describe(
   "NovaBank - Authentication & Session Management",
   () => {
 
-    test.beforeEach(async ({ authPage }) => {
-      await authPage.open();
-    });
+
+    test.beforeEach(
+      async ({
+        authPage
+      }) => {
+
+        await authPage.open();
+
+      }
+    );
 
 
     test(
       "AUTH-001 - login screen displays available demo roles",
-      async ({ authPage }) => {
+      async ({
+        authPage
+      }) => {
 
-        await authPage.expectLoginScreenVisible();
+        await authPage
+          .expectLoginScreenVisible();
 
       }
     );
@@ -24,13 +35,18 @@ test.describe(
 
     test(
       "AUTH-002 - customer can start authenticated session",
-      async ({ authPage }) => {
+      async ({
+        authPage
+      }) => {
 
-        await authPage.loginAsCustomer();
+        await authPage
+          .loginAsCustomer();
 
-        await authPage.expectCustomerAccess();
+        await authPage
+          .expectCustomerAccess();
 
-        await authPage.expectSessionStorageCreated();
+        await authPage
+          .expectSessionStorageCreated();
 
       }
     );
@@ -38,11 +54,15 @@ test.describe(
 
     test(
       "AUTH-003 - customer cannot access admin navigation",
-      async ({ authPage }) => {
+      async ({
+        authPage
+      }) => {
 
-        await authPage.loginAsCustomer();
+        await authPage
+          .loginAsCustomer();
 
-        await authPage.expectCustomerAccess();
+        await authPage
+          .expectCustomerAccess();
 
       }
     );
@@ -50,13 +70,18 @@ test.describe(
 
     test(
       "AUTH-004 - admin can start authenticated session",
-      async ({ authPage }) => {
+      async ({
+        authPage
+      }) => {
 
-        await authPage.loginAsAdmin();
+        await authPage
+          .loginAsAdmin();
 
-        await authPage.expectAdminAccess();
+        await authPage
+          .expectAdminAccess();
 
-        await authPage.expectSessionStorageCreated();
+        await authPage
+          .expectSessionStorageCreated();
 
       }
     );
@@ -64,11 +89,15 @@ test.describe(
 
     test(
       "AUTH-005 - admin can access admin console",
-      async ({ authPage }) => {
+      async ({
+        authPage
+      }) => {
 
-        await authPage.loginAsAdmin();
+        await authPage
+          .loginAsAdmin();
 
-        await authPage.openAdminConsole();
+        await authPage
+          .openAdminConsole();
 
       }
     );
@@ -76,15 +105,20 @@ test.describe(
 
     test(
       "AUTH-006 - authenticated customer session survives page reload",
-      async ({ authPage }) => {
+      async ({
+        authPage
+      }) => {
 
-        await authPage.loginAsCustomer();
+        await authPage
+          .loginAsCustomer();
 
-        await authPage.reloadAndExpectAuthenticated(
-          "customer"
-        );
+        await authPage
+          .reloadAndExpectAuthenticated(
+            "customer"
+          );
 
-        await authPage.expectSessionStorageCreated();
+        await authPage
+          .expectSessionStorageCreated();
 
       }
     );
@@ -92,17 +126,20 @@ test.describe(
 
     test(
       "AUTH-007 - authenticated admin session survives page reload",
-      async ({ authPage }) => {
+      async ({
+        authPage
+      }) => {
 
-        await authPage.loginAsAdmin();
+        await authPage
+          .loginAsAdmin();
 
-        await authPage.reloadAndExpectAuthenticated(
-          "admin"
-        );
+        await authPage
+          .reloadAndExpectAuthenticated(
+            "admin"
+          );
 
-        await authPage.expectSessionStorageCreated();
-
-        await authPage.expectAdminAccess();
+        await authPage
+          .expectAdminAccess();
 
       }
     );
@@ -110,15 +147,21 @@ test.describe(
 
     test(
       "AUTH-008 - customer can log out successfully",
-      async ({ authPage }) => {
+      async ({
+        authPage
+      }) => {
 
-        await authPage.loginAsCustomer();
+        await authPage
+          .loginAsCustomer();
 
-        await authPage.logout();
+        await authPage
+          .logout();
 
-        await authPage.expectLoginScreenVisible();
+        await authPage
+          .expectLoginScreenVisible();
 
-        await authPage.expectSessionStorageCleared();
+        await authPage
+          .expectSessionStorageCleared();
 
       }
     );
@@ -126,15 +169,21 @@ test.describe(
 
     test(
       "AUTH-009 - admin can log out successfully",
-      async ({ authPage }) => {
+      async ({
+        authPage
+      }) => {
 
-        await authPage.loginAsAdmin();
+        await authPage
+          .loginAsAdmin();
 
-        await authPage.logout();
+        await authPage
+          .logout();
 
-        await authPage.expectLoginScreenVisible();
+        await authPage
+          .expectLoginScreenVisible();
 
-        await authPage.expectSessionStorageCleared();
+        await authPage
+          .expectSessionStorageCleared();
 
       }
     );
@@ -142,29 +191,90 @@ test.describe(
 
     test(
       "AUTH-010 - each new browser context starts unauthenticated",
-      async ({ browser }) => {
+      async ({
+        browser
+      }) => {
 
-        const context = await browser.newContext();
+        const bypassSecret =
+          process.env
+            .VERCEL_AUTOMATION_BYPASS_SECRET;
 
-        const page = await context.newPage();
 
-        await page.goto("/");
+        if (!bypassSecret) {
+
+          throw new Error(
+            "VERCEL_AUTOMATION_BYPASS_SECRET is missing."
+          );
+
+        }
+
+
+        const context =
+          await browser.newContext({
+
+            extraHTTPHeaders: {
+
+              "x-vercel-protection-bypass":
+                bypassSecret,
+
+              "x-vercel-set-bypass-cookie":
+                "true"
+
+            }
+
+          });
+
+
+        const page =
+          await context.newPage();
+
+
+        await page.goto(
+          "https://novabank-banking-system.vercel.app/",
+          {
+            waitUntil:
+              "domcontentloaded"
+          }
+        );
+
 
         await expect(
           page.locator("#login")
         ).toBeVisible();
 
+
         await expect(
           page.locator("#app")
         ).toBeHidden();
 
-        const session = await page.evaluate(() => ({
-          token: sessionStorage.getItem("nb_token"),
-          user: sessionStorage.getItem("nb_user")
-        }));
 
-        expect(session.token).toBeNull();
-        expect(session.user).toBeNull();
+        const session =
+          await page.evaluate(
+            () => ({
+
+              token:
+                sessionStorage.getItem(
+                  "nb_token"
+                ),
+
+              user:
+                sessionStorage.getItem(
+                  "nb_user"
+                )
+
+            })
+          );
+
+
+        expect(
+          session.token
+        ).toBeNull();
+
+
+        expect(
+          session.user
+        ).toBeNull();
+
 
         await context.close();
 

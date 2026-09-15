@@ -42,3 +42,24 @@ allure-report/
 # Temporary files
 *.tmp
 *.temp
+.vercel
+.env*
+
+.vercel/
+.env.local
+
+.env.local
+.vercel/
+
+.env.local
+.vercel/
+playwright/.auth/
+
+.env.local
+.vercel/
+
+.env.local
+.vercel/
+
+.env.local
+.vercel/
