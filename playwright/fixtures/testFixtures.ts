@@ -9,27 +9,39 @@ import { BillsPage } from "../pages/BillsPage";
 import { CardsPage } from "../pages/CardsPage";
 import { DashboardPage } from "../pages/DashboardPage";
 import { HomePage } from "../pages/HomePage";
+import { LoansPage } from "../pages/LoansPage";
 import { TransactionsPage } from "../pages/TransactionsPage";
 import { TransfersPage } from "../pages/TransfersPage";
 
 
 type BankingFixtures = {
 
-  homePage: HomePage;
+  homePage:
+    HomePage;
 
-  authPage: AuthPage;
+  authPage:
+    AuthPage;
 
-  dashboardPage: DashboardPage;
+  dashboardPage:
+    DashboardPage;
 
-  accountsPage: AccountsPage;
+  accountsPage:
+    AccountsPage;
 
-  transfersPage: TransfersPage;
+  transfersPage:
+    TransfersPage;
 
-  transactionsPage: TransactionsPage;
+  transactionsPage:
+    TransactionsPage;
 
-  billsPage: BillsPage;
+  billsPage:
+    BillsPage;
 
-  cardsPage: CardsPage;
+  cardsPage:
+    CardsPage;
+
+  loansPage:
+    LoansPage;
 
 };
 
@@ -112,6 +124,16 @@ export const test =
 
         await use(
           new CardsPage(page)
+        );
+
+      },
+
+
+    loansPage:
+      async ({ page }, use) => {
+
+        await use(
+          new LoansPage(page)
         );
 
       }
