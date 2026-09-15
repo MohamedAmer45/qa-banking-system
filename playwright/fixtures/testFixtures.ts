@@ -3,6 +3,7 @@
   expect
 } from "@playwright/test";
 
+import { AccountsPage } from "../pages/AccountsPage";
 import { AuthPage } from "../pages/AuthPage";
 import { DashboardPage } from "../pages/DashboardPage";
 import { HomePage } from "../pages/HomePage";
@@ -15,6 +16,8 @@ type BankingFixtures = {
   authPage: AuthPage;
 
   dashboardPage: DashboardPage;
+
+  accountsPage: AccountsPage;
 
 };
 
@@ -47,6 +50,16 @@ export const test =
 
         await use(
           new DashboardPage(page)
+        );
+
+      },
+
+
+    accountsPage:
+      async ({ page }, use) => {
+
+        await use(
+          new AccountsPage(page)
         );
 
       }
