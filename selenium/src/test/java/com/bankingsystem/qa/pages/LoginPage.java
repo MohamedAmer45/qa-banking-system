@@ -43,7 +43,7 @@ public class LoginPage {
 
         try {
 
-            String value = ConfigReader.get("baseUrl");
+            String value = ConfigReader.get("base.url");
 
             if (value != null && !value.isBlank()) {
                 return value;

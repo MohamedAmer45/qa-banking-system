@@ -1,0 +1,91 @@
+name: Selenium Tests
+
+on:
+  workflow_dispatch:
+
+  push:
+    branches:
+      - main
+    paths:
+      - "selenium/**"
+      - ".github/workflows/selenium.yml"
+
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "selenium/**"
+      - ".github/workflows/selenium.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: selenium-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  selenium:
+    name: Selenium Chrome Regression
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    defaults:
+      run:
+        working-directory: selenium
+
+    env:
+      BASE_URL: https://novabank-qa-proxy.onrender.com
+      SE_AVOID_STATS: "true"
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+          cache-dependency-path: selenium/pom.xml
+
+      - name: Display Java and Maven versions
+        run: |
+          java --version
+          mvn --version
+
+      - name: Wake up QA environment
+        shell: bash
+        run: |
+          for attempt in {1..12}; do
+            if curl --fail --silent --show-error --max-time 20 "$BASE_URL" > /dev/null; then
+              echo "QA environment is available."
+              exit 0
+            fi
+
+            echo "Attempt $attempt failed. Retrying in 10 seconds..."
+            sleep 10
+          done
+
+          echo "::error::QA environment did not become available."
+          exit 1
+
+      - name: Run Selenium regression suite
+        run: |
+          mvn --batch-mode --no-transfer-progress clean test \
+            -Dheadless=true \
+            -Dbrowser=chrome \
+            -Dbase.url="$BASE_URL"
+
+      - name: Upload Selenium test artifacts
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: selenium-results-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            selenium/target/surefire-reports/
+            selenium/target/allure-results/
+            selenium/allure-results/
+          if-no-files-found: ignore
+          retention-days: 14
