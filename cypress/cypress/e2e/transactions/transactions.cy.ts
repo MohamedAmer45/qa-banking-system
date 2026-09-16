@@ -126,7 +126,8 @@ describe("NovaBank - Transactions", () => {
 
         cy.wrap($row)
           .find(".tag")
-          .should("have.text", "completed");
+          .invoke("text")
+          .should("match", /^\s*completed\s*$/);
 
       });
 

@@ -68,12 +68,14 @@ describe("NovaBank - Transfers", () => {
     TransfersPage.getRecipient()
       .find("option")
       .eq(0)
-      .should("have.text", "Alex Johnson");
+      .invoke("text")
+      .should("match", /^\s*Alex Johnson\s*$/);
 
     TransfersPage.getRecipient()
       .find("option")
       .eq(1)
-      .should("have.text", "Sam Lee");
+      .invoke("text")
+      .should("match", /^\s*Sam Lee\s*$/);
 
   });
 

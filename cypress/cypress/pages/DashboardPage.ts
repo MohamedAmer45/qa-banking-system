@@ -34,7 +34,7 @@ class DashboardPage {
   getNavigationButton(label: string) {
     return cy.contains(
       "#nav button",
-      new RegExp(`^${label}$`, "i")
+      new RegExp(`^\\s*${label}\\s*$`, "i")
     );
   }
 

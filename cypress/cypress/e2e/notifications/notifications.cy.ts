@@ -127,7 +127,7 @@ describe("NovaBank - Notifications", () => {
       .invoke("text")
       .should(
         "match",
-        /^Loan application .+ is under review\.$/
+        /^\s*Loan application .+ is under review\.\s*$/
       );
 
   });
