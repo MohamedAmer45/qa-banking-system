@@ -1056,33 +1056,23 @@ The exact order may be adjusted when implementation dependencies require it.
 
 # Current Project Status
 
-## Step 1 — Requirements and Planning
+Completed phases:
 
-Status:
+- Requirements and planning
+- Manual testing
+- Application foundation and deployment
+- Selenium UI automation
+- Cypress UI automation
+- Playwright UI automation
+- Cucumber BDD
 
-```text
-COMPLETE
-```
+The Cucumber framework covers every Selenium module currently runnable against the deployed NovaBank interface.
 
-Completed artifacts:
+Unavailable functionality remains documented and blocked rather than represented by misleading passing tests.
 
-```text
-requirements/requirements-catalog.md
-requirements/business-rules.md
-requirements/roles-and-permissions.md
-requirements/test-data-requirements.md
+Current deployment: https://novabank-qa-proxy.onrender.com
 
-test-planning/test-plan.md
-test-planning/test-strategy.md
-test-planning/risk-analysis.md
-```
-
-Next phase:
-
-```text
-Step 2 — Manual Testing
-```
-
+Next major phase: GitHub Actions CI/CD.
 ---
 
 # Quality Principle

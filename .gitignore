@@ -48,18 +48,5 @@ allure-report/
 .vercel/
 .env.local
 
-.env.local
-.vercel/
 
-.env.local
-.vercel/
 playwright/.auth/
-
-.env.local
-.vercel/
-
-.env.local
-.vercel/
-
-.env.local
-.vercel/
