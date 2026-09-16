@@ -17,8 +17,17 @@ export class HomePage extends BasePage {
   async expectLoaded(): Promise<void> {
     await expect(this.body).toBeVisible();
 
-    await expect(this.page).toHaveURL(
-      /novabank-banking-system\.vercel\.app/
+    const expectedOrigin =
+      new URL(
+        process.env.BASE_URL ??
+        "https://novabank-qa-proxy.onrender.com"
+      ).origin;
+
+    expect(
+      new URL(this.page.url()).origin
+    ).toBe(
+      expectedOrigin
     );
   }
 }
+

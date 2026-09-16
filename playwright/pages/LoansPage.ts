@@ -200,9 +200,13 @@ export class LoansPage extends BasePage {
   ): Promise<void> {
 
     const options =
-      await this.termSelect
-        .locator("option")
-        .allTextContents();
+      (
+        await this.termSelect
+          .locator("option")
+          .allTextContents()
+      ).map(
+        text => text.trim()
+      );
 
     expect(
       options
@@ -385,3 +389,4 @@ export class LoansPage extends BasePage {
     await this.openNotifications();
   }
 }
+
