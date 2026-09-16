@@ -8,7 +8,7 @@ describe("NovaBank - Smoke Test", () => {
       .should("be.visible");
 
     cy.location("origin")
-      .should("eq", "https://novabank-banking-system.vercel.app");
+      .should("eq", "https://novabank-qa-proxy.onrender.com");
 
     cy.title()
       .should("not.be.empty");

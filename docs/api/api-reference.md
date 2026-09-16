@@ -4,7 +4,7 @@
 
 Base URL:
 
-`https://novabank-banking-system.vercel.app/api`
+`https://novabank-qa-proxy.onrender.com/api`
 
 ### Health
 

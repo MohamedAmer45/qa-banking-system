@@ -1585,7 +1585,7 @@ NovaBank Banking System QA Application
 
 Production URL:
 
-`https://novabank-banking-system.vercel.app`
+`https://novabank-qa-proxy.onrender.com`
 
 ### Objectives
 

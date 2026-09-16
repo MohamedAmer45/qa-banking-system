@@ -411,6 +411,6 @@ Tests that change balances, cards, transactions, loan applications, or notificat
 
 ### Application
 
-`https://novabank-banking-system.vercel.app`
+`https://novabank-qa-proxy.onrender.com`
 
 <!-- NOVABANK-SELENIUM-MIGRATION-END -->

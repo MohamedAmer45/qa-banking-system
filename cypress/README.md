@@ -21,7 +21,7 @@ NovaBank QA Banking Sandbox
 
 Application URL:
 
-https://novabank-banking-system.vercel.app
+https://novabank-qa-proxy.onrender.com
 
 NovaBank provides deterministic customer and administrator demo sessions designed for automated software testing.
 

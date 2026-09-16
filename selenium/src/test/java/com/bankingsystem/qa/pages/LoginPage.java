@@ -52,7 +52,7 @@ public class LoginPage {
         } catch (Exception ignored) {
         }
 
-        return "https://novabank-banking-system.vercel.app";
+        return "https://novabank-qa-proxy.onrender.com";
     }
 
     public LoginPage open() {

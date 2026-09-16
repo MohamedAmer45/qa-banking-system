@@ -6,7 +6,7 @@ Last synchronized: 2026-09-14
 
 Production URL:
 
-`https://novabank-banking-system.vercel.app`
+`https://novabank-qa-proxy.onrender.com`
 
 The current application is a deterministic QA banking sandbox designed for repeatable manual, UI automation, API, validation, authorization, negative, boundary, and regression testing.
 

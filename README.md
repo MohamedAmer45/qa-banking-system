@@ -1112,7 +1112,7 @@ Critical financial functionality shall be validated across multiple layers rathe
 
 Live application:
 
-`https://novabank-banking-system.vercel.app`
+`https://novabank-qa-proxy.onrender.com`
 
 NovaBank is a banking-system QA portfolio project covering:
 

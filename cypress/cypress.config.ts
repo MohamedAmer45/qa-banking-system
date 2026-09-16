@@ -11,7 +11,7 @@ export default defineConfig({
   e2e: {
 
     baseUrl:
-      "https://novabank-banking-system.vercel.app",
+      "https://novabank-qa-proxy.onrender.com",
 
     specPattern:
       "cypress/e2e/**/*.cy.ts",

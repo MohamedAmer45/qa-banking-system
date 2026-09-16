@@ -4,7 +4,7 @@
 
 Production QA URL:
 
-`https://novabank-banking-system.vercel.app`
+`https://novabank-qa-proxy.onrender.com`
 
 ### Deployment Characteristics
 
