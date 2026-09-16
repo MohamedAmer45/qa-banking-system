@@ -190,19 +190,19 @@ Cypress automatically captures screenshots when tests fail.
 
 Video recording is enabled during command-line regression execution.
 
-These artifacts can later be uploaded by the CI/CD pipeline.
+These artifacts are uploaded by the Cypress GitHub Actions workflow after every run, including failed runs when files are available.
 
 ## CI/CD
 
-GitHub Actions integration is intentionally deferred until all major UI automation frameworks are complete.
+The implemented `.github/workflows/cypress.yml` workflow:
 
-The final QA pipeline will integrate:
-
-- Selenium + Java + TestNG
-- Cypress + TypeScript
-- Playwright + TypeScript
-
-Concurrency controls will be added so frequent development pushes do not create unnecessary overlapping regression runs.
+- Supports manual execution.
+- Runs when Cypress files or the workflow change on pushes and pull requests targeting `main`.
+- Uses Node.js 24 and installs the locked dependencies with `npm ci`.
+- Verifies that the deployed QA environment is available.
+- Runs `npm run validate` for TypeScript validation and the full Chrome regression suite.
+- Uploads reports, screenshots, and videos with 14-day retention.
+- Cancels superseded runs for the same Git reference.
 
 ## Main Validation Command
 

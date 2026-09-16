@@ -1,25 +1,35 @@
 # NovaBank Automation Status
 
-Last synchronized: 2026-09-14
+Last synchronized: 2026-09-16
 
 | Framework / Area | Current Status |
 |---|---|
-| Selenium Java | Migrated to current UI |
-| Cypress TypeScript | Requires current-build synchronization |
-| Playwright TypeScript | Requires current-build synchronization |
-| Postman | Requires session/API synchronization |
-| REST Assured | Requires session/API synchronization |
-| Jest | Review against rebuilt backend |
-| Cucumber | Review scenarios against current build |
-| JMeter | Update authentication/session requests where applicable |
-| GitHub Actions | Review after framework migrations |
-| Jenkins | Review after framework migrations |
+| Selenium Java | Synchronized with the current UI; GitHub Actions regression passing |
+| Cypress TypeScript | Synchronized with the current UI; GitHub Actions regression passing |
+| Playwright TypeScript | Synchronized with the current UI; Chromium, Firefox, and WebKit GitHub Actions jobs passing |
+| Cucumber JVM | Synchronized with the current UI; GitHub Actions BDD regression passing |
+| GitHub Actions | Four UI/BDD workflows implemented and passing |
+| Postman | Next phase; collection and environment not yet implemented |
+| REST Assured | Planned after the Postman collection |
+| Jest | Planned for backend and business-logic validation |
+| JMeter | Planned for performance testing |
+| Database testing | Blocked because persistent database-backed banking state is unavailable |
+| Jenkins | Planned after the remaining automation phases |
 
-## Selenium Current Coverage
+## Current GitHub Actions Coverage
 
-Automated:
+| Workflow | Validation | Artifacts |
+|---|---|---|
+| Selenium Tests | Java 21, Maven, TestNG, headless Chrome regression | Surefire and Allure results |
+| Cypress Tests | TypeScript validation and Chrome regression | Mochawesome/JUnit results, screenshots, and videos |
+| Playwright Tests | Chromium, Firefox, and WebKit regression | HTML report, traces, screenshots, videos, and test results |
+| Cucumber BDD Tests | Java 21, Maven, TestNG, headless Chrome BDD regression | HTML, JSON, JUnit, Surefire, and Allure results |
 
-- Authentication/session
+All four workflows support manual execution, relevant push and pull-request triggers, concurrency cancellation, QA-environment availability checks, and 14-day artifact retention.
+
+## Current Automated Functional Coverage
+
+- Authentication and demo sessions
 - Dashboard
 - Accounts
 - Transactions
@@ -29,14 +39,21 @@ Automated:
 - Loans
 - Notifications
 - Profile
-- Admin
-- Authorization
+- Admin console
+- Role authorization
 - Session security
 
-Blocked:
+## Blocked Functional Coverage
 
 - MFA
-- Beneficiaries
+- Beneficiary management
 - Account creation
 - Extended account controls
 - Dedicated statements
+- Persistent SQL/database verification
+
+Blocked functionality remains documented and must not be represented as passing coverage.
+
+## Next Phase
+
+Build current-API coverage with Postman and Newman first, followed by a REST Assured Java regression framework and their GitHub Actions workflows.

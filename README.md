@@ -1,5 +1,10 @@
 # QA Banking System Testing Project
 
+[![Selenium Tests](https://github.com/MohamedAmer45/qa-banking-system/actions/workflows/selenium.yml/badge.svg?branch=main)](https://github.com/MohamedAmer45/qa-banking-system/actions/workflows/selenium.yml)
+[![Cypress Tests](https://github.com/MohamedAmer45/qa-banking-system/actions/workflows/cypress.yml/badge.svg?branch=main)](https://github.com/MohamedAmer45/qa-banking-system/actions/workflows/cypress.yml)
+[![Playwright Tests](https://github.com/MohamedAmer45/qa-banking-system/actions/workflows/playwright.yml/badge.svg?branch=main)](https://github.com/MohamedAmer45/qa-banking-system/actions/workflows/playwright.yml)
+[![Cucumber BDD Tests](https://github.com/MohamedAmer45/qa-banking-system/actions/workflows/cucumber.yml/badge.svg?branch=main)](https://github.com/MohamedAmer45/qa-banking-system/actions/workflows/cucumber.yml)
+
 ## Overview
 
 This repository contains a complete Quality Assurance project for a fully functional banking system.
@@ -878,16 +883,24 @@ Publish Artifacts
 
 # GitHub Actions
 
-GitHub Actions will eventually support:
+GitHub Actions currently validates every implemented UI and BDD framework:
 
-```text
-Pull request validation
-Smoke testing
-API regression
-UI regression
-Scheduled regression
-Report publication
-```
+| Workflow | Current execution |
+|---|---|
+| [Selenium Tests](https://github.com/MohamedAmer45/qa-banking-system/actions/workflows/selenium.yml) | Java 21, Maven, TestNG, and headless Chrome regression |
+| [Cypress Tests](https://github.com/MohamedAmer45/qa-banking-system/actions/workflows/cypress.yml) | Node.js 24, TypeScript validation, and Chrome regression |
+| [Playwright Tests](https://github.com/MohamedAmer45/qa-banking-system/actions/workflows/playwright.yml) | Node.js 24 with Chromium, Firefox, and WebKit matrix execution |
+| [Cucumber BDD Tests](https://github.com/MohamedAmer45/qa-banking-system/actions/workflows/cucumber.yml) | Java 21, Maven, TestNG, and headless Chrome BDD regression |
+
+Each workflow:
+
+- Supports manual execution through `workflow_dispatch`.
+- Runs on relevant pushes and pull requests targeting `main`.
+- Wakes and verifies the deployed QA environment before testing.
+- Cancels superseded runs for the same workflow and Git reference.
+- Uploads framework-specific reports and failure evidence for 14 days.
+
+API, backend/unit, and performance workflows will be added with their corresponding testing phases.
 
 ---
 
@@ -1065,6 +1078,7 @@ Completed phases:
 - Cypress UI automation
 - Playwright UI automation
 - Cucumber BDD
+- GitHub Actions for all current UI and BDD suites
 
 The Cucumber framework covers every Selenium module currently runnable against the deployed NovaBank interface.
 
@@ -1072,7 +1086,8 @@ Unavailable functionality remains documented and blocked rather than represented
 
 Current deployment: https://novabank-qa-proxy.onrender.com
 
-Next major phase: GitHub Actions CI/CD.
+Next major phase: API testing with Postman and REST Assured.
+
 ---
 
 # Quality Principle

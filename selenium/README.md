@@ -279,19 +279,19 @@ selenium/screenshots/
 
 ## CI/CD
 
-The Selenium test suite will later be integrated with:
+The Selenium suite is integrated with GitHub Actions through `.github/workflows/selenium.yml`.
 
-* GitHub Actions
-* Jenkins
-
-CI execution will support:
+The workflow:
 
 * Headless browser execution
 * Automated regression testing
-* Test reports
-* Failure artifacts
-* Screenshots
-* Pull request validation
+* Java 21 and Maven dependency caching
+* QA-environment availability checks
+* Push, pull-request, and manual execution
+* Surefire and Allure artifact upload with 14-day retention
+* Cancellation of superseded runs for the same Git reference
+
+Jenkins integration remains planned.
 
 ## Relationship With Manual Tests
 
@@ -310,9 +310,9 @@ Not every manual test case will necessarily be automated.
 
 Exploratory, usability, visual, and scenarios requiring human judgment may remain manual.
 
-## Planned Selenium Framework Development
+## Selenium Framework Development Sequence
 
-The framework will be built incrementally in the following order:
+The framework has been developed incrementally in the following order. GitHub Actions integration is complete; Jenkins remains planned:
 
 1. Maven and dependency setup
 2. Framework smoke test
@@ -332,8 +332,8 @@ The framework will be built incrementally in the following order:
 16. Parallel execution
 17. Allure reporting
 18. Regression suites
-19. GitHub Actions integration
-20. Jenkins integration
+19. GitHub Actions integration (complete)
+20. Jenkins integration (planned)
 
 ## Project Goal
 
