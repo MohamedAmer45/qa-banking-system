@@ -4,6 +4,9 @@ import com.bankingsystem.qa.bdd.config.ConfigReader;
 
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
+
+import java.util.List;
 
 public final class LoginPage extends BasePage {
 
@@ -18,6 +21,11 @@ public final class LoginPage extends BasePage {
             By.cssSelector(
                     "#login button.enter[data-role='admin']"
             );
+
+    private final By appContainer = By.id("app");
+    private final By loggedInUser = By.id("who");
+    private final By logoutButton = By.id("logout");
+    private final By adminNavigation = By.id("adminNav");
 
     public LoginPage(WebDriver driver) {
 
@@ -45,5 +53,52 @@ public final class LoginPage extends BasePage {
     public boolean isAdminOptionAvailable() {
 
         return isDisplayed(adminButton);
+    }
+
+    public void enterAsCustomer() {
+
+        click(customerButton);
+        waitForApplication();
+    }
+
+    public void enterAsAdmin() {
+
+        click(adminButton);
+        waitForApplication();
+    }
+
+    public boolean isApplicationDisplayed() {
+
+        List<WebElement> elements =
+                driver.findElements(appContainer);
+
+        return !elements.isEmpty() &&
+                elements.getFirst().isDisplayed();
+    }
+
+    public String getLoggedInUserText() {
+
+        return getText(loggedInUser);
+    }
+
+    public boolean isAdminNavigationDisplayed() {
+
+        List<WebElement> elements =
+                driver.findElements(adminNavigation);
+
+        return !elements.isEmpty() &&
+                elements.getFirst().isDisplayed();
+    }
+
+    public void logout() {
+
+        click(logoutButton);
+        wait.waitForVisible(loginContainer);
+    }
+
+    private void waitForApplication() {
+
+        wait.waitForVisible(appContainer);
+        wait.waitForVisible(loggedInUser);
     }
 }
