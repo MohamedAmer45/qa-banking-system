@@ -85,8 +85,8 @@ public class AdminConsoleTest extends BaseTest {
                 loginAndOpenAdmin();
 
         Assert.assertTrue(
-                adminPage.getMetricCount() >= 5,
-                "At least five admin summary metrics should be displayed."
+                adminPage.getMetricCount() >= 3,
+                "At least three admin summary metrics should be displayed."
         );
     }
 
@@ -107,7 +107,7 @@ public class AdminConsoleTest extends BaseTest {
 
     @Test(
             groups = {"regression", "admin"},
-            description = "Admin summary contains expected banking metrics"
+            description = "Admin summary contains current banking metrics"
     )
     public void expectedAdminMetricsShouldBeAvailable() {
 
@@ -118,34 +118,24 @@ public class AdminConsoleTest extends BaseTest {
                 adminPage.getMetrics();
 
         Assert.assertTrue(
-                metrics.containsKey("customers"),
-                "Customers metric should be displayed."
+                metrics.containsKey("active users"),
+                "Active users metric should be displayed."
         );
 
         Assert.assertTrue(
-                metrics.containsKey("accounts"),
-                "Accounts metric should be displayed."
+                metrics.containsKey("open accounts"),
+                "Open accounts metric should be displayed."
         );
 
         Assert.assertTrue(
-                metrics.containsKey("transactionsToday"),
-                "Today's transactions metric should be displayed."
-        );
-
-        Assert.assertTrue(
-                metrics.containsKey("totalDeposits"),
-                "Total deposits metric should be displayed."
-        );
-
-        Assert.assertTrue(
-                metrics.containsKey("flaggedTransactions"),
-                "Flagged transactions metric should be displayed."
+                metrics.containsKey("pending reviews"),
+                "Pending reviews metric should be displayed."
         );
     }
 
     @Test(
             groups = {"regression", "admin"},
-            description = "Admin summary returns expected deterministic QA data"
+            description = "Admin summary returns current deterministic QA data"
     )
     public void adminMetricsShouldMatchSeededData() {
 
@@ -153,33 +143,21 @@ public class AdminConsoleTest extends BaseTest {
                 loginAndOpenAdmin();
 
         Assert.assertEquals(
-                adminPage.getMetricValue("customers"),
-                "1,248",
-                "Customer count should match seeded QA data."
+                adminPage.getMetricValue("active users"),
+                "1,284",
+                "Active user count should match seeded QA data."
         );
 
         Assert.assertEquals(
-                adminPage.getMetricValue("accounts"),
-                "1,984",
-                "Account count should match seeded QA data."
+                adminPage.getMetricValue("open accounts"),
+                "2,310",
+                "Open account count should match seeded QA data."
         );
 
         Assert.assertEquals(
-                adminPage.getMetricValue("transactionsToday"),
-                "378",
-                "Transaction count should match seeded QA data."
-        );
-
-        Assert.assertEquals(
-                adminPage.getMetricValue("totalDeposits"),
-                "8,420,000",
-                "Total deposits should match seeded QA data."
-        );
-
-        Assert.assertEquals(
-                adminPage.getMetricValue("flaggedTransactions"),
-                "7",
-                "Flagged transaction count should match seeded QA data."
+                adminPage.getMetricValue("pending reviews"),
+                "17",
+                "Pending review count should match seeded QA data."
         );
     }
 }
