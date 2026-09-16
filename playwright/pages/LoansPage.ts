@@ -2,7 +2,7 @@
   expect,
   Locator,
   Page,
-  APIResponse
+  Response
 } from "@playwright/test";
 
 import { BasePage } from "./BasePage";
@@ -284,7 +284,7 @@ export class LoansPage extends BasePage {
     amount: number,
     termMonths: number
   ): Promise<{
-    response: APIResponse;
+    response: Response;
     body: {
       id?: string;
       [key: string]: unknown;

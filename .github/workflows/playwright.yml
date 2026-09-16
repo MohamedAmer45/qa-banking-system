@@ -1,0 +1,97 @@
+name: Playwright Tests
+
+on:
+  workflow_dispatch:
+
+  push:
+    branches:
+      - main
+    paths:
+      - "playwright/**"
+      - ".github/workflows/playwright.yml"
+
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "playwright/**"
+      - ".github/workflows/playwright.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: playwright-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  playwright:
+    name: Playwright (${{ matrix.browser }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    strategy:
+      fail-fast: false
+      matrix:
+        browser:
+          - chromium
+          - firefox
+          - webkit
+
+    defaults:
+      run:
+        working-directory: playwright
+
+    env:
+      BASE_URL: https://novabank-qa-proxy.onrender.com
+      CI: "true"
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: playwright/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate TypeScript
+        run: npm run typecheck
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps "${{ matrix.browser }}"
+
+      - name: Wake up QA environment
+        shell: bash
+        run: |
+          for attempt in {1..12}; do
+            if curl --fail --silent --show-error --max-time 20 "$BASE_URL" > /dev/null; then
+              echo "QA environment is available."
+              exit 0
+            fi
+
+            echo "Attempt $attempt failed. Retrying in 10 seconds..."
+            sleep 10
+          done
+
+          echo "::error::QA environment did not become available."
+          exit 1
+
+      - name: Run Playwright tests
+        run: npm test -- --project="${{ matrix.browser }}"
+
+      - name: Upload Playwright artifacts
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-${{ matrix.browser }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            playwright/playwright-report/
+            playwright/test-results/
+          if-no-files-found: ignore
+          retention-days: 14
