@@ -1,0 +1,82 @@
+﻿name: Cypress Tests
+
+on:
+  workflow_dispatch:
+
+  push:
+    branches:
+      - main
+    paths:
+      - "cypress/**"
+      - ".github/workflows/cypress.yml"
+
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "cypress/**"
+      - ".github/workflows/cypress.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cypress-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  cypress:
+    name: Cypress Chrome Regression
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    defaults:
+      run:
+        working-directory: cypress
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: cypress/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Wake up QA environment
+        shell: bash
+        env:
+          TEST_BASE_URL: https://novabank-qa-proxy.onrender.com
+        run: |
+          for attempt in {1..12}; do
+            if curl --fail --silent --show-error --max-time 20 "$TEST_BASE_URL" > /dev/null; then
+              echo "QA environment is available."
+              exit 0
+            fi
+
+            echo "Attempt $attempt failed. Retrying in 10 seconds..."
+            sleep 10
+          done
+
+          echo "::error::QA environment did not become available."
+          exit 1
+
+      - name: Run Cypress validation
+        run: npm run validate
+
+      - name: Upload Cypress test artifacts
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: cypress-results-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            cypress/cypress/results/
+            cypress/cypress/screenshots/
+            cypress/cypress/videos/
+          if-no-files-found: ignore
+          retention-days: 14
