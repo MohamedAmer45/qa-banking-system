@@ -1,131 +1,62 @@
-# BUG-BEN-001 � Deleted beneficiary remains after reload
+# BUG-BEN-001 — Deleted beneficiary is still returned by the API
+
+| Field | Value |
+|---|---|
+| Module | Beneficiaries |
+| Severity | Medium |
+| Priority | Medium |
+| Status | **Open — confirmed on the current build** |
+| Raised against | Pre-port build |
+| Re-verified | 2026-09-21 against `novabank-banking-system.vercel.app` |
 
 ## Summary
 
-Deleting a beneficiary appears to succeed in the UI and the API returns HTTP 200,
-but the beneficiary remains available after the application is fully reloaded.
+Deleting a beneficiary is a soft delete: the row's status is set to `DELETED`
+but it is not removed. `GET /api/beneficiaries` applies no status filter, so
+the retired beneficiary is still returned to the client alongside active ones.
 
-## Module
+## Steps to reproduce
 
-Beneficiaries
+1. Authenticate as `customer@novabank.test` (login, then MFA `123456`).
+2. `POST /api/beneficiaries` with any valid body — note the returned `id`.
+3. `DELETE /api/beneficiaries/{id}` — returns `200 {"message":"Beneficiary deleted."}`.
+4. `GET /api/beneficiaries`.
 
-## Severity
+## Expected
 
-High
+The deleted beneficiary is absent from the list, or the contract explicitly
+states that clients must filter on `status`.
 
-## Priority
+## Actual
 
-High
+It is present, with `"status": "DELETED"`.
 
-## Status
+```json
+{ "name": "Defect Probe", "status": "DELETED", ... }
+```
 
-Open
+Confirmed 2026-09-21. The record is created, deleted, and still returned.
 
-## Environment
+## Assessment
 
-- Application: NovaBank QA Lab
-- Environment: Production QA deployment
-- Browser: Google Chrome
-- Automation: Selenium / Java / TestNG
+The soft delete itself is correct — historical transfers reference the
+beneficiary row, so removing it would break the ledger's referential integrity.
+The defect is that the read endpoint does not filter, and the API contract does
+not say the client must.
 
-## Preconditions
+Two acceptable fixes:
 
-1. Customer is authenticated.
-2. MFA verification is completed.
-3. Customer has access to the Beneficiaries module.
-4. A beneficiary has been created.
-5. The beneficiary has been verified successfully.
+1. Filter `status <> 'DELETED'` in `GET /api/beneficiaries`, and expose the
+   retired ones through an explicit flag if they are ever needed.
+2. Document that the endpoint returns all lifecycle states and that clients
+   filter on `status`.
 
-## Steps to Reproduce
+Either resolves it. Fix (1) matches what the endpoint's consumers expect.
 
-1. Sign in as the seeded customer.
-2. Complete MFA verification.
-3. Navigate to Beneficiaries.
-4. Create a new beneficiary.
-5. Verify the beneficiary using OTP 123456.
-6. Click Delete.
-7. Confirm the deletion dialog.
-8. Observe the "Beneficiary deleted" success notification.
-9. Reload the application.
-10. Navigate back to Beneficiaries.
+## Impact on testing
 
-## Expected Result
+A beneficiary count assertion after a delete will fail unless it filters on
+status. Any test that picks "the first beneficiary" can select a deleted one.
 
-The deleted beneficiary should no longer exist in the beneficiary list.
-
-The API response returned by GET /api/beneficiaries after deletion should not
-contain the deleted beneficiary.
-
-## Actual Result
-
-The application reports successful deletion and:
-
-DELETE /api/beneficiaries/{id}
-
-returns HTTP 200.
-
-However, after a complete application refresh and a fresh:
-
-GET /api/beneficiaries
-
-the beneficiary is still displayed.
-
-## Observed API Sequence
-
-POST /api/beneficiaries
-HTTP 201
-
-POST /api/beneficiaries/{id}/verify
-HTTP 200
-
-DELETE /api/beneficiaries/{id}
-HTTP 200
-
-GET /api/beneficiaries
-HTTP 200
-
-Application refresh
-
-GET /api/beneficiaries
-HTTP 200
-
-Deleted beneficiary is still present.
-
-## Impact
-
-A customer may believe a transfer beneficiary has been removed when it actually
-remains associated with the account.
-
-For a banking application, this can create both functional and security concerns,
-because a supposedly removed transfer destination may remain usable.
-
-## Automation Evidence
-
-Detected by:
-
-BeneficiaryLifecycleTest.customerShouldCreateVerifyAndDeleteBeneficiary
-
-Final assertion:
-
-Deleted beneficiary should not exist after a fresh application load.
-
-Expected: false
-Actual: true
-
-## Test Data Impact
-
-The affected automated lifecycle test must not run repeatedly while this defect
-is open because each execution creates another beneficiary that cannot be
-reliably deleted.
-
-## Resolution Requirement
-
-The delete operation must persist the beneficiary removal or disablement in the
-backend data store.
-
-After deletion:
-
-1. DELETE /api/beneficiaries/{id} should complete successfully.
-2. A subsequent GET /api/beneficiaries must not return the deleted beneficiary.
-3. Reloading the application must not restore the beneficiary.
-4. The lifecycle Selenium test should then be re-enabled.
+Deliberately left open: this is a real defect found by re-verification and is
+worth carrying through the defect workflow rather than quietly patching.

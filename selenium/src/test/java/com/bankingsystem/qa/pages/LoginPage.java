@@ -52,7 +52,7 @@ public class LoginPage {
         } catch (Exception ignored) {
         }
 
-        return "https://novabank-qa-proxy.onrender.com";
+        return "http://localhost:3000";
     }
 
     public LoginPage open() {

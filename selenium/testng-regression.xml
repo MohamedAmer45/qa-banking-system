@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+
+<!-- Full suite. Money-moving tests run single-threaded: they assert on balances,
+     and parallel execution against one seeded database would make them
+     order-dependent. Read-only tests are safe to parallelise later. -->
+<suite name="NovaBank Regression" verbose="1" parallel="false">
+    <test name="Regression">
+        <packages>
+            <package name="com.bankingsystem.qa.tests"/>
+        </packages>
+    </test>
+</suite>

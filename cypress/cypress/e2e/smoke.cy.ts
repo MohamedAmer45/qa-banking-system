@@ -8,7 +8,7 @@ describe("NovaBank - Smoke Test", () => {
       .should("be.visible");
 
     cy.location("origin")
-      .should("eq", "https://novabank-qa-proxy.onrender.com");
+      .should("eq", "http://localhost:3000");
 
     cy.title()
       .should("not.be.empty");

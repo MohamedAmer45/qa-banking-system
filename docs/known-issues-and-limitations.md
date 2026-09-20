@@ -1,26 +1,42 @@
-<!-- NOVABANK-KNOWN-GAPS-SYNC-START -->
+# Known Issues and Limitations
 
-## Current Build Gaps and Limitations
+Last synchronized: 2026-09-21
 
-| ID | Area | Limitation | QA Status |
+## Closed gaps
+
+Every gap recorded against the previous stub build is now closed. They are kept
+here rather than deleted, because the scenarios and test cases written against
+them were marked `Blocked` and now need executing rather than rewriting.
+
+| ID | Area | Former limitation | Status |
 |---|---|---|---|
-| GAP-001 | Authentication | Real credential login unavailable | Blocked |
-| GAP-002 | Authentication | MFA unavailable | Blocked |
-| GAP-003 | Beneficiaries | Beneficiary module unavailable | Blocked |
-| GAP-004 | Accounts | Account creation unavailable | Blocked |
-| GAP-005 | Accounts | Extended account controls unavailable | Blocked |
-| GAP-006 | Statements | Dedicated statements unavailable | Blocked |
-| GAP-007 | Database | Persistent PostgreSQL banking state unavailable | Blocked |
-| GAP-008 | SQL | End-to-end persisted-data SQL validation unavailable | Blocked |
+| GAP-001 | Authentication | Real credential login unavailable | **Closed** — email + password |
+| GAP-002 | Authentication | MFA unavailable | **Closed** — mandatory challenge step |
+| GAP-003 | Beneficiaries | Module unavailable | **Closed** — add, edit, delete, OTP verify |
+| GAP-004 | Accounts | Account creation unavailable | **Closed** — requires verified KYC |
+| GAP-005 | Accounts | Extended controls unavailable | **Closed** — freeze, close, dormant, limits |
+| GAP-006 | Statements | Dedicated statements unavailable | **Closed** — with CSV export |
+| GAP-007 | Database | No persistent storage | **Closed** — PostgreSQL |
+| GAP-008 | SQL | No persisted-data validation | **Closed** — direct `DATABASE_URL` access |
 
-### QA Handling
+Any test still marked `Blocked` against one of these should be re-executed and
+given a real Pass or Fail.
 
-These gaps do not invalidate their associated requirements.
+## Open limitations
 
-Existing scenarios, cases, and automation must remain documented.
+| ID | Area | Limitation | Impact on testing |
+|---|---|---|---|
+| LIM-001 | UI automation | The application exposes no `data-testid` attributes | Selectors rely on ids, classes and text, which are more brittle. Adding test ids to the application is the cheapest durable fix |
+| LIM-002 | UI automation | All existing page objects target the deleted stub's DOM | Every UI suite needs retargeting before it can run. See `docs/automation-status.md` |
+| LIM-003 | Hosting | Vercel serverless has no long-lived process | Scheduled transfers and bills are swept on API traffic, at most once per 30s. A scheduled-item test must make a request after the due time rather than waiting passively |
+| LIM-004 | Environment | Production and CI share no database | CI provisions its own PostgreSQL. Tests must not assume state created in one environment exists in the other |
+| LIM-005 | Test data | Suites mutate shared seed data | Against the hosted environment, tests that move money are order-dependent. Prefer CI (reseeded per run), or make assertions relative to a balance read at test start rather than absolute |
+| LIM-006 | Security | `QA_MODE=true` exposes one-time codes | Intentional, so tests need no mail server. Any test asserting on `demoCode`/`demoOtp` is invalid against a hardened environment |
 
-Execution status should be `Blocked` until functionality is restored.
+## Notes
 
-Tests must not be changed to treat missing product functionality as successful behavior.
-
-<!-- NOVABANK-KNOWN-GAPS-SYNC-END -->
+**LIM-005** is the one most likely to cause confusing failures. The reference
+balance in the seed is 25,000,000 minor units on account `1000000001`, but any
+suite that has already run will have moved it. Assertions of the form
+"balance decreased by exactly N" survive; assertions of the form
+"balance equals 24,900,000" do not.
