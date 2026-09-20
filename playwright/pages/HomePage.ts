@@ -20,7 +20,7 @@ export class HomePage extends BasePage {
     const expectedOrigin =
       new URL(
         process.env.BASE_URL ??
-        "https://novabank-qa-proxy.onrender.com"
+        "http://localhost:3000"
       ).origin;
 
     expect(

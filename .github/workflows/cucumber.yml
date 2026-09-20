@@ -1,91 +1,84 @@
 name: Cucumber BDD Tests
 
+# Push and pull_request triggers are disabled until the suite is retargeted
+# from the deleted stub to the real application. See _shared-notes.md.
 on:
   workflow_dispatch:
-
-  push:
-    branches:
-      - main
-    paths:
-      - "cucumber/**"
-      - ".github/workflows/cucumber.yml"
-
-  pull_request:
-    branches:
-      - main
-    paths:
-      - "cucumber/**"
-      - ".github/workflows/cucumber.yml"
+  # push:
+  #   branches: [main]
+  #   paths: ["cucumber/**", ".github/workflows/cucumber.yml"]
+  # pull_request:
+  #   branches: [main]
+  #   paths: ["cucumber/**", ".github/workflows/cucumber.yml"]
 
 permissions:
   contents: read
 
 concurrency:
-  group: cucumber-${{ github.workflow }}-${{ github.ref }}
+  group: cucumber-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   cucumber:
-    name: Cucumber Chrome Regression
+    name: Cucumber BDD Regression
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 45
 
-    defaults:
-      run:
-        working-directory: cucumber
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: novabank
+          POSTGRES_PASSWORD: novabank
+          POSTGRES_DB: novabank_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U novabank"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
 
     env:
-      BASE_URL: https://novabank-qa-proxy.onrender.com
+      BASE_URL: http://127.0.0.1:3000
       SE_AVOID_STATS: "true"
 
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v7
+      - name: Check out QA repository
+        uses: actions/checkout@v4
+
+      - name: Start NovaBank
+        uses: ./.github/actions/start-novabank
 
       - name: Set up Java 21
-        uses: actions/setup-java@v6
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "21"
           cache: maven
           cache-dependency-path: cucumber/pom.xml
 
-      - name: Display Java and Maven versions
+      - name: Run suite
+        working-directory: cucumber
         run: |
-          java --version
-          mvn --version
+          mvn --batch-mode --no-transfer-progress clean test             -Dheadless=true             -Dbrowser=chrome             -Dbase.url="$BASE_URL"
 
-      - name: Wake up QA environment
-        shell: bash
-        run: |
-          for attempt in {1..12}; do
-            if curl --fail --silent --show-error --max-time 20 "$BASE_URL" > /dev/null; then
-              echo "QA environment is available."
-              exit 0
-            fi
-
-            echo "Attempt $attempt failed. Retrying in 10 seconds..."
-            sleep 10
-          done
-
-          echo "::error::QA environment did not become available."
-          exit 1
-
-      - name: Run Cucumber regression suite
-        run: |
-          mvn --batch-mode --no-transfer-progress clean test \
-            -Dheadless=true \
-            -Dbrowser=chrome \
-            -Dbase.url="$BASE_URL"
-
-      - name: Upload Cucumber test artifacts
+      - name: Generate Allure report
         if: always()
-        uses: actions/upload-artifact@v7
+        working-directory: cucumber
+        run: mvn --batch-mode --no-transfer-progress allure:report || true
+
+      - name: Application log
+        if: always()
+        run: cat "${RUNNER_TEMP}/novabank.log" || true
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
         with:
-          name: cucumber-results-${{ github.run_id }}-${{ github.run_attempt }}
+          name: cucumber-results-${{ github.run_id }}
           path: |
-            cucumber/target/cucumber-reports/
             cucumber/target/surefire-reports/
             cucumber/target/allure-results/
+            cucumber/target/site/allure-maven-plugin/
           if-no-files-found: ignore
           retention-days: 14

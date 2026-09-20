@@ -1,27 +1,21 @@
-﻿name: Cypress Tests
+name: Cypress Tests
 
+# Push and pull_request triggers are disabled until the suite is retargeted
+# from the deleted stub to the real application. See _shared-notes.md.
 on:
   workflow_dispatch:
-
-  push:
-    branches:
-      - main
-    paths:
-      - "cypress/**"
-      - ".github/workflows/cypress.yml"
-
-  pull_request:
-    branches:
-      - main
-    paths:
-      - "cypress/**"
-      - ".github/workflows/cypress.yml"
+  # push:
+  #   branches: [main]
+  #   paths: ["cypress/**", ".github/workflows/cypress.yml"]
+  # pull_request:
+  #   branches: [main]
+  #   paths: ["cypress/**", ".github/workflows/cypress.yml"]
 
 permissions:
   contents: read
 
 concurrency:
-  group: cypress-${{ github.workflow }}-${{ github.ref }}
+  group: cypress-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -30,50 +24,47 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
-    defaults:
-      run:
-        working-directory: cypress
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: novabank
+          POSTGRES_PASSWORD: novabank
+          POSTGRES_DB: novabank_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U novabank"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      CYPRESS_BASE_URL: http://127.0.0.1:3000
 
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v7
+      - name: Check out QA repository
+        uses: actions/checkout@v4
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v7
-        with:
-          node-version: 24
-          cache: npm
-          cache-dependency-path: cypress/package-lock.json
+      - name: Start NovaBank
+        uses: ./.github/actions/start-novabank
 
-      - name: Install dependencies
+      - name: Install suite dependencies
+        working-directory: cypress
         run: npm ci
 
-      - name: Wake up QA environment
-        shell: bash
-        env:
-          TEST_BASE_URL: https://novabank-qa-proxy.onrender.com
-        run: |
-          for attempt in {1..12}; do
-            if curl --fail --silent --show-error --max-time 20 "$TEST_BASE_URL" > /dev/null; then
-              echo "QA environment is available."
-              exit 0
-            fi
-
-            echo "Attempt $attempt failed. Retrying in 10 seconds..."
-            sleep 10
-          done
-
-          echo "::error::QA environment did not become available."
-          exit 1
-
-      - name: Run Cypress validation
+      - name: Run Cypress
+        working-directory: cypress
         run: npm run validate
 
-      - name: Upload Cypress test artifacts
+      - name: Application log
         if: always()
-        uses: actions/upload-artifact@v7
+        run: cat "${RUNNER_TEMP}/novabank.log" || true
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
         with:
-          name: cypress-results-${{ github.run_id }}-${{ github.run_attempt }}
+          name: cypress-results-${{ github.run_id }}
           path: |
             cypress/cypress/results/
             cypress/cypress/screenshots/

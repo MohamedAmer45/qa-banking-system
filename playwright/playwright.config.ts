@@ -2,7 +2,7 @@
 
 const baseURL =
   process.env.BASE_URL ??
-  "https://novabank-qa-proxy.onrender.com";
+  "http://localhost:3000";
 
 export default defineConfig({
   testDir: "./tests",

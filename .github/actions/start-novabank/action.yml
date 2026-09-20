@@ -1,0 +1,77 @@
+name: Start NovaBank
+description: >-
+  Check out the NovaBank application, migrate and seed a PostgreSQL database,
+  and serve it on 127.0.0.1:3000. Replaces polling a hosted environment: the
+  suite gets a freshly seeded database on every run, so assertions on absolute
+  balances are safe and no test observes state left by another run.
+
+inputs:
+  app-ref:
+    description: Ref of the application repository to test against
+    required: false
+    default: main
+  database-url:
+    description: PostgreSQL connection string for the app to use
+    required: false
+    default: postgresql://novabank:novabank@127.0.0.1:5432/novabank_test
+  port:
+    description: Port to serve the application on
+    required: false
+    default: "3000"
+
+outputs:
+  base-url:
+    description: Base URL the application is serving on
+    value: http://127.0.0.1:${{ inputs.port }}
+
+runs:
+  using: composite
+  steps:
+    - name: Check out NovaBank application
+      uses: actions/checkout@v4
+      with:
+        repository: MohamedAmer45/novabank-banking-system
+        ref: ${{ inputs.app-ref }}
+        path: .novabank-app
+
+    - name: Set up Node.js for the application
+      uses: actions/setup-node@v4
+      with:
+        node-version: 22
+        cache: npm
+        cache-dependency-path: .novabank-app/package-lock.json
+
+    - name: Install, migrate and seed
+      shell: bash
+      working-directory: .novabank-app
+      env:
+        DATABASE_URL: ${{ inputs.database-url }}
+        DATABASE_SSL: "false"
+      run: |
+        npm ci
+        npm run db:migrate
+        npm run db:seed
+
+    - name: Start the application
+      shell: bash
+      working-directory: .novabank-app
+      env:
+        DATABASE_URL: ${{ inputs.database-url }}
+        DATABASE_SSL: "false"
+        QA_MODE: "true"
+        PORT: ${{ inputs.port }}
+      run: |
+        node server.js > "${RUNNER_TEMP}/novabank.log" 2>&1 &
+        echo $! > "${RUNNER_TEMP}/novabank.pid"
+
+        for i in $(seq 1 30); do
+          if curl -fsS "http://127.0.0.1:${{ inputs.port }}/api/health" >/dev/null; then
+            echo "NovaBank is healthy on port ${{ inputs.port }}."
+            exit 0
+          fi
+          sleep 1
+        done
+
+        echo "::error::NovaBank did not become healthy."
+        cat "${RUNNER_TEMP}/novabank.log" || true
+        exit 1

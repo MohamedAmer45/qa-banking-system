@@ -20,6 +20,7 @@
         <cucumber.version>7.34.8</cucumber.version>
         <selenium.version>4.48.0</selenium.version>
         <testng.version>7.12.0</testng.version>
+                <aspectj.version>1.9.22.1</aspectj.version>
         <allure.version>2.35.5</allure.version>
     </properties>
 
@@ -65,6 +66,14 @@
             <version>${allure.version}</version>
             <scope>test</scope>
         </dependency>
+
+        <dependency>
+            <groupId>org.aspectj</groupId>
+            <artifactId>aspectjweaver</artifactId>
+            <version>${aspectj.version}</version>
+            <scope>test</scope>
+        </dependency>
+
     </dependencies>
 
     <build>
@@ -89,6 +98,16 @@
                     <failIfNoTests>true</failIfNoTests>
                 </configuration>
             </plugin>
+
+            <plugin>
+                <groupId>io.qameta.allure</groupId>
+                <artifactId>allure-maven</artifactId>
+                <version>2.15.2</version>
+                <configuration>
+                    <reportVersion>2.29.0</reportVersion>
+                </configuration>
+            </plugin>
+
         </plugins>
     </build>
 

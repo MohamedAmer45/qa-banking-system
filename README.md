@@ -883,278 +883,85 @@ Publish Artifacts
 
 # GitHub Actions
 
-GitHub Actions currently validates every implemented UI and BDD framework:
+Each UI/BDD suite has a workflow that starts the NovaBank application inside
+the runner, against a `postgres:16` service container, using the shared
+composite action in `.github/actions/start-novabank`.
 
-| Workflow | Current execution |
+| Workflow | Runs |
 |---|---|
-| [Selenium Tests](https://github.com/MohamedAmer45/qa-banking-system/actions/workflows/selenium.yml) | Java 21, Maven, TestNG, and headless Chrome regression |
-| [Cypress Tests](https://github.com/MohamedAmer45/qa-banking-system/actions/workflows/cypress.yml) | Node.js 24, TypeScript validation, and Chrome regression |
-| [Playwright Tests](https://github.com/MohamedAmer45/qa-banking-system/actions/workflows/playwright.yml) | Node.js 24 with Chromium, Firefox, and WebKit matrix execution |
-| [Cucumber BDD Tests](https://github.com/MohamedAmer45/qa-banking-system/actions/workflows/cucumber.yml) | Java 21, Maven, TestNG, and headless Chrome BDD regression |
+| [Selenium](.github/workflows/selenium.yml) | Java 21, Maven, TestNG, headless Chrome |
+| [Cypress](.github/workflows/cypress.yml) | Node 22, TypeScript validation, Chrome |
+| [Playwright](.github/workflows/playwright.yml) | Chromium, Firefox and WebKit matrix |
+| [Cucumber](.github/workflows/cucumber.yml) | Java 21, Maven, TestNG, headless Chrome |
 
-Each workflow:
+CI no longer polls a hosted environment. Every run migrates and seeds its own
+database, so suites start from identical state and never observe data left
+behind by another run.
 
-- Supports manual execution through `workflow_dispatch`.
-- Runs on relevant pushes and pull requests targeting `main`.
-- Wakes and verifies the deployed QA environment before testing.
-- Cancels superseded runs for the same workflow and Git reference.
-- Uploads framework-specific reports and failure evidence for 14 days.
-
-API, backend/unit, and performance workflows will be added with their corresponding testing phases.
+All four are currently `workflow_dispatch` only — see **Current status** below.
 
 ---
 
-# Jenkins
+# Current status
 
-Jenkins will demonstrate enterprise pipeline functionality such as:
+## Application
 
-```text
-Parameterized builds
-Environment selection
-Parallel execution
-Scheduled builds
-Report publication
-```
+The application under test is
+[NovaBank](https://github.com/MohamedAmer45/novabank-banking-system), a
+separate repository, deployed at
+`https://novabank-banking-system.vercel.app`.
 
----
+It runs on PostgreSQL and implements every module in the requirements catalog:
+authentication with MFA, KYC, accounts, beneficiaries, transfers with FX and
+idempotency, cards, bills, loans, transactions, statements, notifications, the
+back office, RBAC across six roles, fraud rules and an audit trail.
 
-# Reporting
+Until 2026-09-20 this project tested a stub — a static page holding state in
+`localStorage`, whose `POST /api/transfers` returned a random UUID and the
+string `"completed"` without touching an account. That stub has been deleted.
 
-The project will generate testing evidence such as:
-
-```text
-Test results
-Screenshots
-Videos
-Traces
-API responses
-Database evidence
-Performance reports
-Logs
-```
-
-Sensitive values shall be masked.
-
----
-
-# Project Workflow
-
-The project is being developed in phases.
-
-## Step 1 — Requirements and Planning
-
-```text
-Requirements catalog
-Business rules
-Roles and permissions
-Test data requirements
-Test plan
-Test strategy
-Risk analysis
-Repository foundation
-```
-
-## Step 2 — Manual Testing
-
-```text
-Test scenarios
-Test cases
-Edge cases
-Boundary cases
-Negative tests
-Authorization scenarios
-Defect templates
-Traceability
-```
-
-## Step 3 — Application Foundation
-
-```text
-Banking application implementation
-Database
-Backend APIs
-Frontend
-Authentication
-Seed data
-Deployment
-```
-
-## Step 4 — Selenium
-
-```text
-Java
-TestNG
-Maven
-Page Object Model
-Allure
-```
-
-## Step 5 — Playwright
-
-```text
-TypeScript
-E2E automation
-Fixtures
-Parallel execution
-Multi-browser testing
-```
-
-## Step 6 — Cypress
-
-```text
-TypeScript
-Frontend automation
-Network validation
-```
-
-## Step 7 — Jest
-
-```text
-Backend and business logic testing
-```
-
-## Step 8 — API Testing
-
-```text
-Postman
-REST Assured
-```
-
-## Step 9 — Database Testing
-
-```text
-SQL
-Data integrity
-Financial validation
-Transaction consistency
-```
-
-## Step 10 — BDD
-
-```text
-Cucumber
-Gherkin
-```
-
-## Step 11 — Performance Testing
-
-```text
-JMeter
-Load
-Stress
-Spike
-Endurance
-Concurrency
-```
-
-## Step 12 — CI/CD
-
-```text
-GitHub Actions
-Jenkins
-```
-
-## Step 13 — Reporting and Final Documentation
-
-```text
-Reports
-Coverage review
-README updates
-Portfolio presentation
-```
-
-The exact order may be adjusted when implementation dependencies require it.
-
----
-
-# Current Project Status
-
-Completed phases:
+## Completed
 
 - Requirements and planning
-- Manual testing
-- Application foundation and deployment
-- Selenium UI automation
-- Cypress UI automation
-- Playwright UI automation
-- Cucumber BDD
-- GitHub Actions for all current UI and BDD suites
+- Manual test design
+- Application implementation and deployment
+- Selenium, Cypress, Playwright and Cucumber frameworks
+- GitHub Actions for all four
 
-The Cucumber framework covers every Selenium module currently runnable against the deployed NovaBank interface.
+## Blocking issue
 
-Unavailable functionality remains documented and blocked rather than represented by misleading passing tests.
+The four UI suites were written against the stub. They are well built — page
+objects throughout, no fixed waits anywhere — but every selector targets a DOM
+that no longer exists, and the login flow changed from clicking a demo button
+to a credential plus MFA handshake.
 
-Current deployment: https://novabank-qa-proxy.onrender.com
+They must be retargeted before they can run. Their workflows are
+`workflow_dispatch` only until then, so `main` is not permanently red. See
+[`docs/automation-status.md`](docs/automation-status.md) for the plan.
 
-Next major phase: API testing with Postman and REST Assured.
+## Unblocked and not started
+
+API testing (Postman, REST Assured), database testing, Jest, and performance
+testing are all unblocked for the first time — there is now a real backend with
+a real database behind a documented API. None of them depend on the UI
+retarget.
+
+The largest coverage gap is the `DB` module: 15 requirements with no tests,
+previously blocked because no persistent database existed.
 
 ---
 
 # Quality Principle
 
-The objective of this project is not to maximize the number of test cases.
+The objective is not to maximise the number of test cases.
 
-The objective is to build confidence that the Banking System:
+The objective is to build confidence that the system performs the correct
+operation, rejects invalid operations, protects customer and financial data,
+maintains correct balances, prevents duplicate transactions, handles concurrent
+requests correctly, persists correct database state, and remains auditable.
 
-```text
-Performs the correct operation
-Rejects invalid operations
-Protects customer data
-Protects financial data
-Maintains correct balances
-Prevents duplicate transactions
-Handles concurrent requests correctly
-Persists correct database state
-Maintains auditability
-Remains testable and maintainable
-```
-
-Critical financial functionality shall be validated across multiple layers rather than relying only on UI success messages.
-
-<!-- NOVABANK-CURRENT-BUILD-START -->
-
-## Current NovaBank QA Build
-
-Live application:
-
-`https://novabank-qa-proxy.onrender.com`
-
-NovaBank is a banking-system QA portfolio project covering:
-
-- Manual testing
-- Selenium + Java
-- Cypress + TypeScript
-- Playwright + TypeScript
-- Postman
-- REST Assured
-- SQL/database testing
-- JMeter
-- Jest
-- Cucumber BDD
-- GitHub Actions
-- Jenkins
-
-Current deployed modules:
-
-`Dashboard -> Accounts -> Transfers -> Transactions -> Bills -> Cards -> Loans -> Notifications -> Profile -> Admin`
-
-### Authentication
-
-The current QA deployment uses deterministic customer/admin demo sessions rather than production banking credentials.
-
-### Current Build Gaps
-
-The following intended banking functionality remains part of the project requirements but is not available in the current deployed build:
-
-- MFA
-- Beneficiary management
-- Account creation
-- Extended account controls
-- Dedicated statements
-- Persistent database-backed banking state
-
-Associated requirements, scenarios, test cases, and automation are preserved and marked blocked rather than deleted.
-
-See `docs/current-build-status.md` for the implementation and coverage status.
-
-<!-- NOVABANK-CURRENT-BUILD-END -->
+Critical financial functionality is validated across layers rather than
+relying on UI success messages. The reference example is the ledger invariant:
+every account balance must equal the `balance_after_minor` of that account's
+most recent transaction. A UI assertion cannot catch a violation of it; a SQL
+assertion can.

@@ -11,7 +11,7 @@ export default defineConfig({
   e2e: {
 
     baseUrl:
-      "https://novabank-qa-proxy.onrender.com",
+      process.env.CYPRESS_BASE_URL ?? "http://localhost:3000",
 
     specPattern:
       "cypress/e2e/**/*.cy.ts",

@@ -6,7 +6,7 @@
   static get baseUrl(): string {
     return (
       process.env.BASE_URL ??
-      "https://novabank-qa-proxy.onrender.com"
+      "http://localhost:3000"
     );
   }
 }

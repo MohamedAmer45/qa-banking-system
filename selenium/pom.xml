@@ -20,6 +20,7 @@
 
         <selenium.version>4.48.0</selenium.version>
         <testng.version>7.12.0</testng.version>
+                <aspectj.version>1.9.22.1</aspectj.version>
         <allure.version>2.35.5</allure.version>
     </properties>
 
@@ -47,6 +48,14 @@
             <version>${allure.version}</version>
         </dependency>
 
+
+        <dependency>
+            <groupId>org.aspectj</groupId>
+            <artifactId>aspectjweaver</artifactId>
+            <version>${aspectj.version}</version>
+            <scope>test</scope>
+        </dependency>
+
     </dependencies>
 
     <build>
@@ -66,6 +75,25 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>3.6.0</version>
+
+                <configuration>
+                    <!-- Allure's @Step/@Attachment interception is AspectJ-based; without
+                         this javaagent the annotations compile but produce no report steps. -->
+                    <argLine>
+                        -javaagent:"${settings.localRepository}/org/aspectj/aspectjweaver/${aspectj.version}/aspectjweaver-${aspectj.version}.jar"
+                    </argLine>
+                </configuration>
+
+            </plugin>
+
+
+            <plugin>
+                <groupId>io.qameta.allure</groupId>
+                <artifactId>allure-maven</artifactId>
+                <version>2.15.2</version>
+                <configuration>
+                    <reportVersion>2.29.0</reportVersion>
+                </configuration>
             </plugin>
 
         </plugins>
