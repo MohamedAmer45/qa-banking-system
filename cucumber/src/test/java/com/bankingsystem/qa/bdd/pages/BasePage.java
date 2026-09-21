@@ -3,54 +3,93 @@ package com.bankingsystem.qa.bdd.pages;
 import com.bankingsystem.qa.bdd.utils.WaitUtils;
 
 import org.openqa.selenium.By;
+import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.WebDriver;
-import org.openqa.selenium.WebDriverException;
 import org.openqa.selenium.WebElement;
 
+import java.util.List;
+
+/**
+ * Shared behaviour for every page object.
+ *
+ * Elements resolve through the {@code data-testid} attributes the application
+ * exposes for automation, so styling and copy changes do not break scenarios.
+ */
 public abstract class BasePage {
 
     protected final WebDriver driver;
     protected final WaitUtils wait;
 
     protected BasePage(WebDriver driver) {
-
         this.driver = driver;
         this.wait = new WaitUtils(driver);
     }
 
-    protected void click(By locator) {
-
-        wait.waitForClickable(locator).click();
+    protected static By testId(String id) {
+        return By.cssSelector("[data-testid='" + id + "']");
     }
 
-    protected void type(By locator, String value) {
-
-        WebElement element = wait.waitForVisible(locator);
-        element.clear();
-        element.sendKeys(value);
+    protected WebElement find(String id) {
+        return wait.waitForVisible(testId(id));
     }
 
-    protected String getText(By locator) {
-
-        return wait.waitForVisible(locator).getText();
+    protected WebElement clickable(String id) {
+        return wait.waitForClickable(testId(id));
     }
 
-    protected boolean isDisplayed(By locator) {
+    protected List<WebElement> findAll(String id) {
+        return driver.findElements(testId(id));
+    }
 
-        try {
-            return wait.waitForVisible(locator).isDisplayed();
-        } catch (WebDriverException exception) {
-            return false;
+    protected boolean isPresent(String id) {
+        return !driver.findElements(testId(id)).isEmpty();
+    }
+
+    public String pageTitle() {
+        return find("page-title").getText();
+    }
+
+    public String toastText() {
+        return find("toast").getText();
+    }
+
+    /**
+     * Wait for a view render to finish. The application updates the heading
+     * before its data arrives, so without this a following interaction races
+     * the render.
+     */
+    public void waitForViewReady() {
+        // Fail clearly if the shell never rendered, rather than spinning on a
+        // condition that can never become true.
+        wait.waitForPresent(testId("view"));
+
+        wait.waitForJavaScriptCondition(
+                "const v = document.querySelector(\"[data-testid='view']\");"
+                        + "return v && !v.textContent.includes('Loading…');"
+        );
+    }
+
+    /** A rejected submission leaves its modal up, blocking the next click. */
+    public void dismissModal() {
+        if (isPresent("modal")) {
+            clickable("modal-close").click();
+            wait.waitForInvisible(testId("modal"));
         }
     }
 
-    public String getCurrentUrl() {
-
-        return driver.getCurrentUrl();
+    public void openView(String view) {
+        dismissModal();
+        waitForViewReady();
+        clickable("nav-" + view).click();
+        waitForViewReady();
     }
 
-    public String getPageTitle() {
+    public boolean hasNavItem(String view) {
+        return !driver.findElements(testId("nav-" + view)).isEmpty();
+    }
 
-        return driver.getTitle();
+    protected void scrollIntoView(WebElement element) {
+        ((JavascriptExecutor) driver)
+                .executeScript("arguments[0].scrollIntoView({block:'center'});", element);
     }
 }

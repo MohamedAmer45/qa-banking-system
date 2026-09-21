@@ -11,8 +11,14 @@ public class AccountsPage extends BasePage {
         super(driver);
     }
 
+    /**
+     * Waiting for the view placeholder to clear is not enough on its own: the
+     * check can run before the placeholder is even set and pass against the
+     * previous view. Waiting for an account card guarantees this view rendered.
+     */
     public AccountsPage open() {
         openView("accounts");
+        find("account-card");
         return this;
     }
 

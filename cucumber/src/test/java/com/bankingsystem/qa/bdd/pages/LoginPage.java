@@ -2,103 +2,97 @@ package com.bankingsystem.qa.bdd.pages;
 
 import com.bankingsystem.qa.bdd.config.ConfigReader;
 
-import org.openqa.selenium.By;
+import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 
-import java.util.List;
+import java.util.Optional;
 
-public final class LoginPage extends BasePage {
+public class LoginPage extends BasePage {
 
-    private final By loginContainer = By.id("login");
-
-    private final By customerButton =
-            By.cssSelector(
-                    "#login button.enter[data-role='customer']"
-            );
-
-    private final By adminButton =
-            By.cssSelector(
-                    "#login button.enter[data-role='admin']"
-            );
-
-    private final By appContainer = By.id("app");
-    private final By loggedInUser = By.id("who");
-    private final By logoutButton = By.id("logout");
-    private final By adminNavigation = By.id("adminNav");
+    public static final String MFA_CODE = "123456";
 
     public LoginPage(WebDriver driver) {
-
         super(driver);
     }
 
-    public LoginPage open() {
-
+    public void open() {
         driver.get(ConfigReader.get("base.url"));
-        wait.waitForVisible(loginContainer);
-
-        return this;
+        find("login-form");
     }
 
-    public boolean isLoaded() {
-
-        return isDisplayed(loginContainer);
+    public boolean isLoginFormDisplayed() {
+        return isPresent("login-form");
     }
 
-    public boolean isCustomerOptionAvailable() {
+    /** Credentials only; the session stays on the MFA challenge. */
+    public void submitCredentials(String email, String password) {
+        find("login-email").clear();
+        find("login-email").sendKeys(email);
 
-        return isDisplayed(customerButton);
+        find("login-password").clear();
+        find("login-password").sendKeys(password);
+
+        clickable("login-submit").click();
+
+        wait.waitForJavaScriptCondition(
+                "return !!document.querySelector(\"[data-testid='mfa-form']\")"
+                        + " || !!document.querySelector(\"[data-testid='toast']\");"
+        );
     }
 
-    public boolean isAdminOptionAvailable() {
-
-        return isDisplayed(adminButton);
+    public boolean isMfaChallengeDisplayed() {
+        return isPresent("mfa-form");
     }
 
-    public void enterAsCustomer() {
+    /**
+     * Answer the challenge.
+     *
+     * A successful credential step raises its own "MFA required" toast, still
+     * on screen at this point. The toast container replaces its contents on
+     * every message, so waiting for the previous element to go stale
+     * guarantees the next read is the verification result and not the stale
+     * one.
+     */
+    public void submitMfa(String code) {
+        Optional<WebElement> staleToast =
+                driver.findElements(testId("toast")).stream().findFirst();
 
-        click(customerButton);
-        waitForApplication();
+        find("mfa-code").clear();
+        find("mfa-code").sendKeys(code);
+
+        clickable("mfa-submit").click();
+
+        staleToast.ifPresent(wait::waitForStaleness);
+
+        wait.waitForJavaScriptCondition(
+                "return !!document.querySelector(\"[data-testid='user-chip']\")"
+                        + " || !!document.querySelector(\"[data-testid='toast']\");"
+        );
     }
 
-    public void enterAsAdmin() {
-
-        click(adminButton);
-        waitForApplication();
+    public void loginAs(String email, String password) {
+        submitCredentials(email, password);
+        submitMfa(MFA_CODE);
+        wait.waitForVisible(testId("user-chip"));
+        waitForViewReady();
     }
 
-    public boolean isApplicationDisplayed() {
-
-        List<WebElement> elements =
-                driver.findElements(appContainer);
-
-        return !elements.isEmpty() &&
-                elements.getFirst().isDisplayed();
+    public boolean isAuthenticated() {
+        return isPresent("user-chip");
     }
 
-    public String getLoggedInUserText() {
-
-        return getText(loggedInUser);
-    }
-
-    public boolean isAdminNavigationDisplayed() {
-
-        List<WebElement> elements =
-                driver.findElements(adminNavigation);
-
-        return !elements.isEmpty() &&
-                elements.getFirst().isDisplayed();
+    public String signedInRole() {
+        return find("user-role").getText();
     }
 
     public void logout() {
-
-        click(logoutButton);
-        wait.waitForVisible(loginContainer);
+        clickable("logout").click();
+        wait.waitForVisible(testId("login-form"));
     }
 
-    private void waitForApplication() {
-
-        wait.waitForVisible(appContainer);
-        wait.waitForVisible(loggedInUser);
+    public Object storedToken() {
+        return ((JavascriptExecutor) driver)
+                .executeScript("return localStorage.getItem('novabank_token');");
     }
 }

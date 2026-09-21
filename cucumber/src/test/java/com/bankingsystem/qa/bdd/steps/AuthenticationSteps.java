@@ -3,107 +3,120 @@ package com.bankingsystem.qa.bdd.steps;
 import com.bankingsystem.qa.bdd.context.TestContext;
 import com.bankingsystem.qa.bdd.pages.LoginPage;
 
+import io.cucumber.java.en.And;
+import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
 import io.cucumber.java.en.When;
 
-import org.testng.Assert;
+import java.util.Map;
 
-import java.util.Locale;
+import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.assertFalse;
+import static org.testng.Assert.assertNotNull;
+import static org.testng.Assert.assertNull;
+import static org.testng.Assert.assertTrue;
 
-public final class AuthenticationSteps {
+public class AuthenticationSteps {
+
+    /** Seeded identities, addressed by role so scenarios stay readable. */
+    private static final Map<String, String[]> USERS = Map.of(
+            "customer", new String[]{"customer@novabank.test", "Demo123!", "CUSTOMER"},
+            "receiver", new String[]{"receiver@novabank.test", "Demo123!", "CUSTOMER"},
+            "administrator", new String[]{"admin@novabank.test", "Admin123!", "ADMIN"},
+            "manager", new String[]{"manager@novabank.test", "Manager123!", "MANAGER"},
+            "support agent", new String[]{"support@novabank.test", "Support123!", "SUPPORT"},
+            "auditor", new String[]{"auditor@novabank.test", "Auditor123!", "AUDITOR"}
+    );
 
     private final TestContext context;
 
     public AuthenticationSteps(TestContext context) {
-
         this.context = context;
     }
 
-    @When("the user starts the {string} demo session")
-    public void startDemoSession(String role) {
+    private static String[] user(String role) {
+        String[] user = USERS.get(role);
 
-        LoginPage loginPage = context.getLoginPage();
-
-        switch (normalize(role)) {
-            case "customer" -> loginPage.enterAsCustomer();
-            case "admin" -> loginPage.enterAsAdmin();
-            default -> throw new IllegalArgumentException(
-                    "Unsupported demo role: " + role
-            );
+        if (user == null) {
+            throw new IllegalArgumentException("Unknown seeded role: " + role);
         }
+
+        return user;
     }
 
-    @Then("the NovaBank application should open for the {string} role")
-    public void applicationShouldOpenForRole(String role) {
-
-        LoginPage loginPage = context.getLoginPage();
-
-        Assert.assertTrue(
-                loginPage.isApplicationDisplayed(),
-                "NovaBank application should be displayed."
-        );
-
-        Assert.assertTrue(
-                loginPage.getLoggedInUserText()
-                        .toLowerCase(Locale.ROOT)
-                        .contains(normalize(role)),
-                "Authenticated session should use the " +
-                role + " role."
-        );
+    @Given("the NovaBank sign-in page is open")
+    public void theSignInPageIsOpen() {
+        context.loginPage().open();
     }
 
-    @Then("the admin navigation should be {string}")
-    public void adminNavigationShouldBe(String expectedState) {
-
-        boolean actuallyDisplayed =
-                context.getLoginPage()
-                        .isAdminNavigationDisplayed();
-
-        switch (normalize(expectedState)) {
-            case "visible" ->
-                    Assert.assertTrue(
-                            actuallyDisplayed,
-                            "Admin navigation should be visible."
-                    );
-
-            case "hidden" ->
-                    Assert.assertFalse(
-                            actuallyDisplayed,
-                            "Admin navigation should be hidden."
-                    );
-
-            default -> throw new IllegalArgumentException(
-                    "Unsupported navigation state: " +
-                    expectedState
-            );
-        }
+    @Given("a signed-in {string}")
+    public void aSignedIn(String role) {
+        String[] user = user(role);
+        context.loginPage().open();
+        context.loginPage().loginAs(user[0], user[1]);
     }
 
-    @When("the user logs out")
-    public void userLogsOut() {
-
-        context.getLoginPage().logout();
+    @When("the {string} submits valid credentials")
+    public void submitsValidCredentials(String role) {
+        String[] user = user(role);
+        context.loginPage().submitCredentials(user[0], user[1]);
     }
 
-    @Then("the NovaBank entry page should be displayed again")
-    public void entryPageShouldBeDisplayedAgain() {
-
-        LoginPage loginPage = context.getLoginPage();
-
-        Assert.assertTrue(
-                loginPage.isLoaded(),
-                "NovaBank entry page should be displayed after logout."
-        );
-
-        Assert.assertFalse(
-                loginPage.isApplicationDisplayed(),
-                "Authenticated application should be hidden after logout."
-        );
+    @When("the {string} submits an incorrect password")
+    public void submitsIncorrectPassword(String role) {
+        context.loginPage().submitCredentials(user(role)[0], "WrongPassword123!");
     }
 
-    private String normalize(String value) {
+    @When("the one-time code {string} is submitted")
+    public void theOneTimeCodeIsSubmitted(String code) {
+        context.loginPage().submitMfa(code);
+    }
 
-        return value.trim()
-                .toLowerCase(Locale.ROOT);
+    @When("the correct one-time code is submitted")
+    public void theCorrectOneTimeCodeIsSubmitted() {
+        context.loginPage().submitMfa(LoginPage.MFA_CODE);
+    }
+
+    @When("the customer signs out")
+    public void theCustomerSignsOut() {
+        context.loginPage().logout();
+    }
+
+    @Then("a one-time code is requested")
+    public void aOneTimeCodeIsRequested() {
+        assertTrue(context.loginPage().isMfaChallengeDisplayed(),
+                "credentials alone should raise an MFA challenge");
+    }
+
+    @Then("no session is established")
+    public void noSessionIsEstablished() {
+        assertNull(context.loginPage().storedToken(),
+                "a session must not exist at this point");
+
+        assertFalse(context.loginPage().isAuthenticated());
+    }
+
+    @Then("the session is established")
+    public void theSessionIsEstablished() {
+        assertTrue(context.loginPage().isAuthenticated());
+        assertNotNull(context.loginPage().storedToken());
+    }
+
+    @Then("the signed-in role is {string}")
+    public void theSignedInRoleIs(String role) {
+        assertEquals(context.loginPage().signedInRole(), role);
+    }
+
+    @Then("the sign-in page is shown again")
+    public void theSignInPageIsShownAgain() {
+        assertTrue(context.loginPage().isLoginFormDisplayed());
+    }
+
+    @And("the failure is reported as {string}")
+    public void theFailureIsReportedAs(String fragment) {
+        String toast = context.loginPage().toastText();
+
+        assertTrue(toast.toLowerCase().contains(fragment.toLowerCase()),
+                "expected the message to mention " + fragment + ", saw: " + toast);
     }
 }

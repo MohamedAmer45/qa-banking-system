@@ -64,6 +64,10 @@ public abstract class BasePage {
      * late-arriving view overwrites the one that was requested.
      */
     public void waitForViewReady() {
+        // Fail clearly if the shell never rendered, rather than spinning on a
+        // condition that can never become true.
+        wait.waitForPresent(testId("view"));
+
         wait.waitForJavaScriptCondition(
                 "const v = document.querySelector(\"[data-testid='view']\");"
                         + "return v && !v.textContent.includes('Loading…');"

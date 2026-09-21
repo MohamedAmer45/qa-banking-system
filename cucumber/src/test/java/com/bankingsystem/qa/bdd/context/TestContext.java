@@ -1,30 +1,33 @@
 package com.bankingsystem.qa.bdd.context;
 
-import com.bankingsystem.qa.bdd.pages.AccountsCurrentPage;
-import com.bankingsystem.qa.bdd.pages.DashboardCurrentPage;
+import com.bankingsystem.qa.bdd.pages.BankingPage;
 import com.bankingsystem.qa.bdd.pages.LoginPage;
 
 import org.openqa.selenium.WebDriver;
 
+/**
+ * Scenario-scoped state, injected into step classes by picocontainer. Page
+ * objects are created lazily so a scenario only builds what it uses.
+ */
 public final class TestContext {
 
     private WebDriver driver;
     private LoginPage loginPage;
-    private DashboardCurrentPage dashboardPage;
-    private AccountsCurrentPage accountsPage;
+    private BankingPage bankingPage;
+
+    /** Balance captured before a money movement, for delta assertions. */
+    private Long balanceBefore;
 
     public void setDriver(WebDriver driver) {
         this.driver = driver;
     }
 
     public WebDriver getDriver() {
-
         if (driver == null) {
             throw new IllegalStateException(
                     "WebDriver is not available in the current scenario."
             );
         }
-
         return driver;
     }
 
@@ -32,59 +35,37 @@ public final class TestContext {
         return driver != null;
     }
 
-    public void setLoginPage(LoginPage loginPage) {
-        this.loginPage = loginPage;
-    }
-
-    public LoginPage getLoginPage() {
-
+    public LoginPage loginPage() {
         if (loginPage == null) {
-            throw new IllegalStateException(
-                    "LoginPage is not available in the current scenario."
-            );
+            loginPage = new LoginPage(getDriver());
         }
-
         return loginPage;
     }
 
-    public void setDashboardPage(
-            DashboardCurrentPage dashboardPage
-    ) {
-        this.dashboardPage = dashboardPage;
+    public BankingPage bankingPage() {
+        if (bankingPage == null) {
+            bankingPage = new BankingPage(getDriver());
+        }
+        return bankingPage;
     }
 
-    public DashboardCurrentPage getDashboardPage() {
+    public void rememberBalance(long minor) {
+        this.balanceBefore = minor;
+    }
 
-        if (dashboardPage == null) {
+    public long rememberedBalance() {
+        if (balanceBefore == null) {
             throw new IllegalStateException(
-                    "Dashboard page is not available in the current scenario."
+                    "No balance was captured earlier in this scenario."
             );
         }
-
-        return dashboardPage;
-    }
-
-    public void setAccountsPage(
-            AccountsCurrentPage accountsPage
-    ) {
-        this.accountsPage = accountsPage;
-    }
-
-    public AccountsCurrentPage getAccountsPage() {
-
-        if (accountsPage == null) {
-            throw new IllegalStateException(
-                    "Accounts page is not available in the current scenario."
-            );
-        }
-
-        return accountsPage;
+        return balanceBefore;
     }
 
     public void clear() {
         driver = null;
         loginPage = null;
-        dashboardPage = null;
-        accountsPage = null;
+        bankingPage = null;
+        balanceBefore = null;
     }
 }
