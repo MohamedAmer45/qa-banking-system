@@ -6,6 +6,17 @@ description: >-
   balances are safe and no test observes state left by another run.
 
 inputs:
+  app-repository:
+    description: Repository holding the application under test
+    required: false
+    default: MohamedAmer45/novabank-banking-system
+  app-token:
+    description: >-
+      Token used to check out the application. Only needed when that repository
+      is private: the default GITHUB_TOKEN is scoped to the repository running
+      the workflow and cannot read another private one.
+    required: false
+    default: ""
   app-ref:
     description: Ref of the application repository to test against
     required: false
@@ -27,10 +38,41 @@ outputs:
 runs:
   using: composite
   steps:
+    # Checkout failures here are opaque, so the cause is named up front.
+    - name: Verify the application repository is reachable
+      shell: bash
+      env:
+        APP_REPO: ${{ inputs.app-repository }}
+        APP_TOKEN: ${{ inputs.app-token }}
+      run: |
+        auth=()
+        if [ -n "$APP_TOKEN" ]; then
+          auth=(--header "Authorization: Bearer ${APP_TOKEN}")
+        fi
+
+        status=$(curl -s -o /dev/null -w '%{http_code}'           "${auth[@]}" "https://api.github.com/repos/${APP_REPO}")
+
+        if [ "$status" = "200" ]; then
+          echo "${APP_REPO} is reachable."
+          exit 0
+        fi
+
+        echo "::error::Cannot reach ${APP_REPO} (HTTP ${status})."
+
+        if [ -z "$APP_TOKEN" ]; then
+          echo "::error::If it exists but is private, pass app-token: a PAT with"
+          echo "::error::repo scope. The default GITHUB_TOKEN only covers this repository."
+        fi
+
+        echo "::error::If it does not exist yet, create it and push:"
+        echo "::error::  gh repo create novabank-banking-system --public --source=. --push"
+        exit 1
+
     - name: Check out NovaBank application
       uses: actions/checkout@v4
       with:
-        repository: MohamedAmer45/novabank-banking-system
+        repository: ${{ inputs.app-repository }}
+        token: ${{ inputs.app-token || github.token }}
         ref: ${{ inputs.app-ref }}
         path: .novabank-app
 
