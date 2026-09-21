@@ -20,7 +20,8 @@
 
         <selenium.version>4.48.0</selenium.version>
         <testng.version>7.12.0</testng.version>
-                <aspectj.version>1.9.22.1</aspectj.version>
+                <surefire.suiteXmlFiles>testng-regression.xml</surefire.suiteXmlFiles>
+        <aspectj.version>1.9.22.1</aspectj.version>
         <allure.version>2.35.5</allure.version>
     </properties>
 
@@ -77,6 +78,12 @@
                 <version>3.6.0</version>
 
                 <configuration>
+                    <!-- Defaults to the full regression suite; override with
+                         -Dsurefire.suiteXmlFiles=testng-smoke.xml -->
+                    <suiteXmlFiles>
+                        <suiteXmlFile>${surefire.suiteXmlFiles}</suiteXmlFile>
+                    </suiteXmlFiles>
+
                     <!-- Allure's @Step/@Attachment interception is AspectJ-based; without
                          this javaagent the annotations compile but produce no report steps. -->
                     <argLine>

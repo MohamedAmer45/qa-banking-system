@@ -1,182 +1,78 @@
 package com.bankingsystem.qa.tests;
 
 import com.bankingsystem.qa.base.BaseTest;
-import com.bankingsystem.qa.pages.DashboardPage;
+import com.bankingsystem.qa.pages.AdminPage;
 import com.bankingsystem.qa.pages.LoginPage;
-import org.openqa.selenium.By;
-import org.openqa.selenium.WebElement;
-import org.testng.Assert;
+import com.bankingsystem.qa.utils.TestCredentials;
+
 import org.testng.annotations.Test;
+
+
+import static org.testng.Assert.assertFalse;
+import static org.testng.Assert.assertTrue;
 
 public class RoleAuthorizationTest extends BaseTest {
 
-    @Test(
-            groups = {"smoke", "authorization"},
-            description = "Customer cannot see admin navigation"
-    )
-    public void customerShouldNotSeeAdminNavigation() {
+    @Test(description = "An administrator reaches the back office")
+    public void administratorReachesBackOffice() {
+        new LoginPage(getDriver()).open().loginAsAdmin();
 
-        LoginPage loginPage =
-                new LoginPage(
-                        getDriver()
-                );
+        AdminPage admin = new AdminPage(getDriver()).openCustomers();
 
-        loginPage.open();
-        loginPage.enterAsCustomer();
-
-        DashboardPage dashboardPage =
-                new DashboardPage(
-                        getDriver()
-                );
-
-        Assert.assertTrue(
-                dashboardPage.isLoaded(),
-                "Customer dashboard should load."
-        );
-
-        Assert.assertFalse(
-                dashboardPage.isAdminNavigationDisplayed(),
-                "Customer must not see the Admin navigation option."
-        );
+        assertTrue(admin.customerTableText().contains(TestCredentials.CUSTOMER.email()),
+                "the customer directory should list the seeded customer");
     }
 
-    @Test(
-            groups = {"smoke", "authorization"},
-            description = "Admin can see admin navigation"
-    )
-    public void adminShouldSeeAdminNavigation() {
+    @Test(description = "The audit trail records authentication activity")
+    public void auditTrailRecordsActivity() {
+        new LoginPage(getDriver()).open().loginAsAdmin();
 
-        LoginPage loginPage =
-                new LoginPage(
-                        getDriver()
-                );
+        AdminPage admin = new AdminPage(getDriver()).openAudit();
 
-        loginPage.open();
-        loginPage.enterAsAdmin();
-
-        DashboardPage dashboardPage =
-                new DashboardPage(
-                        getDriver()
-                );
-
-        Assert.assertTrue(
-                dashboardPage.isLoaded(),
-                "Admin dashboard should load."
-        );
-
-        Assert.assertTrue(
-                dashboardPage.isAdminNavigationDisplayed(),
-                "Admin should see the Admin navigation option."
-        );
+        assertTrue(admin.auditTableText().contains("LOGIN"),
+                "sign-in should appear in the audit trail");
     }
 
-    @Test(
-            groups = {"regression", "authorization"},
-            description = "Customer admin navigation remains hidden in the DOM"
-    )
-    public void customerAdminNavigationShouldHaveHiddenState() {
+    @Test(description = "A customer is not offered back-office navigation")
+    public void customerHasNoBackOfficeNavigation() {
+        LoginPage login = new LoginPage(getDriver()).open();
+        login.loginAsCustomer();
 
-        LoginPage loginPage =
-                new LoginPage(
-                        getDriver()
-                );
+        AdminPage admin = new AdminPage(getDriver());
 
-        loginPage.open();
-        loginPage.enterAsCustomer();
+        assertTrue(admin.hasNavItem("transfers"),
+                "a customer should see banking navigation");
 
-        WebElement adminNavigation =
-                getDriver().findElement(
-                        By.id("adminNav")
-                );
+        assertFalse(admin.hasNavItem("admin-dashboard"),
+                "a customer must not be offered back-office navigation");
 
-        Assert.assertFalse(
-                adminNavigation.isDisplayed(),
-                "Admin navigation should remain hidden for customer role."
-        );
-
-        String classes =
-                adminNavigation.getAttribute(
-                        "class"
-                );
-
-        Assert.assertTrue(
-                classes != null &&
-                classes.contains("hidden"),
-                "Admin navigation should have the hidden CSS class for customers."
-        );
+        assertFalse(admin.hasNavItem("admin-users"),
+                "a customer must not be offered user administration");
     }
 
-    @Test(
-            groups = {"regression", "authorization"},
-            description = "Admin navigation is enabled after admin authentication"
-    )
-    public void adminNavigationShouldBecomeVisibleForAdmin() {
+    @Test(description = "A read-only role cannot obtain user administration data")
+    public void readOnlyRoleCannotAdministerUsers() {
+        new LoginPage(getDriver()).open().loginAs(TestCredentials.SUPPORT);
 
-        LoginPage loginPage =
-                new LoginPage(
-                        getDriver()
-                );
+        AdminPage admin = new AdminPage(getDriver());
 
-        loginPage.open();
-        loginPage.enterAsAdmin();
+        assertTrue(admin.hasNavItem("admin-customers"),
+                "SUPPORT should be able to read customers");
 
-        WebElement adminNavigation =
-                getDriver().findElement(
-                        By.id("adminNav")
-                );
+        /*
+         * The sidebar is not role-filtered, so SUPPORT is offered the user
+         * administration item even though only ADMIN may use it — recorded as
+         * BUG-UI-002. The property that matters is that the module yields no
+         * user data: the server answers 403 and the view reports the failure.
+         */
+        assertTrue(admin.hasNavItem("admin-users"),
+                "the sidebar currently offers this to every staff role");
 
-        Assert.assertTrue(
-                adminNavigation.isDisplayed(),
-                "Admin navigation should be visible."
-        );
+        admin.openUsersExpectingDenial();
 
-        String classes =
-                adminNavigation.getAttribute(
-                        "class"
-                );
-
-        Assert.assertTrue(
-                classes == null ||
-                !classes.contains("hidden"),
-                "Admin navigation should not have the hidden class for admin sessions."
-        );
-    }
-
-    @Test(
-            groups = {"regression", "authorization"},
-            description = "Customer and admin sessions expose different roles"
-    )
-    public void roleInformationShouldMatchAuthenticatedSession() {
-
-        LoginPage loginPage =
-                new LoginPage(
-                        getDriver()
-                );
-
-        loginPage.open();
-        loginPage.enterAsCustomer();
-
-        DashboardPage dashboardPage =
-                new DashboardPage(
-                        getDriver()
-                );
-
-        Assert.assertTrue(
-                dashboardPage.getLoggedInUserText()
-                        .toLowerCase()
-                        .contains("customer"),
-                "Customer session should identify customer role."
-        );
-
-        loginPage.logout();
-
-        loginPage.enterAsAdmin();
-
-        Assert.assertTrue(
-                dashboardPage.getLoggedInUserText()
-                        .toLowerCase()
-                        .contains("admin"),
-                "Admin session should identify admin role."
-        );
+        assertTrue(admin.viewText().toLowerCase().contains("permission")
+                        || admin.viewText().toLowerCase().contains("unable"),
+                "a denied module must report the failure, not render data: "
+                        + admin.viewText());
     }
 }

@@ -1,16 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
 
-<!-- Fast feedback: authentication and one read-only check per major module. -->
+<!-- Fast feedback: the framework itself, sign-in, and one read-only module. -->
 <suite name="NovaBank Smoke" verbose="1">
     <test name="Smoke">
         <classes>
             <class name="com.bankingsystem.qa.tests.FrameworkSmokeTest"/>
-            <class name="com.bankingsystem.qa.tests.LoginPageTest"/>
-            <class name="com.bankingsystem.qa.tests.CustomerAuthenticationTest"/>
-            <class name="com.bankingsystem.qa.tests.DashboardReadOnlyTest"/>
-            <class name="com.bankingsystem.qa.tests.AccountsReadOnlyTest"/>
-            <class name="com.bankingsystem.qa.tests.TransfersReadOnlyTest"/>
+            <class name="com.bankingsystem.qa.tests.AuthenticationTest"/>
+            <class name="com.bankingsystem.qa.tests.AccountsTest"/>
         </classes>
     </test>
 </suite>

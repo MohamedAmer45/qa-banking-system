@@ -1,199 +1,127 @@
 package com.bankingsystem.qa.pages;
 
 import com.bankingsystem.qa.utils.ConfigReader;
-import org.openqa.selenium.By;
+import com.bankingsystem.qa.utils.TestCredentials;
+
 import org.openqa.selenium.WebDriver;
-import org.openqa.selenium.support.ui.ExpectedConditions;
-import org.openqa.selenium.support.ui.WebDriverWait;
+import org.openqa.selenium.WebElement;
 
-import java.time.Duration;
+import java.util.Optional;
 
-public class LoginPage {
-
-    private final WebDriver driver;
-    private final WebDriverWait wait;
-
-    private final By loginContainer = By.id("login");
-
-    private final By customerButton =
-            By.cssSelector("#login button.enter[data-role='customer']");
-
-    private final By adminButton =
-            By.cssSelector("#login button.enter[data-role='admin']");
-
-    private final By appContainer = By.id("app");
-
-    private final By loggedInUser = By.id("who");
-
-    private final By logoutButton = By.id("logout");
-
-    private final By adminNavigation = By.id("adminNav");
+/**
+ * Sign-in is a two-step handshake: credentials raise an MFA challenge, and the
+ * challenge is exchanged for a session. Both are always required — every
+ * seeded user has MFA enabled.
+ */
+public class LoginPage extends BasePage {
 
     public LoginPage(WebDriver driver) {
-
-        this.driver = driver;
-
-        this.wait = new WebDriverWait(
-                driver,
-                Duration.ofSeconds(10)
-        );
-    }
-
-    private String getBaseUrl() {
-
-        try {
-
-            String value = ConfigReader.get("base.url");
-
-            if (value != null && !value.isBlank()) {
-                return value;
-            }
-
-        } catch (Exception ignored) {
-        }
-
-        return "http://localhost:3000";
+        super(driver);
     }
 
     public LoginPage open() {
+        driver.get(ConfigReader.get("base.url"));
+        find("login-form");
+        return this;
+    }
 
-        driver.get(getBaseUrl());
+    public boolean isLoginFormDisplayed() {
+        return isPresent("login-form");
+    }
 
-        wait.until(
-                ExpectedConditions.visibilityOfElementLocated(
-                        loginContainer
-                )
+    /**
+     * Submit credentials only, leaving the session on the MFA challenge.
+     *
+     * Waits for the server to answer — either the challenge form appears, or a
+     * toast reports the rejection — so callers never assert against the form
+     * as it was before the request completed.
+     */
+    public LoginPage submitCredentials(String email, String password) {
+        find("login-email").clear();
+        find("login-email").sendKeys(email);
+
+        find("login-password").clear();
+        find("login-password").sendKeys(password);
+
+        clickable("login-submit").click();
+        waitForCredentialOutcome();
+        return this;
+    }
+
+    private void waitForCredentialOutcome() {
+        wait.waitForJavaScriptCondition(
+                "return !!document.querySelector(\"[data-testid='mfa-form']\")"
+                        + " || !!document.querySelector(\"[data-testid='toast']\");"
+        );
+    }
+
+    public boolean isMfaChallengeDisplayed() {
+        return isPresent("mfa-form");
+    }
+
+    /**
+     * Answer the challenge and wait for the outcome: either the shell renders,
+     * or a toast reports the rejected code.
+     *
+     * A successful credential step raises its own "MFA required" toast, which
+     * is still on screen when this runs. Waiting for "a toast" would latch
+     * onto that stale one and read it as the verification result. The toast
+     * container replaces its contents on every message, so waiting for the
+     * previous element to go stale guarantees the next read is the new one.
+     */
+    public LoginPage submitMfa(String code) {
+        Optional<WebElement> staleToast =
+                driver.findElements(testId("toast")).stream().findFirst();
+
+        find("mfa-code").clear();
+        find("mfa-code").sendKeys(code);
+
+        clickable("mfa-submit").click();
+
+        staleToast.ifPresent(wait::waitForStaleness);
+
+        wait.waitForJavaScriptCondition(
+                "return !!document.querySelector(\"[data-testid='user-chip']\")"
+                        + " || !!document.querySelector(\"[data-testid='toast']\");"
         );
 
         return this;
     }
 
-    public boolean isLoaded() {
+    /** The full handshake, through to an authenticated shell. */
+    public LoginPage loginAs(TestCredentials.User user) {
+        submitCredentials(user.email(), user.password());
+        submitMfa(TestCredentials.MFA_CODE);
 
-        try {
-
-            return wait.until(
-                    ExpectedConditions.visibilityOfElementLocated(
-                            loginContainer
-                    )
-            ).isDisplayed();
-
-        } catch (Exception exception) {
-
-            return false;
-        }
+        wait.waitForVisible(testId("user-chip"));
+        waitForViewReady();
+        return this;
     }
 
-    public boolean isCustomerButtonDisplayed() {
-
-        return wait.until(
-                ExpectedConditions.visibilityOfElementLocated(
-                        customerButton
-                )
-        ).isDisplayed();
+    public LoginPage loginAsCustomer() {
+        return loginAs(TestCredentials.CUSTOMER);
     }
 
-    public boolean isAdminButtonDisplayed() {
-
-        return wait.until(
-                ExpectedConditions.visibilityOfElementLocated(
-                        adminButton
-                )
-        ).isDisplayed();
+    public LoginPage loginAsAdmin() {
+        return loginAs(TestCredentials.ADMIN);
     }
 
-    public void enterAsCustomer() {
-
-        wait.until(
-                ExpectedConditions.elementToBeClickable(
-                        customerButton
-                )
-        ).click();
-
-        waitForApplication();
+    public String signedInRole() {
+        return find("user-role").getText();
     }
 
-    public void enterAsAdmin() {
-
-        wait.until(
-                ExpectedConditions.elementToBeClickable(
-                        adminButton
-                )
-        ).click();
-
-        waitForApplication();
-    }
-
-    private void waitForApplication() {
-
-        wait.until(driver -> {
-
-            String classes =
-                    driver.findElement(appContainer)
-                            .getAttribute("class");
-
-            return classes == null ||
-                    !classes.contains("hidden");
-        });
-
-        wait.until(driver -> {
-
-            String text =
-                    driver.findElement(loggedInUser)
-                            .getText();
-
-            return text != null &&
-                    !text.isBlank();
-        });
-    }
-
-    public boolean isApplicationDisplayed() {
-
-        try {
-
-            return driver.findElement(appContainer)
-                    .isDisplayed();
-
-        } catch (Exception exception) {
-
-            return false;
-        }
-    }
-
-    public String getLoggedInUserText() {
-
-        return wait.until(
-                ExpectedConditions.visibilityOfElementLocated(
-                        loggedInUser
-                )
-        ).getText();
-    }
-
-    public boolean isAdminNavigationDisplayed() {
-
-        try {
-
-            return driver.findElement(adminNavigation)
-                    .isDisplayed();
-
-        } catch (Exception exception) {
-
-            return false;
-        }
+    public boolean isAuthenticated() {
+        return isPresent("user-chip");
     }
 
     public void logout() {
+        clickable("logout").click();
+        wait.waitForVisible(testId("login-form"));
+    }
 
-        wait.until(
-                ExpectedConditions.elementToBeClickable(
-                        logoutButton
-                )
-        ).click();
-
-        wait.until(
-                ExpectedConditions.visibilityOfElementLocated(
-                        loginContainer
-                )
-        );
+    /** The session token the application persists for reload survival. */
+    public Object storedToken() {
+        return ((org.openqa.selenium.JavascriptExecutor) driver)
+                .executeScript("return localStorage.getItem('novabank_token');");
     }
 }
