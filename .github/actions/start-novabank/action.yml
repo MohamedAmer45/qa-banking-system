@@ -39,33 +39,31 @@ runs:
   using: composite
   steps:
     # Checkout failures here are opaque, so the cause is named up front.
+    # Uses git rather than the REST API: unauthenticated api.github.com calls
+    # are rate limited per IP, and runners share IPs, so an API-based check can
+    # report "unreachable" when it was only throttled.
     - name: Verify the application repository is reachable
       shell: bash
       env:
         APP_REPO: ${{ inputs.app-repository }}
         APP_TOKEN: ${{ inputs.app-token }}
+        APP_REF: ${{ inputs.app-ref }}
       run: |
-        auth=()
         if [ -n "$APP_TOKEN" ]; then
-          auth=(--header "Authorization: Bearer ${APP_TOKEN}")
+          url="https://x-access-token:${APP_TOKEN}@github.com/${APP_REPO}.git"
+        else
+          url="https://github.com/${APP_REPO}.git"
         fi
 
-        status=$(curl -s -o /dev/null -w '%{http_code}'           "${auth[@]}" "https://api.github.com/repos/${APP_REPO}")
-
-        if [ "$status" = "200" ]; then
-          echo "${APP_REPO} is reachable."
+        if git ls-remote --heads "$url" "$APP_REF" | grep -q .; then
+          echo "${APP_REPO} is reachable and has a '${APP_REF}' branch."
           exit 0
         fi
 
-        echo "::error::Cannot reach ${APP_REPO} (HTTP ${status})."
-
-        if [ -z "$APP_TOKEN" ]; then
-          echo "::error::If it exists but is private, pass app-token: a PAT with"
-          echo "::error::repo scope. The default GITHUB_TOKEN only covers this repository."
-        fi
-
-        echo "::error::If it does not exist yet, create it and push:"
-        echo "::error::  gh repo create novabank-banking-system --public --source=. --push"
+        echo "::error::Cannot read branch '${APP_REF}' of ${APP_REPO}."
+        echo "::error::Either the repository does not exist, it is private and"
+        echo "::error::needs app-token (the default GITHUB_TOKEN only covers this"
+        echo "::error::repository), or the branch has not been pushed yet."
         exit 1
 
     - name: Check out NovaBank application
@@ -80,8 +78,6 @@ runs:
       uses: actions/setup-node@v4
       with:
         node-version: 22
-        cache: npm
-        cache-dependency-path: .novabank-app/package-lock.json
 
     - name: Install, migrate and seed
       shell: bash
