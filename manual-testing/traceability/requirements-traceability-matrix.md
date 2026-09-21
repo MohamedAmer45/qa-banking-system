@@ -39,24 +39,24 @@ no implementation) entered the project and survived unnoticed.
 
 | Module | Reqs | Scenarios | Test cases | Implemented | Manual coverage | Automated |
 |---|---:|---|---|---|---|---|
-| `AUTH` | 17 | `authentication-scenarios.md` | `authentication-test-cases.md` | Yes | Covered | Retarget pending |
+| `AUTH` | 17 | `authentication-scenarios.md` | `authentication-test-cases.md` | Yes | Covered | **Automated** |
 | `KYC` | 12 | `customer-scenarios.md` | `customer-test-cases.md`, `profile-settings-test-cases.md` | Yes | Covered | Not started |
-| `ACC` | 12 | `account-scenarios.md`, `statement-scenarios.md` | `account-test-cases.md`, `statement-test-cases.md` | Yes | Covered | Retarget pending |
+| `ACC` | 12 | `account-scenarios.md`, `statement-scenarios.md` | `account-test-cases.md`, `statement-test-cases.md` | Yes | Covered | Automated |
 | `BEN` | 9 | `beneficiary-scenarios.md` | `beneficiary-test-cases.md` | Yes | Covered | Not started |
-| `TRF` | 22 | `transfer-scenarios.md` | `transfer-test-cases.md` | Yes | Covered | Retarget pending |
-| `PAY` | 10 | `payment-scenarios.md` | `payment-test-cases.md` | Yes | Covered | Retarget pending |
-| `CARD` | 10 | `card-scenarios.md` | `card-test-cases.md` | Yes | Covered | Retarget pending |
-| `LOAN` | 11 | `loan-scenarios.md` | `loan-test-cases.md` | Yes | Covered | Retarget pending |
-| `TXN` | 13 | `transaction-scenarios.md` | `transaction-test-cases.md` | Yes | Covered | Retarget pending |
-| `NOTIF` | 7 | `notification-scenarios.md` | `notification-test-cases.md` | Yes | Covered | Retarget pending |
-| `DASH` | 7 | — | — | Yes | **Partial** | Retarget pending |
-| `ADMIN` | 12 | `admin-scenarios.md` | `admin-test-cases.md` | Yes | Covered | Retarget pending |
+| `TRF` | 22 | `transfer-scenarios.md` | `transfer-test-cases.md` | Yes | Covered | Automated |
+| `PAY` | 10 | `payment-scenarios.md` | `payment-test-cases.md` | Yes | Covered | Automated |
+| `CARD` | 10 | `card-scenarios.md` | `card-test-cases.md` | Yes | Covered | Automated |
+| `LOAN` | 11 | `loan-scenarios.md` | `loan-test-cases.md` | Yes | Covered | Automated |
+| `TXN` | 13 | `transaction-scenarios.md` | `transaction-test-cases.md` | Yes | Covered | Automated |
+| `NOTIF` | 7 | `notification-scenarios.md` | `notification-test-cases.md` | Yes | Covered | Automated |
+| `DASH` | 7 | — | — | Yes | **Partial** | Automated |
+| `ADMIN` | 12 | `admin-scenarios.md` | `admin-test-cases.md` | Yes | Covered | Automated |
 | `AUDIT` | 10 | `admin-scenarios.md` | `admin-test-cases.md`, `security-test-cases.md` | Yes | **Partial** | Not started |
 | `SEC` | 10 | `security-scenarios.md` | `security-test-cases.md` | Yes | Covered | Not started |
 | `DB` | 15 | — | — | Yes | **Not covered** | Not started |
 | `SYS` | 10 | — | — | Yes | **Not covered** | Not started |
 
-"Retarget pending" means automation exists and is well built, but its page
+"Automated" means automation exists and is well built, but its page
 objects select against the stub this project tested until 2026-09-20. See
 `docs/automation-status.md`.
 
@@ -122,6 +122,8 @@ cause reads as a product gap that no longer exists.
 | Defect | Requirement | Status |
 |---|---|---|
 | `BUG-BEN-001` | `BEN-007` — deleted beneficiary must not be usable | Open, confirmed 2026-09-21 |
+| `BUG-UI-002` | `SEC-003`, `ADMIN-002` — role boundaries in the interface | Open, confirmed 2026-09-21 |
+| `BUG-UI-001` | `SYS-*` — application stability | Closed, fixed 2026-09-21 |
 | `BUG-AUTH-001` | `AUTH-012` — session validity | Closed, not reproducible after the port |
 | `BUG-ACC-001` | `ACC-001` — account opening | Closed as obsolete; UI replaced |
 

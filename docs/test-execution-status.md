@@ -4,23 +4,31 @@ Last synchronized: 2026-09-21
 
 ## Status
 
-All previously blocked functionality is now implemented, and the stub the
-suites were written against has been deleted. That inverts the execution
-picture: nothing is blocked by a missing feature, and nothing is currently
-executable either, because the UI page objects target the old DOM.
+Nothing is blocked. Every documented module is implemented, and all four UI
+suites are retargeted at the real application and passing.
 
-| Layer | Executable | Reason |
+| Layer | Executable | Result |
 |---|---|---|
-| Manual testing | Yes | The application implements every documented module |
-| Playwright | No | Page objects target the deleted stub |
-| Cypress | No | Page objects target the deleted stub |
-| Selenium | No | Page objects target the deleted stub |
-| Cucumber | No | Step definitions and page objects target the deleted stub |
-| API (Postman, REST Assured) | Yes | Not yet written, but unblocked |
-| Database (SQL) | Yes | Not yet written, but unblocked |
-| Performance (JMeter, k6) | Yes | Not yet written, but unblocked |
+| Manual testing | Yes | Ready to execute |
+| Playwright | Yes | 24 passing, 3 browsers |
+| Cypress | Yes | 26 passing |
+| Selenium | Yes | 21 passing |
+| Cucumber | Yes | 21 scenarios passing |
+| API (Postman, REST Assured) | Yes | Not yet written |
+| Database (SQL) | Yes | Not yet written — largest gap |
+| Performance (JMeter, k6) | Yes | Not yet written |
 
-See `docs/automation-status.md` for the retarget plan.
+See `docs/automation-status.md` for how the four suites divide the work.
+
+## Open defects
+
+| Defect | Status |
+|---|---|
+| `BUG-BEN-001` | Open — deleted beneficiaries are still returned by the API |
+| `BUG-UI-002` | Open — the back-office sidebar is not role-filtered |
+| `BUG-UI-001` | Closed — fixed; found by Cypress |
+| `BUG-AUTH-001` | Closed — not reproducible after the PostgreSQL port |
+| `BUG-ACC-001` | Closed — obsolete; the UI it described no longer exists |
 
 ## Previously blocked areas
 

@@ -925,19 +925,20 @@ string `"completed"` without touching an account. That stub has been deleted.
 - Requirements and planning
 - Manual test design
 - Application implementation and deployment
-- Selenium, Cypress, Playwright and Cucumber frameworks
-- GitHub Actions for all four
+- Selenium, Cypress, Playwright and Cucumber — all retargeted and passing
+- GitHub Actions for all four, running against an app started in the runner
 
-## Blocking issue
+| Suite | Tests | Browsers |
+|---|---:|---|
+| Playwright | 24 | Chromium, Firefox, WebKit |
+| Cypress | 26 | Chrome |
+| Selenium | 21 | Chrome |
+| Cucumber | 21 scenarios | Chrome |
 
-The four UI suites were written against the stub. They are well built — page
-objects throughout, no fixed waits anywhere — but every selector targets a DOM
-that no longer exists, and the login flow changed from clicking a demo button
-to a credential plus MFA handshake.
-
-They must be retargeted before they can run. Their workflows are
-`workflow_dispatch` only until then, so `main` is not permanently red. See
-[`docs/automation-status.md`](docs/automation-status.md) for the plan.
+The four divide the work rather than duplicating it; see
+[`docs/automation-status.md`](docs/automation-status.md). That division found
+two defects the others missed — `BUG-UI-001` (Cypress) and `BUG-UI-002`
+(Selenium).
 
 ## Unblocked and not started
 
