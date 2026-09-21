@@ -1,428 +1,99 @@
-﻿import {
-  expect,
-  Locator,
-  Page
-} from "@playwright/test";
-
+import { expect, Locator, Page } from "@playwright/test";
 import { BasePage } from "./BasePage";
 
-
 export class TransfersPage extends BasePage {
-
-  readonly navigationButton: Locator;
-
-  readonly section: Locator;
-
-  readonly heading: Locator;
-
-  readonly fromSelect: Locator;
-
-  readonly recipientSelect: Locator;
-
-  readonly amountInput: Locator;
-
-  readonly submitButton: Locator;
-
-  readonly toast: Locator;
-
-  readonly transactionsNavigationButton: Locator;
-
-  readonly transactionsSection: Locator;
-
-  readonly transactionRows: Locator;
-
+  readonly newTransferButton: Locator;
+  readonly form: Locator;
+  readonly fromAccount: Locator;
+  readonly destinationType: Locator;
+  readonly beneficiary: Locator;
+  readonly ownAccount: Locator;
+  readonly amount: Locator;
+  readonly memo: Locator;
+  readonly submit: Locator;
 
   constructor(page: Page) {
-
     super(page);
 
-    this.navigationButton =
-      page.locator(
-        '#nav button[data-s="transfers"]'
-      );
-
-    this.section =
-      page.locator("#transfers");
-
-    this.heading =
-      this.section.getByRole(
-        "heading",
-        {
-          name: "Transfers"
-        }
-      );
-
-    this.fromSelect =
-      page.locator("#from");
-
-    this.recipientSelect =
-      page.locator("#recipient");
-
-    this.amountInput =
-      page.locator("#transferAmount");
-
-    this.submitButton =
-      this.section.getByRole(
-        "button",
-        {
-          name: "Send transfer"
-        }
-      );
-
-    this.toast =
-      page.locator("#toast");
-
-    this.transactionsNavigationButton =
-      page.locator(
-        '#nav button[data-s="transactions"]'
-      );
-
-    this.transactionsSection =
-      page.locator("#transactions");
-
-    this.transactionRows =
-      page.locator(
-        "#tx tbody tr"
-      );
-
+    this.newTransferButton = this.testId("new-transfer");
+    this.form = this.testId("transfer-form");
+    this.fromAccount = this.testId("transfer-from");
+    this.destinationType = this.testId("transfer-dest-type");
+    this.beneficiary = this.testId("transfer-beneficiary");
+    this.ownAccount = this.testId("transfer-own-account");
+    this.amount = this.testId("transfer-amount");
+    this.memo = this.testId("transfer-memo");
+    this.submit = this.testId("transfer-submit");
   }
 
-
+  /** Transfers view: history plus the button that opens the transfer form. */
   async open(): Promise<void> {
-
-    await this.navigationButton.click();
-
-    await this.expectLoaded();
-
+    await this.openView("transfers", /Transfers/i);
+    await expect(this.newTransferButton).toBeVisible();
   }
 
+  /** The transfer form is a modal; it does not exist until this is clicked. */
+  async openForm(): Promise<void> {
+    await this.newTransferButton.click();
+    await expect(this.form).toBeVisible();
+  }
 
   async expectLoaded(): Promise<void> {
-
-    await expect(
-      this.section
-    ).toBeVisible();
-
-    await expect(
-      this.heading
-    ).toBeVisible();
-
-    await expect(
-      this.fromSelect
-    ).toBeVisible();
-
-    await expect(
-      this.recipientSelect
-    ).toBeVisible();
-
-    await expect(
-      this.amountInput
-    ).toBeVisible();
-
-    await expect(
-      this.submitButton
-    ).toBeVisible();
-
+    await expect(this.form).toBeVisible();
+    await expect(this.fromAccount).toBeVisible();
+    await expect(this.amount).toBeVisible();
+    await expect(this.submit).toBeEnabled();
   }
 
-
-  async expectSourceAccounts(): Promise<void> {
-
-    const options =
-      this.fromSelect.locator("option");
-
-    await expect(
-      options
-    ).toHaveCount(2);
-
-    await expect(
-      options.nth(0)
-    ).toContainText("Checking");
-
-    await expect(
-      options.nth(0)
-    ).toContainText("$12,840.75");
-
-    await expect(
-      options.nth(1)
-    ).toContainText("Savings");
-
-    await expect(
-      options.nth(1)
-    ).toContainText("$32,500.00");
-
+  async sourceAccountCount(): Promise<number> {
+    return this.fromAccount.locator("option").count();
   }
 
-
-  async expectRecipients(): Promise<void> {
-
-    const options =
-      this.recipientSelect.locator("option");
-
-    await expect(
-      options
-    ).toHaveCount(2);
-
-    await expect(
-      options.nth(0)
-    ).toHaveText("Alex Johnson");
-
-    await expect(
-      options.nth(1)
-    ).toHaveText("Sam Lee");
-
+  get history(): Locator {
+    return this.page.locator("table.table");
   }
 
-
-  async selectSource(
-    index: number
-  ): Promise<void> {
-
-    await this.fromSelect.selectOption(
-      String(index)
-    );
-
-  }
-
-
-  async selectRecipient(
-    recipient: string
-  ): Promise<void> {
-
-    await this.recipientSelect.selectOption({
-      label: recipient
-    });
-
-  }
-
-
-  async enterAmount(
-    amount: number
-  ): Promise<void> {
-
-    await this.amountInput.fill(
-      String(amount)
-    );
-
-  }
-
-
-  async getSourceBalance(
-    index: number
-  ): Promise<number> {
-
-    const text =
-      await this.fromSelect
-        .locator("option")
-        .nth(index)
-        .innerText();
-
-    const match =
-      text.match(
-        /\$([\d,]+\.\d{2})/
-      );
-
-    if (!match) {
-      throw new Error(
-        "Could not parse account balance from: " + text
-      );
+  /**
+   * Submits a transfer and waits for the API to answer, returning the status
+   * so a caller can distinguish a business rejection (409) from a downstream
+   * failure (422) without re-reading the DOM.
+   */
+  async submitTransfer(options: {
+    fromIndex?: number;
+    beneficiaryIndex?: number;
+    amount: number | string;
+    memo?: string;
+  }): Promise<number> {
+    if (options.fromIndex !== undefined) {
+      await this.fromAccount.selectOption({ index: options.fromIndex });
     }
 
-    return Number(
-      match[1].replace(/,/g, "")
+    if (options.beneficiaryIndex !== undefined) {
+      await this.destinationType.selectOption("beneficiary");
+      await this.beneficiary.selectOption({ index: options.beneficiaryIndex });
+    }
+
+    await this.amount.fill(String(options.amount));
+
+    if (options.memo) {
+      await this.memo.fill(options.memo);
+    }
+
+    const response = this.page.waitForResponse(
+      r => r.url().includes("/api/transfers") && r.request().method() === "POST"
     );
 
+    await this.submit.click();
+    return (await response).status();
   }
 
+  async expectNativeAmountInvalid(value: string): Promise<void> {
+    await this.amount.fill(value);
 
-  async performSuccessfulTransfer(
-    sourceIndex: number,
-    recipient: string,
-    amount: number
-  ): Promise<void> {
-
-    await this.selectSource(
-      sourceIndex
+    const valid = await this.amount.evaluate(
+      node => (node as HTMLInputElement).checkValidity()
     );
 
-    await this.selectRecipient(
-      recipient
-    );
-
-    await this.enterAmount(
-      amount
-    );
-
-    const responsePromise =
-      this.page.waitForResponse(
-        response =>
-          response.url().includes(
-            "/api/transfers"
-          ) &&
-          response.request().method() ===
-            "POST"
-      );
-
-    await this.submitButton.click();
-
-    const response =
-      await responsePromise;
-
-    expect(
-      response.ok()
-    ).toBeTruthy();
-
-    await expect(
-      this.toast
-    ).toHaveText(
-      "Transfer completed."
-    );
-
-    await expect(
-      this.toast
-    ).toBeVisible();
-
+    expect(valid).toBe(false);
   }
-
-
-  async attemptClientRejectedTransfer(
-    sourceIndex: number,
-    recipient: string,
-    amount: number,
-    expectedMessage: string
-  ): Promise<void> {
-
-    await this.selectSource(
-      sourceIndex
-    );
-
-    await this.selectRecipient(
-      recipient
-    );
-
-    await this.enterAmount(
-      amount
-    );
-
-    await this.submitButton.click();
-
-    await expect(
-      this.toast
-    ).toHaveText(
-      expectedMessage
-    );
-
-    await expect(
-      this.toast
-    ).toBeVisible();
-
-  }
-
-
-  async expectNativeAmountInvalid(
-    amount: number
-  ): Promise<void> {
-
-    await this.enterAmount(
-      amount
-    );
-
-    const validity =
-      await this.amountInput.evaluate(
-        (element: HTMLInputElement) => ({
-          valid:
-            element.checkValidity(),
-
-          rangeUnderflow:
-            element.validity.rangeUnderflow,
-
-          valueMissing:
-            element.validity.valueMissing
-        })
-      );
-
-    expect(
-      validity.valid
-    ).toBeFalsy();
-
-    expect(
-      validity.rangeUnderflow
-    ).toBeTruthy();
-
-  }
-
-
-  async openTransactions():
-    Promise<void> {
-
-    await this.transactionsNavigationButton.click();
-
-    await expect(
-      this.transactionsSection
-    ).toBeVisible();
-
-  }
-
-
-  async expectTransaction(
-    description: string,
-    amount: string
-  ): Promise<void> {
-
-    const row =
-      this.transactionRows.filter({
-        hasText: description
-      }).first();
-
-    await expect(
-      row
-    ).toBeVisible();
-
-    await expect(
-      row
-    ).toContainText(
-      description
-    );
-
-    await expect(
-      row
-    ).toContainText(
-      amount
-    );
-
-    await expect(
-      row
-    ).toContainText(
-      "completed"
-    );
-
-  }
-
-
-  async expectTransactionCount(
-    count: number
-  ): Promise<void> {
-
-    await expect(
-      this.transactionRows
-    ).toHaveCount(
-      count
-    );
-
-  }
-
-
-  async reloadAndOpen():
-    Promise<void> {
-
-    await this.page.reload();
-
-    await this.page.waitForLoadState(
-      "domcontentloaded"
-    );
-
-    await this.open();
-
-  }
-
 }

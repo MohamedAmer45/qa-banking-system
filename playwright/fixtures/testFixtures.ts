@@ -1,186 +1,37 @@
-﻿import {
-  test as base,
-  expect
-} from "@playwright/test";
+import { test as base, expect } from "@playwright/test";
 
-import { AccountsPage } from "../pages/AccountsPage";
-import { AdminPage } from "../pages/AdminPage";
 import { AuthPage } from "../pages/AuthPage";
-import { BillsPage } from "../pages/BillsPage";
-import { CardsPage } from "../pages/CardsPage";
 import { DashboardPage } from "../pages/DashboardPage";
-import { HomePage } from "../pages/HomePage";
-import { LoansPage } from "../pages/LoansPage";
-import { NotificationsPage } from "../pages/NotificationsPage";
-import { ProfilePage } from "../pages/ProfilePage";
-import { TransactionsPage } from "../pages/TransactionsPage";
+import { AccountsPage } from "../pages/AccountsPage";
 import { TransfersPage } from "../pages/TransfersPage";
-
+import { BeneficiariesPage } from "../pages/BeneficiariesPage";
+import { AdminPage } from "../pages/AdminPage";
 
 type BankingFixtures = {
+  authPage: AuthPage;
+  dashboardPage: DashboardPage;
+  accountsPage: AccountsPage;
+  transfersPage: TransfersPage;
+  beneficiariesPage: BeneficiariesPage;
+  adminPage: AdminPage;
 
-  homePage:
-    HomePage;
-
-  authPage:
-    AuthPage;
-
-  dashboardPage:
-    DashboardPage;
-
-  accountsPage:
-    AccountsPage;
-
-  transfersPage:
-    TransfersPage;
-
-  transactionsPage:
-    TransactionsPage;
-
-  billsPage:
-    BillsPage;
-
-  cardsPage:
-    CardsPage;
-
-  loansPage:
-    LoansPage;
-
-  notificationsPage:
-    NotificationsPage;
-
-  profilePage:
-    ProfilePage;
-
-  adminPage:
-    AdminPage;
-
+  /** An authenticated customer session, already on the overview. */
+  customerSession: DashboardPage;
 };
 
+export const test = base.extend<BankingFixtures>({
+  authPage: async ({ page }, use) => { await use(new AuthPage(page)); },
+  dashboardPage: async ({ page }, use) => { await use(new DashboardPage(page)); },
+  accountsPage: async ({ page }, use) => { await use(new AccountsPage(page)); },
+  transfersPage: async ({ page }, use) => { await use(new TransfersPage(page)); },
+  beneficiariesPage: async ({ page }, use) => { await use(new BeneficiariesPage(page)); },
+  adminPage: async ({ page }, use) => { await use(new AdminPage(page)); },
 
-export const test =
-  base.extend<BankingFixtures>({
-
-    homePage:
-      async ({ page }, use) => {
-
-        await use(
-          new HomePage(page)
-        );
-
-      },
-
-
-    authPage:
-      async ({ page }, use) => {
-
-        await use(
-          new AuthPage(page)
-        );
-
-      },
-
-
-    dashboardPage:
-      async ({ page }, use) => {
-
-        await use(
-          new DashboardPage(page)
-        );
-
-      },
-
-
-    accountsPage:
-      async ({ page }, use) => {
-
-        await use(
-          new AccountsPage(page)
-        );
-
-      },
-
-
-    transfersPage:
-      async ({ page }, use) => {
-
-        await use(
-          new TransfersPage(page)
-        );
-
-      },
-
-
-    transactionsPage:
-      async ({ page }, use) => {
-
-        await use(
-          new TransactionsPage(page)
-        );
-
-      },
-
-
-    billsPage:
-      async ({ page }, use) => {
-
-        await use(
-          new BillsPage(page)
-        );
-
-      },
-
-
-    cardsPage:
-      async ({ page }, use) => {
-
-        await use(
-          new CardsPage(page)
-        );
-
-      },
-
-
-    loansPage:
-      async ({ page }, use) => {
-
-        await use(
-          new LoansPage(page)
-        );
-
-      },
-
-
-    notificationsPage:
-      async ({ page }, use) => {
-
-        await use(
-          new NotificationsPage(page)
-        );
-
-      },
-
-
-    profilePage:
-      async ({ page }, use) => {
-
-        await use(
-          new ProfilePage(page)
-        );
-
-      },
-
-
-    adminPage:
-      async ({ page }, use) => {
-
-        await use(
-          new AdminPage(page)
-        );
-
-      }
-
-  });
-
+  customerSession: async ({ authPage, dashboardPage }, use) => {
+    await authPage.open();
+    await authPage.loginAsCustomer();
+    await use(dashboardPage);
+  }
+});
 
 export { expect };

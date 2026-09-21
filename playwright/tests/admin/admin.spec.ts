@@ -1,210 +1,51 @@
-﻿import {
-  test,
-  expect
-} from "../../fixtures/testFixtures";
+import { test, expect } from "../../fixtures/testFixtures";
+import { credentials } from "../../test-data/credentials";
 
+test.describe("NovaBank - back office", () => {
+  test("ADMIN-001 - an administrator reaches the operations dashboard", async ({ authPage, adminPage }) => {
+    await authPage.open();
+    await authPage.loginAsAdmin();
 
-test.describe(
-  "NovaBank - Admin Console",
-  () => {
+    await adminPage.openDashboard();
+    await adminPage.expectMetricsVisible();
+  });
 
-    test.beforeEach(
-      async ({
-        authPage,
-        adminPage
-      }) => {
+  test("ADMIN-002 - the customer directory loads", async ({ authPage, adminPage }) => {
+    await authPage.open();
+    await authPage.loginAsAdmin();
 
-        await authPage.open();
+    await adminPage.openCustomers();
+    await expect(adminPage.customerTable).toContainText(credentials.customer.email);
+  });
 
-        await authPage
-          .loginAsAdmin();
+  test("ADMIN-003 - the audit trail records activity", async ({ authPage, adminPage }) => {
+    await authPage.open();
+    await authPage.loginAsAdmin();
 
-        await adminPage.open();
+    await adminPage.openAudit();
+    await expect(adminPage.auditTable).toContainText(/LOGIN/);
+  });
 
-      }
-    );
+  test("ADMIN-004 - a customer is not offered back-office navigation", async ({ authPage, dashboardPage }) => {
+    await authPage.open();
+    await authPage.loginAsCustomer();
 
+    const views = await dashboardPage.visibleNavItems();
 
-    test(
-      "ADMIN-001 - admin navigation is visible for admin user",
-      async ({
-        adminPage
-      }) => {
+    expect(views).toContain("transfers");
+    expect(views.some(v => v.startsWith("admin-"))).toBe(false);
+  });
 
-        await adminPage
-          .expectNavigationVisible();
+  test("ADMIN-005 - a read-only role cannot reach privileged endpoints", async ({ authPage, request }) => {
+    await authPage.open();
+    await authPage.loginAs(credentials.support);
 
-      }
-    );
+    // SUPPORT may read customers but must not change account state.
+    const response = await request.post("/api/admin/accounts/1/freeze", {
+      headers: { Authorization: `Bearer ${await authPage.storedToken()}` },
+      data: {}
+    });
 
-
-    test(
-      "ADMIN-002 - admin can navigate to Admin console",
-      async ({
-        adminPage
-      }) => {
-
-        await adminPage
-          .expectLoaded();
-
-      }
-    );
-
-
-    test(
-      "ADMIN-003 - admin summary API returns data",
-      async ({
-        adminPage
-      }) => {
-
-        const summary =
-          await adminPage
-            .getSummaryFromApi();
-
-        expect(
-          Object.keys(summary).length
-        ).toBeGreaterThan(0);
-
-      }
-    );
-
-
-    test(
-      "ADMIN-004 - admin summary values are numeric",
-      async ({
-        adminPage
-      }) => {
-
-        const summary =
-          await adminPage
-            .getSummaryFromApi();
-
-        for (
-          const value
-          of Object.values(summary)
-        ) {
-
-          expect(
-            typeof value
-          ).toBe("number");
-
-          expect(
-            Number.isFinite(value)
-          ).toBeTruthy();
-
-        }
-
-      }
-    );
-
-
-    test(
-      "ADMIN-005 - displayed metric count matches API summary",
-      async ({
-        adminPage
-      }) => {
-
-        const summary =
-          await adminPage
-            .getSummaryFromApi();
-
-        await adminPage
-          .expectMetricCount(
-            Object.keys(summary).length
-          );
-
-      }
-    );
-
-
-    test(
-      "ADMIN-006 - displayed admin metrics match API summary",
-      async ({
-        adminPage
-      }) => {
-
-        await adminPage
-          .expectRenderedSummaryMatchesApi();
-
-      }
-    );
-
-
-    test(
-      "ADMIN-007 - all admin metrics contain labels and numeric values",
-      async ({
-        adminPage
-      }) => {
-
-        await adminPage
-          .expectAllMetricsNonEmpty();
-
-      }
-    );
-
-
-    test(
-      "ADMIN-008 - Admin console remains available after reload",
-      async ({
-        adminPage
-      }) => {
-
-        await adminPage
-          .reloadAndOpen();
-
-        await adminPage
-          .expectLoaded();
-
-        await adminPage
-          .expectRenderedSummaryMatchesApi();
-
-      }
-    );
-
-  }
-);
-
-
-test.describe(
-  "NovaBank - Admin Access Control",
-  () => {
-
-    test(
-      "ADMIN-009 - customer does not see Admin navigation",
-      async ({
-        authPage,
-        adminPage
-      }) => {
-
-        await authPage.open();
-
-        await authPage
-          .loginAsCustomer();
-
-        await adminPage
-          .expectNavigationHidden();
-
-      }
-    );
-
-
-    test(
-      "ADMIN-010 - unauthenticated admin summary API request is rejected",
-      async ({
-        request
-      }) => {
-
-        const response =
-          await request.get(
-            "/api/admin/summary"
-          );
-
-        expect(
-          response.status()
-        ).toBe(401);
-
-      }
-    );
-
-  }
-);
+    expect(response.status()).toBe(403);
+  });
+});

@@ -1,15 +1,13 @@
 name: Playwright Tests
 
-# Push and pull_request triggers are disabled until the suite is retargeted
-# from the deleted stub to the real application. See _shared-notes.md.
 on:
   workflow_dispatch:
-  # push:
-  #   branches: [main]
-  #   paths: ["playwright/**", ".github/workflows/playwright.yml"]
-  # pull_request:
-  #   branches: [main]
-  #   paths: ["playwright/**", ".github/workflows/playwright.yml"]
+  push:
+    branches: [main]
+    paths: ["playwright/**", ".github/workflows/playwright.yml"]
+  pull_request:
+    branches: [main]
+    paths: ["playwright/**", ".github/workflows/playwright.yml"]
 
 permissions:
   contents: read

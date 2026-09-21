@@ -1,375 +1,136 @@
-﻿import {
-  expect,
-  Locator,
-  Page
-} from "@playwright/test";
+import { expect, Locator, Page } from "@playwright/test";
+import { BasePage } from "./BasePage";
+import { credentials, SeedUser } from "../test-data/credentials";
 
-import {
-  BasePage
-} from "./BasePage";
-
-import {
-  DemoRole
-} from "../test-data/types";
-
-
+/**
+ * Sign-in is a two-step handshake: credentials return an MFA challenge, and
+ * the challenge is exchanged for a session. Both steps are always required —
+ * every seeded user has MFA enabled.
+ */
 export class AuthPage extends BasePage {
+  readonly loginForm: Locator;
+  readonly emailInput: Locator;
+  readonly passwordInput: Locator;
+  readonly loginSubmit: Locator;
 
-  readonly loginContainer: Locator;
-  readonly applicationContainer: Locator;
+  readonly mfaForm: Locator;
+  readonly mfaCodeInput: Locator;
+  readonly mfaSubmit: Locator;
+  readonly mfaCancel: Locator;
 
-  readonly customerLoginButton: Locator;
-  readonly adminLoginButton: Locator;
+  readonly registerTab: Locator;
+  readonly loginTab: Locator;
+  readonly forgotPasswordLink: Locator;
 
-  readonly currentUser: Locator;
+  readonly userChip: Locator;
+  readonly userRole: Locator;
   readonly logoutButton: Locator;
 
-  readonly dashboardSection: Locator;
-
-  readonly adminNavigationButton: Locator;
-  readonly adminSection: Locator;
-
-
   constructor(page: Page) {
-
     super(page);
 
-    this.loginContainer =
-      page.locator("#login");
+    this.loginForm = this.testId("login-form");
+    this.emailInput = this.testId("login-email");
+    this.passwordInput = this.testId("login-password");
+    this.loginSubmit = this.testId("login-submit");
 
-    this.applicationContainer =
-      page.locator("#app");
+    this.mfaForm = this.testId("mfa-form");
+    this.mfaCodeInput = this.testId("mfa-code");
+    this.mfaSubmit = this.testId("mfa-submit");
+    this.mfaCancel = this.testId("mfa-cancel");
 
-    this.customerLoginButton =
-      page.locator(
-        'button.enter[data-role="customer"]'
-      );
+    this.loginTab = this.testId("tab-login");
+    this.registerTab = this.testId("tab-register");
+    this.forgotPasswordLink = this.testId("forgot-password");
 
-    this.adminLoginButton =
-      page.locator(
-        'button.enter[data-role="admin"]'
-      );
-
-    this.currentUser =
-      page.locator("#who");
-
-    this.logoutButton =
-      page.locator("#logout");
-
-    this.dashboardSection =
-      page.locator("#dashboard");
-
-    this.adminNavigationButton =
-      page.locator("#adminNav");
-
-    this.adminSection =
-      page.locator("#admin");
-
+    this.userChip = this.testId("user-chip");
+    this.userRole = this.testId("user-role");
+    this.logoutButton = this.testId("logout");
   }
-
 
   async open(): Promise<void> {
-
     await this.navigate("/");
-
+    await expect(this.loginForm).toBeVisible();
   }
 
-
-  async expectLoginScreenVisible():
-    Promise<void> {
-
-    await expect(
-      this.loginContainer
-    ).toBeVisible();
-
-    await expect(
-      this.customerLoginButton
-    ).toBeVisible();
-
-    await expect(
-      this.adminLoginButton
-    ).toBeVisible();
-
-    await expect(
-      this.applicationContainer
-    ).toBeHidden();
-
+  async expectLoginScreen(): Promise<void> {
+    await expect(this.loginForm).toBeVisible();
+    await expect(this.emailInput).toBeVisible();
+    await expect(this.passwordInput).toBeVisible();
+    await expect(this.loginSubmit).toBeEnabled();
   }
 
+  /** Submit credentials only. Leaves the session on the MFA challenge. */
+  async submitCredentials(email: string, password: string): Promise<void> {
+    await this.emailInput.fill(email);
+    await this.passwordInput.fill(password);
 
-  async loginAs(
-    role: DemoRole
-  ): Promise<void> {
-
-    const button =
-      role === "customer"
-        ? this.customerLoginButton
-        : this.adminLoginButton;
-
-
-    await expect(
-      this.loginContainer
-    ).toBeVisible();
-
-
-    const responsePromise =
-      this.page.waitForResponse(
-        response =>
-          response.url().includes(
-            "/api/session"
-          ) &&
-          response.request().method() ===
-            "POST"
-      );
-
-
-    await button.click();
-
-
-    const response =
-      await responsePromise;
-
-
-    expect(
-      response.status()
-    ).toBe(200);
-
-
-    await expect(
-      this.applicationContainer
-    ).toBeVisible();
-
-
-    await expect(
-      this.loginContainer
-    ).toBeHidden();
-
-
-    await expect(
-      this.dashboardSection
-    ).toBeVisible();
-
-
-    await expect(
-      this.currentUser
-    ).toContainText(
-      new RegExp(
-        role,
-        "i"
-      )
+    const response = this.page.waitForResponse(
+      r => r.url().includes("/api/auth/login") && r.request().method() === "POST"
     );
 
+    await this.loginSubmit.click();
+    await response;
   }
 
+  async expectMfaChallenge(): Promise<void> {
+    await expect(this.mfaForm).toBeVisible();
+    await expect(this.mfaCodeInput).toBeVisible();
+  }
 
-  async loginAsCustomer():
-    Promise<void> {
+  async submitMfa(code: string): Promise<void> {
+    await this.mfaCodeInput.fill(code);
 
-    await this.loginAs(
-      "customer"
+    const response = this.page.waitForResponse(
+      r => r.url().includes("/api/auth/mfa") && r.request().method() === "POST"
     );
 
+    await this.mfaSubmit.click();
+    await response;
   }
 
+  /** Full handshake through to an authenticated shell. */
+  async loginAs(user: SeedUser): Promise<void> {
+    await this.submitCredentials(user.email, user.password);
+    await this.expectMfaChallenge();
+    await this.submitMfa(credentials.mfaCode);
 
-  async loginAsAdmin():
-    Promise<void> {
+    await expect(this.userChip).toBeVisible();
+    await expect(this.userRole).toHaveText(user.role);
 
-    await this.loginAs(
-      "admin"
-    );
-
+    // The landing view renders after sign-in resolves; wait for it to settle
+    // so a following navigation is not overwritten by the initial render.
+    await this.waitForViewReady();
   }
 
+  async loginAsCustomer(): Promise<void> {
+    await this.loginAs(credentials.customer);
+  }
+
+  async loginAsAdmin(): Promise<void> {
+    await this.loginAs(credentials.admin);
+  }
+
+  async expectLoginRejected(message: string | RegExp): Promise<void> {
+    await this.expectToast(message);
+    await expect(this.loginForm).toBeVisible();
+    await expect(this.userChip).toBeHidden();
+  }
 
   async logout(): Promise<void> {
-
-    const responsePromise =
-      this.page.waitForResponse(
-        response =>
-          response.url().includes(
-            "/api/logout"
-          ) &&
-          response.request().method() ===
-            "POST"
-      );
-
-
     await this.logoutButton.click();
-
-
-    const response =
-      await responsePromise;
-
-
-    expect(
-      response.status()
-    ).toBe(204);
-
-
-    await expect(
-      this.loginContainer
-    ).toBeVisible();
-
-
-    await expect(
-      this.applicationContainer
-    ).toBeHidden();
-
+    await expect(this.loginForm).toBeVisible();
+    await expect(this.userChip).toBeHidden();
   }
 
-
-  async expectCustomerAccess():
-    Promise<void> {
-
-    await expect(
-      this.currentUser
-    ).toContainText(
-      /customer/i
-    );
-
-    await expect(
-      this.adminNavigationButton
-    ).toBeHidden();
-
-    await expect(
-      this.adminSection
-    ).toBeHidden();
-
+  /** The session token the application persists for reload survival. */
+  async storedToken(): Promise<string | null> {
+    return this.page.evaluate(() => localStorage.getItem("novabank_token"));
   }
 
-
-  async expectAdminAccess():
-    Promise<void> {
-
-    await expect(
-      this.currentUser
-    ).toContainText(
-      /admin/i
-    );
-
-    await expect(
-      this.adminNavigationButton
-    ).toBeVisible();
-
+  async expectAuthenticatedAfterReload(role: string): Promise<void> {
+    await this.reload();
+    await expect(this.userRole).toHaveText(role);
+    await expect(this.loginForm).toBeHidden();
   }
-
-
-  async openAdminConsole():
-    Promise<void> {
-
-    await this.adminNavigationButton.click();
-
-
-    await expect(
-      this.adminSection
-    ).toBeVisible();
-
-
-    await expect(
-      this.adminSection.getByRole(
-        "heading",
-        {
-          name:
-            "Admin console"
-        }
-      )
-    ).toBeVisible();
-
-  }
-
-
-  async reloadAndExpectAuthenticated(
-    role: DemoRole
-  ): Promise<void> {
-
-    await this.page.reload({
-      waitUntil:
-        "domcontentloaded"
-    });
-
-
-    await expect(
-      this.loginContainer
-    ).toBeHidden();
-
-
-    await expect(
-      this.applicationContainer
-    ).toBeVisible();
-
-
-    await expect(
-      this.currentUser
-    ).toContainText(
-      new RegExp(
-        role,
-        "i"
-      )
-    );
-
-  }
-
-
-  async expectSessionStorageCreated():
-    Promise<void> {
-
-    const session =
-      await this.page.evaluate(
-        () => ({
-          token:
-            sessionStorage.getItem(
-              "nb_token"
-            ),
-
-          user:
-            sessionStorage.getItem(
-              "nb_user"
-            )
-        })
-      );
-
-
-    expect(
-      session.token
-    ).toBeTruthy();
-
-
-    expect(
-      session.user
-    ).toBeTruthy();
-
-  }
-
-
-  async expectSessionStorageCleared():
-    Promise<void> {
-
-    const session =
-      await this.page.evaluate(
-        () => ({
-          token:
-            sessionStorage.getItem(
-              "nb_token"
-            ),
-
-          user:
-            sessionStorage.getItem(
-              "nb_user"
-            )
-        })
-      );
-
-
-    expect(
-      session.token
-    ).toBeNull();
-
-
-    expect(
-      session.user
-    ).toBeNull();
-
-  }
-
 }

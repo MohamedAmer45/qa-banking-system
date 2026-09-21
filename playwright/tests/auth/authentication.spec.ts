@@ -1,261 +1,64 @@
-﻿import {
-  test,
-  expect
-} from "../../fixtures/testFixtures";
+import { test, expect } from "../../fixtures/testFixtures";
+import { credentials } from "../../test-data/credentials";
 
+test.describe("NovaBank - authentication", () => {
+  test.beforeEach(async ({ authPage }) => {
+    await authPage.open();
+  });
 
-test.describe(
-  "NovaBank - Authentication & Session Management",
-  () => {
-
-
-    test.beforeEach(
-      async ({
-        authPage
-      }) => {
-
-        await authPage.open();
-
-      }
+  test("AUTH-001 - valid credentials raise an MFA challenge rather than a session", async ({ authPage }) => {
+    await authPage.submitCredentials(
+      credentials.customer.email,
+      credentials.customer.password
     );
 
+    await authPage.expectMfaChallenge();
 
-    test(
-      "AUTH-001 - login screen displays available demo roles",
-      async ({
-        authPage
-      }) => {
+    // No session exists until the challenge is answered.
+    expect(await authPage.storedToken()).toBeNull();
+  });
 
-        await authPage
-          .expectLoginScreenVisible();
+  test("AUTH-002 - completing MFA establishes the session", async ({ authPage }) => {
+    await authPage.loginAsCustomer();
+    expect(await authPage.storedToken()).toBeTruthy();
+  });
 
-      }
+  test("AUTH-003 - invalid password is rejected", async ({ authPage }) => {
+    await authPage.submitCredentials(
+      credentials.invalid.email,
+      credentials.invalid.password
     );
 
+    await authPage.expectLoginRejected(/invalid/i);
+  });
 
-    test(
-      "AUTH-002 - customer can start authenticated session",
-      async ({
-        authPage
-      }) => {
-
-        await authPage
-          .loginAsCustomer();
-
-        await authPage
-          .expectCustomerAccess();
-
-        await authPage
-          .expectSessionStorageCreated();
-
-      }
+  test("AUTH-004 - incorrect MFA code is rejected", async ({ authPage }) => {
+    await authPage.submitCredentials(
+      credentials.customer.email,
+      credentials.customer.password
     );
 
-
-    test(
-      "AUTH-003 - customer cannot access admin navigation",
-      async ({
-        authPage
-      }) => {
-
-        await authPage
-          .loginAsCustomer();
-
-        await authPage
-          .expectCustomerAccess();
-
-      }
-    );
-
-
-    test(
-      "AUTH-004 - admin can start authenticated session",
-      async ({
-        authPage
-      }) => {
-
-        await authPage
-          .loginAsAdmin();
-
-        await authPage
-          .expectAdminAccess();
-
-        await authPage
-          .expectSessionStorageCreated();
-
-      }
-    );
-
-
-    test(
-      "AUTH-005 - admin can access admin console",
-      async ({
-        authPage
-      }) => {
-
-        await authPage
-          .loginAsAdmin();
-
-        await authPage
-          .openAdminConsole();
-
-      }
-    );
-
-
-    test(
-      "AUTH-006 - authenticated customer session survives page reload",
-      async ({
-        authPage
-      }) => {
-
-        await authPage
-          .loginAsCustomer();
-
-        await authPage
-          .reloadAndExpectAuthenticated(
-            "customer"
-          );
-
-        await authPage
-          .expectSessionStorageCreated();
-
-      }
-    );
-
-
-    test(
-      "AUTH-007 - authenticated admin session survives page reload",
-      async ({
-        authPage
-      }) => {
-
-        await authPage
-          .loginAsAdmin();
-
-        await authPage
-          .reloadAndExpectAuthenticated(
-            "admin"
-          );
-
-        await authPage
-          .expectAdminAccess();
-
-      }
-    );
-
-
-    test(
-      "AUTH-008 - customer can log out successfully",
-      async ({
-        authPage
-      }) => {
-
-        await authPage
-          .loginAsCustomer();
-
-        await authPage
-          .logout();
-
-        await authPage
-          .expectLoginScreenVisible();
-
-        await authPage
-          .expectSessionStorageCleared();
-
-      }
-    );
-
-
-    test(
-      "AUTH-009 - admin can log out successfully",
-      async ({
-        authPage
-      }) => {
-
-        await authPage
-          .loginAsAdmin();
-
-        await authPage
-          .logout();
-
-        await authPage
-          .expectLoginScreenVisible();
-
-        await authPage
-          .expectSessionStorageCleared();
-
-      }
-    );
-
-
-    test(
-      "AUTH-010 - each new browser context starts unauthenticated",
-      async ({
-        browser
-      }) => {
-
-        const context = await browser.newContext({
-      baseURL:
-        process.env.BASE_URL ??
-        "http://localhost:3000",
-    });
-
-    const page =
-          await context.newPage();
-
-
-        await page.goto(
-          "/",
-          {
-            waitUntil:
-              "domcontentloaded"
-          }
-        );
-
-
-        await expect(
-          page.locator("#login")
-        ).toBeVisible();
-
-
-        await expect(
-          page.locator("#app")
-        ).toBeHidden();
-
-
-        const session =
-          await page.evaluate(
-            () => ({
-
-              token:
-                sessionStorage.getItem(
-                  "nb_token"
-                ),
-
-              user:
-                sessionStorage.getItem(
-                  "nb_user"
-                )
-
-            })
-          );
-
-
-        expect(
-          session.token
-        ).toBeNull();
-
-
-        expect(
-          session.user
-        ).toBeNull();
-
-
-        await context.close();
-
-      }
-    );
-
-  }
-);
+    await authPage.expectMfaChallenge();
+    await authPage.submitMfa("000000");
+
+    await authPage.expectToast(/invalid one-time code/i);
+    expect(await authPage.storedToken()).toBeNull();
+  });
+
+  test("AUTH-005 - session survives a page reload", async ({ authPage }) => {
+    await authPage.loginAsCustomer();
+    await authPage.expectAuthenticatedAfterReload("CUSTOMER");
+  });
+
+  test("AUTH-006 - logout clears the session", async ({ authPage }) => {
+    await authPage.loginAsCustomer();
+    await authPage.logout();
+
+    expect(await authPage.storedToken()).toBeNull();
+  });
+
+  test("AUTH-007 - staff sign in with their own role", async ({ authPage }) => {
+    await authPage.loginAs(credentials.admin);
+    await expect(authPage.userRole).toHaveText("ADMIN");
+  });
+});
