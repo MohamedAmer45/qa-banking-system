@@ -1,216 +1,59 @@
-# NovaBank Cypress Automation Framework
+# Cypress Suite
 
-End-to-end UI automation framework for the NovaBank Banking System QA project.
+Front-end and contract coverage for NovaBank. Deliberately **not** a second
+copy of the Playwright suite: the two divide the work.
 
-## Technology Stack
+| | Playwright | Cypress |
+|---|---|---|
+| End-to-end money movement | Yes | No |
+| Cross-browser | Chromium, Firefox, WebKit | Chrome/Electron |
+| Form validation | Minimal | Primary |
+| Network contract assertions | Minimal | Primary |
+| Uncaught page exceptions | Opt-in guard | Fails by default |
 
-- Cypress
-- TypeScript
-- Node.js
-- Chrome
-- Microsoft Edge
-- Firefox
-- Page Object Model
-- Cypress custom commands
-- Mochawesome reporting
-- JUnit reporting
+That last row is not theoretical. Cypress found `BUG-UI-001`, a `TypeError`
+thrown on every page load, on its first `cy.visit`, while Playwright had been
+driving the same screens throughout the retarget without noticing.
 
-## Application Under Test
+## Running
 
-NovaBank QA Banking Sandbox
+```bash
+npm ci
+CYPRESS_BASE_URL=http://localhost:3000 npm run validate
+```
 
-Application URL:
+Start the application first, from the
+[`novabank-banking-system`](https://github.com/MohamedAmer45/novabank-banking-system)
+repository:
 
-https://novabank-qa-proxy.onrender.com
+```bash
+npm run db:reset && npm start
+```
 
-NovaBank provides deterministic customer and administrator demo sessions designed for automated software testing.
+## Custom commands
 
-## Framework Structure
+| Command | Purpose |
+|---|---|
+| `cy.byTestId(id)` | Resolve by the application's `data-testid` |
+| `cy.login(user?)` | Full credential + MFA handshake through the UI |
+| `cy.apiLogin(user?)` | Obtain a session token over HTTP, no UI |
+| `cy.openView(name)` | Navigate via the sidebar, dismissing any open modal |
+| `cy.waitForView()` | Wait for a view render to settle |
 
-cypress/
-  cypress/
-    e2e/
-      accounts/
-      admin/
-      auth/
-      bills/
-      cards/
-      dashboard/
-      framework/
-      loans/
-      notifications/
-      profile/
-      transactions/
-      transfers/
-      smoke.cy.ts
-    pages/
-    support/
-      commands.ts
-      e2e.ts
-    screenshots/
-    videos/
-    results/
-  cypress.config.ts
-  reporter-config.json
-  tsconfig.json
-  package.json
-  README.md
+`cy.apiLogin` exists so contract tests do not pay for a browser sign-in they
+do not need.
 
-## Covered Modules
+## Conventions
 
-The Cypress automation suite covers:
+**Sign-in is two steps.** Credentials return an MFA challenge; the challenge is
+exchanged for a session. `cy.login` asserts on both responses.
 
-- Smoke testing
-- Authentication and demo sessions
-- Customer dashboard
-- Accounts
-- Transfers
-- Transactions
-- Bills
-- Cards
-- Loans
-- Notifications
-- Profile
-- Administrator console
-- Role-based access
-- Customer/admin session behavior
-- State isolation
-- Cross-browser execution
+**Waiting.** The application updates the page heading before its view data
+arrives. `cy.waitForView()` waits for the placeholder to clear. There are no
+fixed waits anywhere in this suite — every `cy.wait` is on a network alias.
 
-## Framework Design
+**Money assertions use minor units,** read from `data-balance-minor`.
 
-The framework follows the Page Object Model.
-
-Reusable application behavior is implemented through Cypress custom commands.
-
-Main reusable commands:
-
-    cy.loginAsCustomer();
-    cy.loginAsAdmin();
-    cy.openModule("accounts");
-    cy.resetNovaBankState();
-
-This reduces duplicated selectors and setup logic across test modules.
-
-## State Isolation
-
-NovaBank stores application state in localStorage and authentication data in sessionStorage.
-
-The framework resets:
-
-    localStorage.nb_state
-    sessionStorage.nb_token
-    sessionStorage.nb_user
-
-before clean customer and administrator sessions.
-
-This prevents state-changing tests involving transfers, bill payments, card status changes, and loan applications from affecting other tests.
-
-## Install Dependencies
-
-Run:
-
-    npm ci
-
-## Open Cypress
-
-Run:
-
-    npm run cy:open
-
-## Smoke Test
-
-Run:
-
-    npm run cy:smoke
-
-## Full Chrome Regression
-
-Run:
-
-    npm run cy:regression
-
-or:
-
-    npm run cy:chrome
-
-## Cross-Browser Testing
-
-Chrome:
-
-    npm run cy:chrome
-
-Edge:
-
-    npm run cy:edge
-
-Firefox:
-
-    npm run cy:firefox
-
-The requested browser must be installed on the execution machine.
-
-## TypeScript Validation
-
-Run:
-
-    npm run typecheck
-
-## Complete Framework Validation
-
-Runs TypeScript validation followed by the full Chrome regression suite:
-
-    npm run validate
-
-## Reporting
-
-Generate the complete regression suite and reports:
-
-    npm run report:all
-
-Generated artifacts are stored under:
-
-    cypress/results/
-    cypress/screenshots/
-    cypress/videos/
-
-Mochawesome HTML report:
-
-    cypress/results/html/index.html
-
-Combined JUnit report:
-
-    cypress/results/junit/combined.xml
-
-Generated reports, screenshots, videos, downloads, and logs are excluded from Git.
-
-## Failure Evidence
-
-Cypress automatically captures screenshots when tests fail.
-
-Video recording is enabled during command-line regression execution.
-
-These artifacts are uploaded by the Cypress GitHub Actions workflow after every run, including failed runs when files are available.
-
-## CI/CD
-
-The implemented `.github/workflows/cypress.yml` workflow:
-
-- Supports manual execution.
-- Runs when Cypress files or the workflow change on pushes and pull requests targeting `main`.
-- Uses Node.js 24 and installs the locked dependencies with `npm ci`.
-- Verifies that the deployed QA environment is available.
-- Runs `npm run validate` for TypeScript validation and the full Chrome regression suite.
-- Uploads reports, screenshots, and videos with 14-day retention.
-- Cancels superseded runs for the same Git reference.
-
-## Main Validation Command
-
-For normal framework validation run:
-
-    npm run validate
-
-This performs:
-
-1. TypeScript compilation validation.
-2. Full Cypress Chrome regression.
+**Modals.** Transfer, beneficiary and account-opening forms are modals.
+`cy.openView` dismisses an open one first, since a rejected submission leaves
+its modal up where it swallows the next navigation click.

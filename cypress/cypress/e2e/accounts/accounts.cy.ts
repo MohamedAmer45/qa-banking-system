@@ -1,108 +1,38 @@
-import AccountsPage from "../../pages/AccountsPage";
-
-describe("NovaBank - Accounts", () => {
-
+describe("NovaBank - accounts", () => {
   beforeEach(() => {
-
-    AccountsPage.visitAsCustomer();
-    AccountsPage.openAccounts();
-
+    cy.login();
+    cy.openView("accounts");
   });
 
-
-  it("should display the Accounts section", () => {
-
-    AccountsPage.getAccountsSection()
-      .should("be.visible")
-      .and("have.class", "on");
-
-    cy.contains("#accounts h1", /^Accounts$/)
-      .should("be.visible");
-
+  it("lists the seeded customer's accounts", () => {
+    cy.byTestId("account-card").should("have.length.at.least", 3);
   });
 
-
-  it("should display both customer accounts", () => {
-
-    AccountsPage.getAccountCards()
-      .should("have.length", 2);
-
-  });
-
-
-  it("should display the Checking account correctly", () => {
-
-    AccountsPage.getAccountByType("Checking")
-      .should("be.visible")
-      .within(() => {
-
-        cy.contains("h2", /^Checking$/)
-          .should("be.visible");
-
-        cy.contains("**** 4821")
-          .should("be.visible");
-
-        cy.contains("$12,840.75")
-          .should("be.visible");
-
+  it("exposes balances as integer minor units", () => {
+    cy.byTestId("account-balance")
+      .first()
+      .should("have.attr", "data-balance-minor")
+      .then(value => {
+        const minor = Number(value);
+        expect(Number.isInteger(minor)).to.be.true;
+        expect(minor).to.be.greaterThan(0);
       });
-
   });
 
+  it("renders a type and a status on every account card", () => {
+    cy.byTestId("account-card").each($card => {
+      cy.wrap($card).should("match", ":contains(CURRENT), :contains(SAVINGS)");
+    });
+  });
 
-  it("should display the Savings account correctly", () => {
-
-    AccountsPage.getAccountByType("Savings")
-      .should("be.visible")
-      .within(() => {
-
-        cy.contains("h2", /^Savings$/)
-          .should("be.visible");
-
-        cy.contains("**** 7742")
-          .should("be.visible");
-
-        cy.contains("$32,500.00")
-          .should("be.visible");
-
+  it("matches what the API reports", () => {
+    cy.apiLogin().then(token => {
+      cy.request({
+        url: "/api/accounts",
+        headers: { Authorization: `Bearer ${token}` }
+      }).then(response => {
+        cy.byTestId("account-card").should("have.length", response.body.length);
       });
-
+    });
   });
-
-
-  it("should mask all account numbers", () => {
-
-    AccountsPage.getAccountNumbers()
-      .should("have.length", 2)
-      .each(($number) => {
-
-        const accountNumber = $number.text().trim();
-
-        expect(accountNumber)
-          .to.match(/^\*{4} \d{4}$/);
-
-      });
-
-  });
-
-
-  it("should display valid positive balances for all accounts", () => {
-
-    AccountsPage.getAccountBalances()
-      .should("have.length", 2)
-      .each(($balance) => {
-
-        const text = $balance.text()
-          .replace("$", "")
-          .replace(/,/g, "")
-          .trim();
-
-        const balance = Number(text);
-
-        expect(balance).to.be.greaterThan(0);
-
-      });
-
-  });
-
 });

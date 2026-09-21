@@ -1,15 +1,13 @@
 name: Cypress Tests
 
-# Push and pull_request triggers are disabled until the suite is retargeted
-# from the deleted stub to the real application. See _shared-notes.md.
 on:
   workflow_dispatch:
-  # push:
-  #   branches: [main]
-  #   paths: ["cypress/**", ".github/workflows/cypress.yml"]
-  # pull_request:
-  #   branches: [main]
-  #   paths: ["cypress/**", ".github/workflows/cypress.yml"]
+  push:
+    branches: [main]
+    paths: ["cypress/**", ".github/workflows/cypress.yml"]
+  pull_request:
+    branches: [main]
+    paths: ["cypress/**", ".github/workflows/cypress.yml"]
 
 permissions:
   contents: read

@@ -1,83 +1,81 @@
-import LoginPage from "../../pages/LoginPage";
+import { MFA_CODE, users } from "../../support/credentials";
 
-describe("NovaBank - Login", () => {
-
+describe("NovaBank - authentication", () => {
   beforeEach(() => {
-    LoginPage.visit();
+    cy.visit("/");
   });
 
+  it("requires an MFA challenge before issuing a session", () => {
+    cy.intercept("POST", "**/api/auth/login").as("login");
 
-  it("should display the login screen", () => {
+    cy.byTestId("login-email").clear().type(users.customer.email);
+    cy.byTestId("login-password").clear().type(users.customer.password);
+    cy.byTestId("login-submit").click();
 
-    LoginPage.getLoginContainer()
-      .should("be.visible");
+    cy.wait("@login").then(({ response }) => {
+      expect(response?.statusCode).to.eq(200);
+      expect(response?.body).to.have.property("mfaRequired", true);
+      expect(response?.body).to.have.property("challenge");
+      // The session token is never part of the credential response.
+      expect(response?.body).to.not.have.property("token");
+    });
 
+    cy.byTestId("mfa-form").should("be.visible");
+    cy.window().then(win => {
+      expect(win.localStorage.getItem("novabank_token")).to.be.null;
+    });
   });
 
+  it("rejects an invalid password with a 401", () => {
+    cy.intercept("POST", "**/api/auth/login").as("login");
 
-  it("should display the customer login option", () => {
+    cy.byTestId("login-email").clear().type(users.customer.email);
+    cy.byTestId("login-password").clear().type("WrongPassword123!");
+    cy.byTestId("login-submit").click();
 
-    LoginPage.getCustomerButton()
-      .should("be.visible")
-      .and("be.enabled");
-
+    cy.wait("@login").its("response.statusCode").should("eq", 401);
+    cy.byTestId("toast").should("contain.text", "Invalid");
+    cy.byTestId("login-form").should("be.visible");
   });
 
+  it("rejects an incorrect one-time code with a 401", () => {
+    cy.intercept("POST", "**/api/auth/mfa").as("mfa");
 
-  it("should display the admin login option", () => {
+    cy.byTestId("login-email").clear().type(users.customer.email);
+    cy.byTestId("login-password").clear().type(users.customer.password);
+    cy.byTestId("login-submit").click();
 
-    LoginPage.getAdminButton()
-      .should("be.visible")
-      .and("be.enabled");
+    cy.byTestId("mfa-code").clear().type("000000");
+    cy.byTestId("mfa-submit").click();
 
+    cy.wait("@mfa").its("response.statusCode").should("eq", 401);
+    cy.byTestId("toast").should("contain.text", "Invalid one-time code");
   });
 
+  it("stores a session token once the challenge is answered", () => {
+    cy.login();
 
-  it("should log in as a customer", () => {
-
-    LoginPage.loginAsCustomer();
-
-    LoginPage.getApp()
-      .should("be.visible");
-
-    LoginPage.getLoggedInUser()
-      .should("be.visible")
-      .invoke("text")
-      .should("not.be.empty");
-
+    cy.window().then(win => {
+      expect(win.localStorage.getItem("novabank_token")).to.be.a("string").and.not.be.empty;
+    });
   });
 
+  it("clears the session on sign out", () => {
+    cy.login();
+    cy.byTestId("logout").click();
 
-  it("should log in as an admin", () => {
-
-    LoginPage.loginAsAdmin();
-
-    LoginPage.getApp()
-      .should("be.visible");
-
-    LoginPage.getLoggedInUser()
-      .should("be.visible")
-      .invoke("text")
-      .should("not.be.empty");
-
-    LoginPage.getAdminNavigation()
-      .should("be.visible");
-
+    cy.byTestId("login-form").should("be.visible");
+    cy.window().then(win => {
+      expect(win.localStorage.getItem("novabank_token")).to.be.null;
+    });
   });
 
-
-  it("should allow the user to logout", () => {
-
-    LoginPage.loginAsCustomer();
-
-    LoginPage.getApp()
-      .should("be.visible");
-
-    LoginPage.logout();
-
-    LoginPage.getLoginContainer()
-      .should("be.visible");
-
+  it("signs staff in with their own role", () => {
+    cy.login(users.admin);
+    cy.byTestId("user-role").should("have.text", "ADMIN");
   });
 
+  it("uses the same one-time code for every seeded identity", () => {
+    expect(MFA_CODE).to.eq("123456");
+  });
 });
