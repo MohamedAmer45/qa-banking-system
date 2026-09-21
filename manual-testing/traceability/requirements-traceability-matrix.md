@@ -51,10 +51,10 @@ no implementation) entered the project and survived unnoticed.
 | `NOTIF` | 7 | `notification-scenarios.md` | `notification-test-cases.md` | Yes | Covered | Automated |
 | `DASH` | 7 | — | — | Yes | **Partial** | Automated |
 | `ADMIN` | 12 | `admin-scenarios.md` | `admin-test-cases.md` | Yes | Covered | Automated |
-| `AUDIT` | 10 | `admin-scenarios.md` | `admin-test-cases.md`, `security-test-cases.md` | Yes | **Partial** | Not started |
+| `AUDIT` | 10 | `admin-scenarios.md` | `rest-assured/` | Yes | Covered | **Automated** |
 | `SEC` | 10 | `security-scenarios.md` | `security-test-cases.md` | Yes | Covered | Not started |
 | `DB` | 15 | — | `database-testing/` | Yes | Covered | **Automated** |
-| `SYS` | 10 | — | — | Yes | **Not covered** | Not started |
+| `SYS` | 10 | — | `rest-assured/` | Yes | Covered | **Automated** |
 
 "Automated" means automation exists and is well built, but its page
 objects select against the stub this project tested until 2026-09-20. See
@@ -62,14 +62,15 @@ objects select against the stub this project tested until 2026-09-20. See
 
 ## Gaps
 
-Three modules, 27 requirements, are the remaining coverage debt. `DB` is
-closed: all 15 requirements are covered by `database-testing/`, 59 tests.
+One module, 7 requirements, is the remaining coverage debt.
+
+`DB` (15) is closed by `database-testing/`, and `SYS` (10) and `AUDIT` (10) by
+`rest-assured/`. Between them those two suites cover 35 requirements that no
+UI test could reach.
 
 | Module | Reqs | Gap | Route to coverage |
 |---|---:|---|---|
-| `SYS` | 10 | No coverage | Mostly non-functional: health, error handling, limits. Partly coverable by API tests |
 | `DASH` | 7 | No dedicated scenarios or cases | Small module; fold into account and transaction cases or add a file |
-| `AUDIT` | 10 | Only indirect coverage inside admin and security cases | Needs its own cases: append-only behaviour, actor recording, no secret leakage |
 
 `DB` was previously blocked because no persistent database existed, then the
 largest single gap. It is now the only module covered by assertions against
@@ -124,6 +125,7 @@ cause reads as a product gap that no longer exists.
 |---|---|---|
 | `BUG-BEN-001` | `BEN-007` — deleted beneficiary must not be usable | Open, confirmed 2026-09-21 |
 | `BUG-DB-001` | `DB-006`, `DB-007` — financial precision | Closed, fixed 2026-09-21 |
+| `BUG-API-001` | `SYS-002`, `SYS-008` — documented status for oversized bodies | Closed, fixed 2026-09-22 |
 | `BUG-UI-002` | `SEC-003`, `ADMIN-002` — role boundaries in the interface | Open, confirmed 2026-09-21 |
 | `BUG-UI-001` | `SYS-*` — application stability | Closed, fixed 2026-09-21 |
 | `BUG-AUTH-001` | `AUTH-012` — session validity | Closed, not reproducible after the port |

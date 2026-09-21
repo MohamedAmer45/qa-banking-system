@@ -14,7 +14,8 @@ suites are retargeted at the real application and passing.
 | Cypress | Yes | 26 passing |
 | Selenium | Yes | 21 passing |
 | Cucumber | Yes | 21 scenarios passing |
-| API (Postman, REST Assured) | Yes | Not yet written |
+| REST Assured | Yes | **107 passing** |
+| Postman / Newman | Yes | Not yet written |
 | Database (SQL) | Yes | **59 passing** |
 | Performance (JMeter, k6) | Yes | Not yet written |
 
@@ -28,6 +29,7 @@ See `docs/automation-status.md` for how the four suites divide the work.
 | `BUG-UI-002` | Open — the back-office sidebar is not role-filtered |
 | `BUG-UI-001` | Closed — fixed; found by Cypress |
 | `BUG-DB-001` | Closed — fixed; FX and interest rates were binary floats, found by the database suite |
+| `BUG-API-001` | Closed — fixed; oversized bodies dropped the connection instead of returning the documented 413 |
 | `BUG-AUTH-001` | Closed — not reproducible after the PostgreSQL port |
 | `BUG-ACC-001` | Closed — obsolete; the UI it described no longer exists |
 

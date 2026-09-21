@@ -13,6 +13,7 @@ All four UI/BDD suites are retargeted at the real application and passing.
 | Selenium + Java + TestNG | 21 | Passing | Chrome |
 | Cucumber JVM | 21 scenarios | Passing | Chrome |
 | Database (JDBC + TestNG) | 59 | Passing | n/a |
+| REST Assured (API) | 107 | Passing | n/a |
 
 Every suite starts the application inside the CI runner against a `postgres:16`
 service container, so runs are isolated and begin from an identical seed. No
@@ -48,6 +49,10 @@ That division has already paid for itself twice:
 - **The database suite found `BUG-DB-001`** by reading `information_schema`
   rather than driving the application: two money-adjacent columns were stored
   as binary floats.
+- **REST Assured found `BUG-API-001`** — the API documented `413` for an
+  oversized body but dropped the connection instead. curl had always shown the
+  413; a different HTTP client did not, which is the point of testing a
+  contract with more than one consumer.
 
 ## Shared conventions
 
