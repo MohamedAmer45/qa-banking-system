@@ -15,7 +15,7 @@ suites are retargeted at the real application and passing.
 | Selenium | Yes | 21 passing |
 | Cucumber | Yes | 21 scenarios passing |
 | API (Postman, REST Assured) | Yes | Not yet written |
-| Database (SQL) | Yes | Not yet written — largest gap |
+| Database (SQL) | Yes | **59 passing** |
 | Performance (JMeter, k6) | Yes | Not yet written |
 
 See `docs/automation-status.md` for how the four suites divide the work.
@@ -27,6 +27,7 @@ See `docs/automation-status.md` for how the four suites divide the work.
 | `BUG-BEN-001` | Open — deleted beneficiaries are still returned by the API |
 | `BUG-UI-002` | Open — the back-office sidebar is not role-filtered |
 | `BUG-UI-001` | Closed — fixed; found by Cypress |
+| `BUG-DB-001` | Closed — fixed; FX and interest rates were binary floats, found by the database suite |
 | `BUG-AUTH-001` | Closed — not reproducible after the PostgreSQL port |
 | `BUG-ACC-001` | Closed — obsolete; the UI it described no longer exists |
 

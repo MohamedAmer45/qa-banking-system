@@ -12,6 +12,7 @@ All four UI/BDD suites are retargeted at the real application and passing.
 | Cypress + TypeScript | 26 | Passing | Chrome / Electron |
 | Selenium + Java + TestNG | 21 | Passing | Chrome |
 | Cucumber JVM | 21 scenarios | Passing | Chrome |
+| Database (JDBC + TestNG) | 59 | Passing | n/a |
 
 Every suite starts the application inside the CI runner against a `postgres:16`
 service container, so runs are isolated and begin from an identical seed. No
@@ -44,6 +45,9 @@ That division has already paid for itself twice:
   not, so the bad-code test was asserting against the wrong message.
 - **Selenium also found `BUG-UI-002`** — the back-office sidebar is not
   role-filtered.
+- **The database suite found `BUG-DB-001`** by reading `information_schema`
+  rather than driving the application: two money-adjacent columns were stored
+  as binary floats.
 
 ## Shared conventions
 
@@ -80,11 +84,14 @@ navigating.
 | Postman / Newman | Not started. Unblocked |
 | REST Assured | Not started. Unblocked |
 | Jest | Not started. Unblocked |
-| SQL / database testing | Not started. Unblocked — largest coverage gap |
+
 | JMeter / k6 | Not started. Unblocked |
 | Jenkins | Pipeline exists in the application repository; not yet driving these suites |
 
-None of these depend on the UI work. The `DB` module is the largest remaining
-gap: 15 requirements with no tests, previously blocked because no persistent
-database existed. `scripts/db-check.js` in the application repository already
-implements the ledger invariant those tests should build on.
+None of these depend on the UI work.
+
+The `DB` module is now complete — all 15 requirements covered by
+`database-testing/`, and it immediately found BUG-DB-001: FX and interest rates
+stored as single-precision floats, drifting 2 minor units on a 10,000.00
+conversion. No API-level test could have seen it, because the endpoint returns
+a rounded figure that looks correct. The error was in the storage type.

@@ -53,7 +53,7 @@ no implementation) entered the project and survived unnoticed.
 | `ADMIN` | 12 | `admin-scenarios.md` | `admin-test-cases.md` | Yes | Covered | Automated |
 | `AUDIT` | 10 | `admin-scenarios.md` | `admin-test-cases.md`, `security-test-cases.md` | Yes | **Partial** | Not started |
 | `SEC` | 10 | `security-scenarios.md` | `security-test-cases.md` | Yes | Covered | Not started |
-| `DB` | 15 | — | — | Yes | **Not covered** | Not started |
+| `DB` | 15 | — | `database-testing/` | Yes | Covered | **Automated** |
 | `SYS` | 10 | — | — | Yes | **Not covered** | Not started |
 
 "Automated" means automation exists and is well built, but its page
@@ -62,17 +62,18 @@ objects select against the stub this project tested until 2026-09-20. See
 
 ## Gaps
 
-Four modules, 42 requirements, are the real coverage debt:
+Three modules, 27 requirements, are the remaining coverage debt. `DB` is
+closed: all 15 requirements are covered by `database-testing/`, 59 tests.
 
 | Module | Reqs | Gap | Route to coverage |
 |---|---:|---|---|
-| `DB` | 15 | No manual cases and no SQL tests | Direct `DATABASE_URL` access is now available. The ledger invariant in `scripts/db-check.js` is the natural first assertion |
 | `SYS` | 10 | No coverage | Mostly non-functional: health, error handling, limits. Partly coverable by API tests |
 | `DASH` | 7 | No dedicated scenarios or cases | Small module; fold into account and transaction cases or add a file |
 | `AUDIT` | 10 | Only indirect coverage inside admin and security cases | Needs its own cases: append-only behaviour, actor recording, no secret leakage |
 
-`DB` was previously marked blocked because no persistent database existed. That
-is no longer true, and it is now the largest single gap in the project.
+`DB` was previously blocked because no persistent database existed, then the
+largest single gap. It is now the only module covered by assertions against
+stored state rather than API responses, and it found BUG-DB-001.
 
 ## Test data
 
@@ -122,6 +123,7 @@ cause reads as a product gap that no longer exists.
 | Defect | Requirement | Status |
 |---|---|---|
 | `BUG-BEN-001` | `BEN-007` — deleted beneficiary must not be usable | Open, confirmed 2026-09-21 |
+| `BUG-DB-001` | `DB-006`, `DB-007` — financial precision | Closed, fixed 2026-09-21 |
 | `BUG-UI-002` | `SEC-003`, `ADMIN-002` — role boundaries in the interface | Open, confirmed 2026-09-21 |
 | `BUG-UI-001` | `SYS-*` — application stability | Closed, fixed 2026-09-21 |
 | `BUG-AUTH-001` | `AUTH-012` — session validity | Closed, not reproducible after the port |
