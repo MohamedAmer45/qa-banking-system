@@ -4,10 +4,10 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths: ["cucumber/**", ".github/workflows/cucumber.yml"]
+    paths: ["cucumber/**", ".github/workflows/cucumber.yml", ".github/actions/start-novabank/**"]
   pull_request:
     branches: [main]
-    paths: ["cucumber/**", ".github/workflows/cucumber.yml"]
+    paths: ["cucumber/**", ".github/workflows/cucumber.yml", ".github/actions/start-novabank/**"]
 
 permissions:
   contents: read
