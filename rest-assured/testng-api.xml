@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+
+<!-- Single-threaded: several tests move money and read back the resulting
+     history, so parallel execution would make them observe each other. -->
+<suite name="NovaBank API" verbose="1" parallel="false">
+
+    <test name="Contract">
+        <classes>
+            <class name="com.bankingsystem.qa.api.contract.SchemaTest"/>
+        </classes>
+    </test>
+
+    <test name="Authorization">
+        <classes>
+            <class name="com.bankingsystem.qa.api.security.AuthorizationMatrixTest"/>
+            <class name="com.bankingsystem.qa.api.security.DataExposureTest"/>
+        </classes>
+    </test>
+
+    <test name="System behaviour">
+        <classes>
+            <class name="com.bankingsystem.qa.api.system.SystemBehaviourTest"/>
+        </classes>
+    </test>
+
+    <!-- Audit last: it asserts on the trail left by everything above, as well
+         as by its own actions. -->
+    <test name="Audit trail">
+        <classes>
+            <class name="com.bankingsystem.qa.api.audit.AuditTrailTest"/>
+        </classes>
+    </test>
+
+</suite>

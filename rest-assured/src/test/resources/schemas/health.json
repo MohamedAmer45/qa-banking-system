@@ -1,0 +1,17 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["status", "service", "time", "database", "fx"],
+  "properties": {
+    "status":   { "enum": ["ok"] },
+    "service":  { "type": "string" },
+    "time":     { "type": "string" },
+    "database": { "type": "string" },
+    "qaMode":   { "type": "boolean" },
+    "fx": {
+      "type": "object",
+      "required": ["EGP", "USD", "EUR", "GBP"],
+      "additionalProperties": { "type": "number" }
+    }
+  }
+}

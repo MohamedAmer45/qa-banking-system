@@ -1,0 +1,26 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["token", "user"],
+  "properties": {
+    "token": { "type": "string", "minLength": 16 },
+    "user": {
+      "type": "object",
+      "required": ["id", "email", "role", "status"],
+      "properties": {
+        "id":     { "type": "integer" },
+        "email":  { "type": "string" },
+        "role":   { "enum": ["CUSTOMER", "SUPPORT", "AUDITOR", "EMPLOYEE", "MANAGER", "ADMIN"] },
+        "status": { "type": "string" }
+      },
+      "comment": "Credentials must never appear in a session response.",
+      "not": {
+        "anyOf": [
+          { "required": ["password_hash"] },
+          { "required": ["mfa_code"] },
+          { "required": ["password"] }
+        ]
+      }
+    }
+  }
+}

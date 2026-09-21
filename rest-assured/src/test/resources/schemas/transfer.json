@@ -1,0 +1,31 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": [
+    "id", "reference", "user_id", "from_account_id", "transfer_type",
+    "source_currency", "target_currency", "amount_minor",
+    "credited_amount_minor", "fee_minor", "status", "created_at"
+  ],
+  "properties": {
+    "id":        { "type": "integer" },
+    "reference": { "type": "string", "pattern": "^(TRF|SCH)-[0-9]{8}-[A-F0-9]+$" },
+    "user_id":   { "type": "integer" },
+    "from_account_id": { "type": "integer" },
+
+    "transfer_type": { "enum": ["OWN_ACCOUNT", "SAME_BANK", "EXTERNAL"] },
+    "source_currency": { "enum": ["EGP", "USD", "EUR", "GBP"] },
+    "target_currency": { "enum": ["EGP", "USD", "EUR", "GBP"] },
+
+    "amount_minor":          { "type": "integer", "minimum": 1 },
+    "credited_amount_minor": { "type": "integer", "minimum": 0 },
+    "fee_minor":             { "type": "integer", "minimum": 0 },
+
+    "status": {
+      "enum": ["PENDING", "PROCESSING", "COMPLETED", "FAILED", "CANCELLED", "REVERSED"]
+    },
+
+    "created_at":   { "type": "string" },
+    "completed_at": { "type": ["string", "null"] },
+    "reversed_at":  { "type": ["string", "null"] }
+  }
+}
