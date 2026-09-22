@@ -1854,34 +1854,40 @@
           "script": {
             "type": "text/javascript",
             "exec": [
-              "if (pm.collectionVariables.get('token')) { return; }",
-              "",
-              "const base = pm.environment.get('baseUrl');",
-              "",
-              "pm.sendRequest({",
-              "    url: base + '/api/auth/login',",
-              "    method: 'POST',",
-              "    header: { 'Content-Type': 'application/json' },",
-              "    body: { mode: 'raw', raw: JSON.stringify({",
-              "        email: pm.environment.get('customerEmail'),",
-              "        password: pm.environment.get('customerPassword')",
-              "    }) }",
-              "}, (loginError, login) => {",
-              "    if (loginError) { throw loginError; }",
-              "",
-              "    const challenge = login.json().challenge;",
-              "    const code = login.json().demoCode || pm.environment.get('mfaCode');",
-              "",
+              "const signIn = (done) => {",
               "    pm.sendRequest({",
-              "        url: base + '/api/auth/mfa',",
+              "        url: pm.environment.get('baseUrl') + '/api/auth/login',",
               "        method: 'POST',",
               "        header: { 'Content-Type': 'application/json' },",
-              "        body: { mode: 'raw', raw: JSON.stringify({ challenge, code }) }",
-              "    }, (mfaError, mfa) => {",
-              "        if (mfaError) { throw mfaError; }",
-              "        pm.collectionVariables.set('token', mfa.json().token);",
+              "        body: { mode: 'raw', raw: JSON.stringify({",
+              "            email: pm.environment.get('customerEmail'),",
+              "            password: pm.environment.get('customerPassword')",
+              "        }) }",
+              "    }, (loginError, login) => {",
+              "        if (loginError) { throw loginError; }",
+              "",
+              "        const challenge = login.json().challenge;",
+              "        const code = login.json().demoCode || pm.environment.get('mfaCode');",
+              "",
+              "        pm.sendRequest({",
+              "            url: pm.environment.get('baseUrl') + '/api/auth/mfa',",
+              "            method: 'POST',",
+              "            header: { 'Content-Type': 'application/json' },",
+              "            body: { mode: 'raw', raw: JSON.stringify({ challenge, code }) }",
+              "        }, (mfaError, mfa) => {",
+              "            if (mfaError) { throw mfaError; }",
+              "",
+              "            pm.collectionVariables.set('token', mfa.json().token);",
+              "            done(mfa.json().token);",
+              "        });",
               "    });",
-              "});"
+              "};",
+              "",
+              "const existing = pm.collectionVariables.get('token');",
+              "",
+              "if (!existing) {",
+              "    signIn(() => {});",
+              "}"
             ]
           }
         }
@@ -2171,6 +2177,2165 @@
           ]
         }
       ]
+    },
+    {
+      "name": "07 Credential recovery",
+      "id": "1624f908-7115-5785-89bf-b4e43ff684b7",
+      "description": "Forgotten and changed passwords, end to end. Security-critical and, before this folder, untested anywhere in the project.\n\nUses the receiver identity rather than the primary customer, so a run that changes a password cannot lock the other folders out of their session. The password is restored at the end.",
+      "item": [
+        {
+          "name": "Request a reset token",
+          "id": "2a255f7a-3e66-5a64-b0ef-2b90790b3781",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/forgot-password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "forgot-password"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{receiverEmail}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responds 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const body = pm.response.json();",
+                  "",
+                  "pm.test('QA mode returns the token the email would carry', () => {",
+                  "    pm.expect(body.demoResetToken).to.be.a('string').and.not.empty;",
+                  "});",
+                  "",
+                  "pm.collectionVariables.set('resetToken', body.demoResetToken);",
+                  "pm.collectionVariables.set('newCustomerPassword', 'Recovered123!');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reveal nothing for an unknown address",
+          "id": "fa4597c6-eb07-5ed2-868f-1b304ba610b8",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/forgot-password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "forgot-password"
+              ]
+            },
+            "description": "The response must not differ from the known-address case, or the endpoint becomes an account enumerator.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"nobody-here@novabank.test\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('still responds 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const body = pm.response.json();",
+                  "",
+                  "pm.test('the message is identical to the known-address case', () => {",
+                  "    pm.expect(body.message).to.match(/if the email exists/i);",
+                  "});",
+                  "",
+                  "pm.test('no token is issued for an address that does not exist', () => {",
+                  "    pm.expect(body.demoResetToken).to.be.undefined;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reject a reset with a bad token",
+          "id": "a900ec52-c7d2-5010-9db4-e8f3e0aeaa0e",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/reset-password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "reset-password"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"0000000000000000000000000000000000\",\n  \"password\": \"Irrelevant123!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('an unrecognised token is refused', () => {",
+                  "    pm.response.to.have.status(400);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reject a reset with a weak password",
+          "id": "ed24a8d8-e5a1-5167-a681-432e84f6f087",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/reset-password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "reset-password"
+              ]
+            },
+            "description": "A valid token must not excuse a password below the minimum length. The token stays unspent.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"{{resetToken}}\",\n  \"password\": \"short\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('a short password is refused', () => {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "",
+                  "pm.test('the reason names the length rule', () => {",
+                  "    pm.expect(pm.response.json().error).to.match(/8 characters/i);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reset the password",
+          "id": "6e53b9db-73ca-5a62-8a94-78a206171b5c",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/reset-password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "reset-password"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"{{resetToken}}\",\n  \"password\": \"{{newCustomerPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responds 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('confirms the reset', () => {",
+                  "    pm.expect(pm.response.json().message).to.match(/reset/i);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reject a reused reset token",
+          "id": "07d73ac1-47e4-5d63-8fe8-a8f7141f249d",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/reset-password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "reset-password"
+              ]
+            },
+            "description": "A reset token is single-use. If it were not, anyone who saw it once could take the account later.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"{{resetToken}}\",\n  \"password\": \"AnotherTry123!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('a spent reset token cannot be reused', () => {",
+                  "    pm.response.to.have.status(400);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Refuse the old password",
+          "id": "55c47cb1-3a25-52df-8f74-08c245862199",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "The seeded password, after the reset. It must no longer work.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{receiverEmail}}\",\n  \"password\": \"{{customerPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('the superseded password is rejected', () => {",
+                  "    pm.response.to.have.status(401);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Accept the new password",
+          "id": "b73008ed-91a9-5244-85e6-314f45b2045e",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{receiverEmail}}\",\n  \"password\": \"{{newCustomerPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('the new password signs in', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "",
+                  "pm.test('MFA is still required after a reset', () => {",
+                  "    pm.expect(body.mfaRequired).to.be.true;",
+                  "});",
+                  "",
+                  "pm.collectionVariables.set('recoveryChallenge', body.challenge);",
+                  "if (body.demoCode) { pm.collectionVariables.set('mfaCode', body.demoCode); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Complete MFA after recovery",
+          "id": "efce355e-2a36-5b98-a7fb-54a69c4a1b16",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/mfa",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "mfa"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"challenge\": \"{{recoveryChallenge}}\",\n  \"code\": \"{{mfaCode}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responds 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('recoveryToken', pm.response.json().token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reject a change with the wrong current password",
+          "id": "28661688-5be7-5c82-b650-d659f20e2ce6",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/change-password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "change-password"
+              ]
+            },
+            "description": "Holding a session is not enough to change a password; the current one must be proved.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currentPassword\": \"NotTheCurrentOne123!\",\n  \"newPassword\": \"Whatever123!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.request.headers.upsert({",
+                  "    key: 'Authorization',",
+                  "    value: 'Bearer ' + pm.collectionVariables.get('recoveryToken')",
+                  "});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('the change is refused with 401', () => {",
+                  "    pm.response.to.have.status(401);",
+                  "});",
+                  "",
+                  "pm.test('the reason names the current password', () => {",
+                  "    pm.expect(pm.response.json().error).to.match(/current password/i);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Restore the seeded password",
+          "id": "a2e33bc6-775c-547a-bba4-e87012b19831",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/change-password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "change-password"
+              ]
+            },
+            "description": "Leaves the environment as it was found, so the folder can be run repeatedly.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currentPassword\": \"{{newCustomerPassword}}\",\n  \"newPassword\": \"{{customerPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.request.headers.upsert({",
+                  "    key: 'Authorization',",
+                  "    value: 'Bearer ' + pm.collectionVariables.get('recoveryToken')",
+                  "});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responds 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('confirms the change', () => {",
+                  "    pm.expect(pm.response.json().message).to.match(/changed/i);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Confirm the seeded password works again",
+          "id": "036346a3-78fd-56a6-9d6e-2e1bdaef3f83",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{receiverEmail}}\",\n  \"password\": \"{{customerPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('the identity is back to its seeded state', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const signIn = (done) => {",
+              "    pm.sendRequest({",
+              "        url: pm.environment.get('baseUrl') + '/api/auth/login',",
+              "        method: 'POST',",
+              "        header: { 'Content-Type': 'application/json' },",
+              "        body: { mode: 'raw', raw: JSON.stringify({",
+              "            email: pm.environment.get('customerEmail'),",
+              "            password: pm.environment.get('customerPassword')",
+              "        }) }",
+              "    }, (loginError, login) => {",
+              "        if (loginError) { throw loginError; }",
+              "",
+              "        const challenge = login.json().challenge;",
+              "        const code = login.json().demoCode || pm.environment.get('mfaCode');",
+              "",
+              "        pm.sendRequest({",
+              "            url: pm.environment.get('baseUrl') + '/api/auth/mfa',",
+              "            method: 'POST',",
+              "            header: { 'Content-Type': 'application/json' },",
+              "            body: { mode: 'raw', raw: JSON.stringify({ challenge, code }) }",
+              "        }, (mfaError, mfa) => {",
+              "            if (mfaError) { throw mfaError; }",
+              "",
+              "            pm.collectionVariables.set('token', mfa.json().token);",
+              "            done(mfa.json().token);",
+              "        });",
+              "    });",
+              "};",
+              "",
+              "const existing = pm.collectionVariables.get('token');",
+              "",
+              "if (!existing) {",
+              "    signIn(() => {});",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "08 Card lifecycle",
+      "id": "30a58762-b209-5cd9-a77d-56816ab03c2a",
+      "description": "A card through its whole state machine: requested, activated, frozen, unfrozen, reconfigured, replaced, cancelled.\n\nEach step asserts the state it produced and, where the machine forbids a move, that the move is refused. The card action endpoints return the customer's whole card list rather than the single card, so every assertion locates its own card by id.",
+      "item": [
+        {
+          "name": "Find an account to issue against",
+          "id": "c9ec1a01-cee5-5bec-9d4d-c33985165fe2",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts"
+              ]
+            },
+            "description": ""
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responds 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const account = pm.response.json()",
+                  "    .find(a => a.status === 'ACTIVE' && a.currency === 'EGP');",
+                  "",
+                  "pm.test('an active account is available', () => {",
+                  "    pm.expect(account).to.be.an('object');",
+                  "});",
+                  "",
+                  "pm.collectionVariables.set('cardAccountId', account.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Request a card",
+          "id": "06d59e6a-d206-5dae-89d3-de6e16c18ed5",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards"
+              ]
+            },
+            "description": "A new card is issued dormant. It cannot be used until it is activated.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"accountId\": \"{{cardAccountId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responds 201', () => pm.response.to.have.status(201));",
+                  "",
+                  "const card = pm.response.json();",
+                  "",
+                  "pm.test('a new card starts awaiting activation', () => {",
+                  "    pm.expect(card.status).to.eql('PENDING_ACTIVATION');",
+                  "});",
+                  "",
+                  "pm.test('only the last four digits are exposed', () => {",
+                  "    pm.expect(card.last4).to.match(/^[0-9]{4}$/);",
+                  "    pm.expect(card).to.not.have.property('number');",
+                  "    pm.expect(card).to.not.have.property('cvv');",
+                  "});",
+                  "",
+                  "pm.test('it carries an expiry in the future', () => {",
+                  "    pm.expect(card.expiry_year).to.be.above(new Date().getFullYear());",
+                  "});",
+                  "",
+                  "pm.collectionVariables.set('cardId', card.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Refuse unfreezing a card that was never active",
+          "id": "25cacb46-f3a2-5f31-907e-7556a47e1199",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{cardId}}/unfreeze",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{cardId}}",
+                "unfreeze"
+              ]
+            },
+            "description": "PENDING_ACTIVATION is not FROZEN. The state machine must reject the transition rather than quietly activating the card.",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('the transition is refused with 409', () => {",
+                  "    pm.response.to.have.status(409);",
+                  "});",
+                  "",
+                  "pm.test('the reason names the rule', () => {",
+                  "    pm.expect(pm.response.json().error).to.match(/only frozen/i);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Activate the card",
+          "id": "a130c0ed-c1d1-597e-b734-b4ba9989c052",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{cardId}}/activate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{cardId}}",
+                "activate"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responds 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const id = Number(pm.collectionVariables.get('cardId'));",
+                  "const card = pm.response.json().find(c => c.id === id);",
+                  "",
+                  "pm.test('the card becomes active', () => {",
+                  "    pm.expect(card.status).to.eql('ACTIVE');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Freeze the card",
+          "id": "e64bac36-6efc-52af-91b5-fb1bf3a1a41a",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{cardId}}/freeze",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{cardId}}",
+                "freeze"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responds 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const id = Number(pm.collectionVariables.get('cardId'));",
+                  "const card = pm.response.json().find(c => c.id === id);",
+                  "",
+                  "pm.test('the card is frozen', () => {",
+                  "    pm.expect(card.status).to.eql('FROZEN');",
+                  "});",
+                  "",
+                  "pm.test('freezing does not disturb the customer\\'s other cards', () => {",
+                  "    const others = pm.response.json().filter(c => c.id !== id);",
+                  "    others.forEach(c => pm.expect(c.status).to.not.eql('FROZEN'));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Unfreeze the card",
+          "id": "dc82a50b-49f6-5034-84f4-2665fe4b3782",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{cardId}}/unfreeze",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{cardId}}",
+                "unfreeze"
+              ]
+            },
+            "description": "The transition refused earlier now succeeds, because the card is genuinely frozen.",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responds 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const id = Number(pm.collectionVariables.get('cardId'));",
+                  "const card = pm.response.json().find(c => c.id === id);",
+                  "",
+                  "pm.test('the card returns to active', () => {",
+                  "    pm.expect(card.status).to.eql('ACTIVE');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Change the card's channel controls and limits",
+          "id": "aaf1a3ba-7407-52c2-91bd-2dde6579a05e",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{cardId}}/settings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{cardId}}",
+                "settings"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"atmEnabled\": false,\n  \"onlineEnabled\": true,\n  \"internationalEnabled\": true,\n  \"contactlessEnabled\": false,\n  \"atmLimit\": 5000,\n  \"purchaseLimit\": 15000,\n  \"onlineLimit\": 8000\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responds 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const id = Number(pm.collectionVariables.get('cardId'));",
+                  "const card = pm.response.json().find(c => c.id === id);",
+                  "",
+                  "pm.test('each channel switch is applied', () => {",
+                  "    pm.expect(card.atm_enabled).to.eql(0);",
+                  "    pm.expect(card.online_enabled).to.eql(1);",
+                  "    pm.expect(card.international_enabled).to.eql(1);",
+                  "    pm.expect(card.contactless_enabled).to.eql(0);",
+                  "});",
+                  "",
+                  "pm.test('limits are stored in minor units', () => {",
+                  "    pm.expect(card.atm_limit_minor).to.eql(500000);",
+                  "    pm.expect(card.purchase_limit_minor).to.eql(1500000);",
+                  "    pm.expect(card.online_limit_minor).to.eql(800000);",
+                  "});",
+                  "",
+                  "pm.test('changing settings does not change the card state', () => {",
+                  "    pm.expect(card.status).to.eql('ACTIVE');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Replace the card",
+          "id": "b417713b-346d-5ded-a3d2-b12a0ea4beab",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{cardId}}/replace",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{cardId}}",
+                "replace"
+              ]
+            },
+            "description": "A replacement is issued dormant and the original is retired rather than deleted, so the card that made past transactions still resolves.",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responds 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const id = Number(pm.collectionVariables.get('cardId'));",
+                  "const cards = pm.response.json();",
+                  "const original = cards.find(c => c.id === id);",
+                  "",
+                  "pm.test('the original is retired, not removed', () => {",
+                  "    pm.expect(original).to.be.an('object');",
+                  "    pm.expect(original.status).to.eql('REPLACED');",
+                  "});",
+                  "",
+                  "pm.test('the original points at its replacement', () => {",
+                  "    pm.expect(original.replaced_by_card_id).to.be.a('number');",
+                  "});",
+                  "",
+                  "const replacement = cards.find(c => c.id === original.replaced_by_card_id);",
+                  "",
+                  "pm.test('the replacement starts awaiting activation', () => {",
+                  "    pm.expect(replacement.status).to.eql('PENDING_ACTIVATION');",
+                  "});",
+                  "",
+                  "pm.test('the replacement carries a different number', () => {",
+                  "    pm.expect(replacement.last4).to.not.eql(original.last4);",
+                  "});",
+                  "",
+                  "pm.collectionVariables.set('replacementCardId', replacement.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cancel the replacement",
+          "id": "61cd2b84-004b-5502-9141-2ab4431d1a54",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/{{replacementCardId}}/cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "{{replacementCardId}}",
+                "cancel"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responds 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const id = Number(pm.collectionVariables.get('replacementCardId'));",
+                  "const card = pm.response.json().find(c => c.id === id);",
+                  "",
+                  "pm.test('the card is cancelled', () => {",
+                  "    pm.expect(card.status).to.eql('CANCELLED');",
+                  "});",
+                  "",
+                  "pm.test('cancellation is timestamped', () => {",
+                  "    pm.expect(card.cancelled_at).to.be.a('string');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Refuse acting on another customer's card",
+          "id": "ef96cfc9-702b-51cb-9570-5ae36c0b9ce2",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cards/999999/freeze",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cards",
+                "999999",
+                "freeze"
+              ]
+            },
+            "description": "Ownership failures answer 404, so the API never confirms that someone else's card exists.",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('an unowned card is 404, not 403', () => {",
+                  "    pm.response.to.have.status(404);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const signIn = (done) => {",
+              "    pm.sendRequest({",
+              "        url: pm.environment.get('baseUrl') + '/api/auth/login',",
+              "        method: 'POST',",
+              "        header: { 'Content-Type': 'application/json' },",
+              "        body: { mode: 'raw', raw: JSON.stringify({",
+              "            email: pm.environment.get('customerEmail'),",
+              "            password: pm.environment.get('customerPassword')",
+              "        }) }",
+              "    }, (loginError, login) => {",
+              "        if (loginError) { throw loginError; }",
+              "",
+              "        const challenge = login.json().challenge;",
+              "        const code = login.json().demoCode || pm.environment.get('mfaCode');",
+              "",
+              "        pm.sendRequest({",
+              "            url: pm.environment.get('baseUrl') + '/api/auth/mfa',",
+              "            method: 'POST',",
+              "            header: { 'Content-Type': 'application/json' },",
+              "            body: { mode: 'raw', raw: JSON.stringify({ challenge, code }) }",
+              "        }, (mfaError, mfa) => {",
+              "            if (mfaError) { throw mfaError; }",
+              "",
+              "            pm.collectionVariables.set('token', mfa.json().token);",
+              "            done(mfa.json().token);",
+              "        });",
+              "    });",
+              "};",
+              "",
+              "const existing = pm.collectionVariables.get('token');",
+              "",
+              "if (!existing) {",
+              "    signIn(() => {});",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "09 Account state transitions",
+      "id": "c0d4b515-20da-55b1-abca-d6e50df4ab23",
+      "description": "An account moved through its operational states by the back office, with a transfer attempted from it at each stop.\n\nAsserting the state field alone would only prove a string changed. The transfer attempts prove the state is enforced where it matters.",
+      "item": [
+        {
+          "name": "Sign in as administrator",
+          "id": "2e57f1b2-5e31-5092-ae91-76466f865fa6",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "This folder carries its own back-office session so it can be run independently of folder 01.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responds 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.collectionVariables.set('stateChallenge', body.challenge);",
+                  "if (body.demoCode) { pm.collectionVariables.set('mfaCode', body.demoCode); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Complete the administrator's MFA",
+          "id": "92206fa1-7885-5d78-976b-8ef817e875c9",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/mfa",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "mfa"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"challenge\": \"{{stateChallenge}}\",\n  \"code\": \"{{mfaCode}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responds 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('stateAdminToken', pm.response.json().token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Choose an account to operate on",
+          "id": "340e8bf4-9de1-53af-b360-811f19c87c90",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts"
+              ]
+            },
+            "description": "The customer's second EGP account, so freezing it cannot interfere with the transfers other folders run against the first."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responds 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const egp = pm.response.json()",
+                  "    .filter(a => a.currency === 'EGP' && a.status !== 'CLOSED');",
+                  "",
+                  "pm.test('the customer holds more than one EGP account', () => {",
+                  "    pm.expect(egp.length).to.be.above(1);",
+                  "});",
+                  "",
+                  "const target = egp[egp.length - 1];",
+                  "pm.collectionVariables.set('stateAccountId', target.id);",
+                  "pm.collectionVariables.set('stateAccountLimit', target.daily_limit_minor);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Freeze the account",
+          "id": "30fca54f-6b69-549f-9b78-df5ac722bb5e",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/accounts/{{stateAccountId}}/freeze",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "accounts",
+                "{{stateAccountId}}",
+                "freeze"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.request.headers.upsert({",
+                  "    key: 'Authorization',",
+                  "    value: 'Bearer ' + pm.collectionVariables.get('stateAdminToken')",
+                  "});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responds 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('the account is frozen', () => {",
+                  "    pm.expect(pm.response.json().status).to.eql('FROZEN');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Refuse a transfer from the frozen account",
+          "id": "c1ec0bf5-2593-59bd-9535-27949cb5e315",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/transfers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "transfers"
+              ]
+            },
+            "description": "The state is only real if it blocks money leaving.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fromAccountId\": \"{{stateAccountId}}\",\n  \"beneficiaryId\": \"{{beneficiaryId}}\",\n  \"amount\": 1,\n  \"idempotencyKey\": \"{{$guid}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('a frozen account cannot send', () => {",
+                  "    pm.response.to.have.status(409);",
+                  "});",
+                  "",
+                  "pm.test('the refusal names the account state', () => {",
+                  "    pm.expect(pm.response.json().error).to.match(/FROZEN/i);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Unfreeze the account",
+          "id": "cb2009c5-347f-54cd-b535-238d1570e05d",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/accounts/{{stateAccountId}}/unfreeze",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "accounts",
+                "{{stateAccountId}}",
+                "unfreeze"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.request.headers.upsert({",
+                  "    key: 'Authorization',",
+                  "    value: 'Bearer ' + pm.collectionVariables.get('stateAdminToken')",
+                  "});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responds 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('the account returns to active', () => {",
+                  "    pm.expect(pm.response.json().status).to.eql('ACTIVE');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Mark the account dormant",
+          "id": "86f2d37b-b7b6-5e45-b3bd-dd5cca1a08f5",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/accounts/{{stateAccountId}}/dormant",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "accounts",
+                "{{stateAccountId}}",
+                "dormant"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.request.headers.upsert({",
+                  "    key: 'Authorization',",
+                  "    value: 'Bearer ' + pm.collectionVariables.get('stateAdminToken')",
+                  "});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responds 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('the account is dormant', () => {",
+                  "    pm.expect(pm.response.json().status).to.eql('DORMANT');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Refuse a transfer from the dormant account",
+          "id": "870af215-a3c6-537d-b450-cf2520ef4196",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/transfers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "transfers"
+              ]
+            },
+            "description": "Dormancy blocks outgoing money just as freezing does. A state that only changes a label is not a control.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fromAccountId\": \"{{stateAccountId}}\",\n  \"beneficiaryId\": \"{{beneficiaryId}}\",\n  \"amount\": 1,\n  \"idempotencyKey\": \"{{$guid}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('a dormant account cannot send', () => {",
+                  "    pm.response.to.have.status(409);",
+                  "});",
+                  "",
+                  "pm.test('the refusal names the account state', () => {",
+                  "    pm.expect(pm.response.json().error).to.match(/DORMANT/i);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reactivate the account",
+          "id": "fa8ff065-0554-52c4-bf4f-e851191c33af",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/accounts/{{stateAccountId}}/activate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "accounts",
+                "{{stateAccountId}}",
+                "activate"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.request.headers.upsert({",
+                  "    key: 'Authorization',",
+                  "    value: 'Bearer ' + pm.collectionVariables.get('stateAdminToken')",
+                  "});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responds 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('the account is active again', () => {",
+                  "    pm.expect(pm.response.json().status).to.eql('ACTIVE');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Allow a transfer once active",
+          "id": "f9a6e816-b734-5702-b412-1b273429c41b",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/transfers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "transfers"
+              ]
+            },
+            "description": "Closes the loop: the same request refused twice above now succeeds, so the earlier refusals were the state and not some other obstacle.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fromAccountId\": \"{{stateAccountId}}\",\n  \"beneficiaryId\": \"{{beneficiaryId}}\",\n  \"amount\": 1,\n  \"idempotencyKey\": \"{{$guid}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('an active account can send again', () => {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('the transfer completes', () => {",
+                  "    pm.expect(pm.response.json().status).to.eql('COMPLETED');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Change the daily limit",
+          "id": "a55e4cc6-0521-57e2-b07e-6301f5aff60b",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/accounts/{{stateAccountId}}/limit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "accounts",
+                "{{stateAccountId}}",
+                "limit"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"dailyLimit\": 12345\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.request.headers.upsert({",
+                  "    key: 'Authorization',",
+                  "    value: 'Bearer ' + pm.collectionVariables.get('stateAdminToken')",
+                  "});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responds 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('12345 is stored as 1234500 minor units', () => {",
+                  "    pm.expect(pm.response.json().daily_limit_minor).to.eql(1234500);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Restore the original daily limit",
+          "id": "3aa67b7e-289a-589a-87c3-79d0e77af170",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/accounts/{{stateAccountId}}/limit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "accounts",
+                "{{stateAccountId}}",
+                "limit"
+              ]
+            },
+            "description": "Leaves the account as it was found, so the folder can be run repeatedly.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"dailyLimit\": \"{{stateAccountLimitMajor}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// The limit is captured in minor units; the endpoint takes major.",
+                  "const minor = Number(pm.collectionVariables.get('stateAccountLimit'));",
+                  "pm.collectionVariables.set('stateAccountLimitMajor', minor / 100);",
+                  "",
+                  "pm.request.headers.upsert({",
+                  "    key: 'Authorization',",
+                  "    value: 'Bearer ' + pm.collectionVariables.get('stateAdminToken')",
+                  "});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responds 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const expected = Number(pm.collectionVariables.get('stateAccountLimit'));",
+                  "",
+                  "pm.test('the original limit is restored', () => {",
+                  "    pm.expect(pm.response.json().daily_limit_minor).to.eql(expected);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const signIn = (done) => {",
+              "    pm.sendRequest({",
+              "        url: pm.environment.get('baseUrl') + '/api/auth/login',",
+              "        method: 'POST',",
+              "        header: { 'Content-Type': 'application/json' },",
+              "        body: { mode: 'raw', raw: JSON.stringify({",
+              "            email: pm.environment.get('customerEmail'),",
+              "            password: pm.environment.get('customerPassword')",
+              "        }) }",
+              "    }, (loginError, login) => {",
+              "        if (loginError) { throw loginError; }",
+              "",
+              "        const challenge = login.json().challenge;",
+              "        const code = login.json().demoCode || pm.environment.get('mfaCode');",
+              "",
+              "        pm.sendRequest({",
+              "            url: pm.environment.get('baseUrl') + '/api/auth/mfa',",
+              "            method: 'POST',",
+              "            header: { 'Content-Type': 'application/json' },",
+              "            body: { mode: 'raw', raw: JSON.stringify({ challenge, code }) }",
+              "        }, (mfaError, mfa) => {",
+              "            if (mfaError) { throw mfaError; }",
+              "",
+              "            pm.collectionVariables.set('token', mfa.json().token);",
+              "            done(mfa.json().token);",
+              "        });",
+              "    });",
+              "};",
+              "",
+              "const resolveBeneficiary = (bearer) => {",
+              "    if (pm.collectionVariables.get('beneficiaryId')) { return; }",
+              "",
+              "    pm.sendRequest({",
+              "        url: pm.environment.get('baseUrl') + '/api/beneficiaries',",
+              "        method: 'GET',",
+              "        header: { 'Authorization': 'Bearer ' + bearer }",
+              "    }, (error, response) => {",
+              "        if (error) { throw error; }",
+              "",
+              "        const usable = response.json()",
+              "            .find(b => b.verified === 1 && b.status === 'ACTIVE');",
+              "",
+              "        if (!usable) {",
+              "            throw new Error('No verified beneficiary is available to send to.');",
+              "        }",
+              "",
+              "        pm.collectionVariables.set('beneficiaryId', usable.id);",
+              "    });",
+              "};",
+              "",
+              "const current = pm.collectionVariables.get('token');",
+              "",
+              "if (current) {",
+              "    resolveBeneficiary(current);",
+              "} else {",
+              "    signIn(resolveBeneficiary);",
+              "}"
+            ]
+          }
+        }
+      ]
     }
   ],
   "variable": [
@@ -2286,6 +4451,66 @@
     },
     {
       "key": "fxUsd",
+      "value": "0",
+      "type": "string"
+    },
+    {
+      "key": "resetToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "recoveryChallenge",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "recoveryToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "newCustomerPassword",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "cardAccountId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "cardId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "replacementCardId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "stateChallenge",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "stateAdminToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "stateAccountId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "stateAccountLimit",
+      "value": "0",
+      "type": "string"
+    },
+    {
+      "key": "stateAccountLimitMajor",
       "value": "0",
       "type": "string"
     }
