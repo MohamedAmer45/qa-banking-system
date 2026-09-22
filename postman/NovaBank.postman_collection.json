@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "21d6eeda-d4d2-5ff9-a3c6-8f6d5cc7c2e5",
     "name": "NovaBank API",
-    "description": "Functional API coverage for NovaBank, organised as journeys rather than as endpoint-by-endpoint checks.\n\nEach folder tells a story whose steps depend on one another: the account, the beneficiary, the opening balance and the resulting transfer reference are all carried forward from the request that produced them. That chaining is what this collection contributes that the REST Assured suite does not \u2014 that suite owns the authorization matrix, the response schemas and the regression sweep, which are awkward to express here.\n\nFolders 00 and 05 are read-only and safe against any environment. Folders 02, 03 and 04 create data and move money, so point them at a local or CI database.\n\nRun everything with Newman:\n\n    npm run test\n\nSign-in is two steps everywhere: credentials raise an MFA challenge, and the challenge is exchanged for a session. With QA_MODE on, the one-time code comes back in the response, so no mail server is needed.",
+    "description": "Functional API coverage for NovaBank, organised as journeys rather than as endpoint-by-endpoint checks.\n\nEach folder tells a story whose steps depend on one another: the account, the beneficiary, the opening balance and the resulting transfer reference are all carried forward from the request that produced them. That chaining is what this collection contributes that the REST Assured suite does not \u2014 that suite owns the authorization matrix, the response schemas and the regression sweep, which are awkward to express here.\n\nFolders 00 and 05 are read-only and safe against any environment. The rest create data, move money or change state, so point them at a local or CI database. Folders 07, 09 and 10 restore what they changed, so they can be run repeatedly.\n\nAny folder carrying a pre-request script can be run on its own: it establishes the session, and where needed the beneficiary, that its requests depend on.\n\nRun everything with Newman:\n\n    npm run test\n\nSign-in is two steps everywhere: credentials raise an MFA challenge, and the challenge is exchanged for a session. With QA_MODE on, the one-time code comes back in the response, so no mail server is needed.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
@@ -990,6 +990,71 @@
                   "const target = beneficiaries.find(b => b.verified === 1 && b.status === 'ACTIVE');",
                   "pm.collectionVariables.set('beneficiaryId', target.id);",
                   "pm.collectionVariables.set('beneficiaryName', target.name);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Rename the beneficiary",
+          "id": "1993ac47-d4b6-5b1b-b643-4e91a0d2ce22",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/beneficiaries/{{beneficiaryId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "beneficiaries",
+                "{{beneficiaryId}}"
+              ]
+            },
+            "description": "Editing a saved recipient must not disturb the details that identify where the money actually goes.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nickname\": \"Renamed by Postman\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responds 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const beneficiary = pm.response.json();",
+                  "",
+                  "pm.test('the nickname is updated', () => {",
+                  "    pm.expect(beneficiary.nickname).to.eql('Renamed by Postman');",
+                  "});",
+                  "",
+                  "pm.test('the destination details are untouched', () => {",
+                  "    pm.expect(beneficiary.bank_name).to.be.a('string').and.not.empty;",
+                  "    pm.expect(beneficiary.account_identifier).to.be.a('string').and.not.empty;",
+                  "});",
+                  "",
+                  "pm.test('an edit does not silently re-verify it', () => {",
+                  "    pm.expect(beneficiary.verified).to.eql(1);",
+                  "});"
                 ]
               }
             }
@@ -2102,6 +2167,453 @@
                   "    const raw = pm.response.text();",
                   "    pm.expect(raw).to.not.include('password_hash');",
                   "    pm.expect(raw).to.not.include('mfa_code');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Customer detail",
+          "id": "e69e1e28-e110-5439-8bee-e8383c450957",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/customers/{{customerId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "customers",
+                "{{customerId}}"
+              ]
+            },
+            "description": "The full operational view of one customer. It gathers several entities at once, which makes it the endpoint most likely to over-share."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.request.headers.upsert({",
+                  "    key: 'Authorization',",
+                  "    value: 'Bearer ' + pm.collectionVariables.get('adminToken')",
+                  "});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responds 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const detail = pm.response.json();",
+                  "",
+                  "pm.test('it gathers the whole position', () => {",
+                  "    ['snapshot', 'kyc', 'beneficiaries', 'transfers', 'loans']",
+                  "        .forEach(k => pm.expect(detail).to.have.property(k));",
+                  "});",
+                  "",
+                  "pm.test('the identity document number is masked', () => {",
+                  "    if (detail.kyc && detail.kyc.id_number) {",
+                  "        pm.expect(detail.kyc.id_number).to.match(/^[*]+/);",
+                  "    }",
+                  "});",
+                  "",
+                  "pm.test('no raw document payload is included', () => {",
+                  "    if (detail.kyc) {",
+                  "        pm.expect(detail.kyc).to.not.have.property('document_data_b64');",
+                  "    }",
+                  "});",
+                  "",
+                  "pm.test('no credential material is included', () => {",
+                  "    pm.expect(pm.response.text()).to.not.include('password_hash');",
+                  "    pm.expect(pm.response.text()).to.not.include('mfa_code');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Trigger a fraud signal",
+          "id": "3e49ec94-0c71-5968-ac52-46b9665ca6b0",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/mfa",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "mfa"
+              ]
+            },
+            "description": "The sign-in is legitimate and succeeds; the point is the risk signal it leaves behind.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"challenge\": \"{{fraudChallenge}}\",\n  \"code\": \"{{mfaCode}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// A sign-in from outside the configured home country raises an",
+                  "// alert, so the triage steps below have something real to work",
+                  "// on rather than depending on what earlier folders left behind.",
+                  "pm.sendRequest({",
+                  "    url: pm.environment.get('baseUrl') + '/api/auth/login',",
+                  "    method: 'POST',",
+                  "    header: { 'Content-Type': 'application/json' },",
+                  "    body: { mode: 'raw', raw: JSON.stringify({",
+                  "        email: pm.environment.get('receiverEmail'),",
+                  "        password: pm.environment.get('customerPassword')",
+                  "    }) }",
+                  "}, (error, response) => {",
+                  "    if (error) { throw error; }",
+                  "",
+                  "    pm.collectionVariables.set('fraudChallenge', response.json().challenge);",
+                  "",
+                  "    if (response.json().demoCode) {",
+                  "        pm.collectionVariables.set('mfaCode', response.json().demoCode);",
+                  "    }",
+                  "});",
+                  "",
+                  "pm.request.headers.upsert({ key: 'X-QA-Country', value: 'US' });"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('the sign-in still succeeds', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Fraud queue",
+          "id": "c949d1fa-1fea-53ed-8636-051742d510d1",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/fraud",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "fraud"
+              ]
+            },
+            "description": ""
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.request.headers.upsert({",
+                  "    key: 'Authorization',",
+                  "    value: 'Bearer ' + pm.collectionVariables.get('adminToken')",
+                  "});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responds 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const alerts = pm.response.json();",
+                  "",
+                  "pm.test('the unusual-country sign-in raised an alert', () => {",
+                  "    pm.expect(alerts.some(a => a.rule_code === 'UNUSUAL_LOGIN')).to.be.true;",
+                  "});",
+                  "",
+                  "pm.test('each alert carries a rule, a severity and a state', () => {",
+                  "    alerts.slice(0, 20).forEach(a => {",
+                  "        pm.expect(a.rule_code).to.be.a('string');",
+                  "        pm.expect(['LOW', 'MEDIUM', 'HIGH']).to.include(a.severity);",
+                  "        pm.expect(['OPEN', 'INVESTIGATING', 'CLEARED', 'CONFIRMED'])",
+                  "            .to.include(a.status);",
+                  "    });",
+                  "});",
+                  "",
+                  "const open = alerts.find(a => a.status === 'OPEN');",
+                  "",
+                  "pm.test('an open case is waiting to be triaged', () => {",
+                  "    pm.expect(open).to.be.an('object');",
+                  "});",
+                  "",
+                  "pm.collectionVariables.set('fraudAlertId', open.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Move a fraud case to investigating",
+          "id": "993293c9-1617-5af7-8e32-f0a9ae7ab66c",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/fraud/{{fraudAlertId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "fraud",
+                "{{fraudAlertId}}"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"INVESTIGATING\",\n  \"note\": \"Triaged by the Postman journey\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.request.headers.upsert({",
+                  "    key: 'Authorization',",
+                  "    value: 'Bearer ' + pm.collectionVariables.get('adminToken')",
+                  "});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responds 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const alert = pm.response.json();",
+                  "",
+                  "pm.test('the case moves to investigating', () => {",
+                  "    pm.expect(alert.status).to.eql('INVESTIGATING');",
+                  "});",
+                  "",
+                  "pm.test('a case still open is not yet resolved', () => {",
+                  "    pm.expect(alert.resolved_at).to.be.null;",
+                  "});",
+                  "",
+                  "pm.test('the case is assigned to whoever triaged it', () => {",
+                  "    pm.expect(alert.assigned_to).to.be.a('number');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Close a fraud case",
+          "id": "78a6cbe6-7913-5acd-ad8b-c5c20d5f9262",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/fraud/{{fraudAlertId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "fraud",
+                "{{fraudAlertId}}"
+              ]
+            },
+            "description": "Only a terminal state records when it was reached.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"CLEARED\",\n  \"note\": \"No action required\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.request.headers.upsert({",
+                  "    key: 'Authorization',",
+                  "    value: 'Bearer ' + pm.collectionVariables.get('adminToken')",
+                  "});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responds 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const alert = pm.response.json();",
+                  "",
+                  "pm.test('the case is cleared', () => {",
+                  "    pm.expect(alert.status).to.eql('CLEARED');",
+                  "});",
+                  "",
+                  "pm.test('resolution is timestamped', () => {",
+                  "    pm.expect(alert.resolved_at).to.be.a('string');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Refuse an invalid fraud state",
+          "id": "b9444593-2a43-52d9-8c67-b3ba6c45d924",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/fraud/{{fraudAlertId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "fraud",
+                "{{fraudAlertId}}"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"DEFINITELY_NOT_A_STATE\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.request.headers.upsert({",
+                  "    key: 'Authorization',",
+                  "    value: 'Bearer ' + pm.collectionVariables.get('adminToken')",
+                  "});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('an unknown state is refused', () => {",
+                  "    pm.response.to.have.status(400);",
                   "});"
                 ]
               }
@@ -4336,6 +4848,1611 @@
           }
         }
       ]
+    },
+    {
+      "name": "10 Currency and limits",
+      "id": "6d452f09-cf17-5fff-88ca-36ac8803fe52",
+      "description": "Cross-currency conversion and the daily transfer ceiling.\n\nBoth were reachable but unexercised: fx_rate and credited_amount_minor appeared only in a schema, and daily_limit_minor only as a field name. BUG-DB-001 was about the precision of the first of those, so until now its regression check was a column type rather than a conversion.",
+      "item": [
+        {
+          "name": "Read the published FX table",
+          "id": "2a39c32b-8718-5819-9c8c-49e62024b63e",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "health"
+              ]
+            },
+            "description": "The rate the conversion below is checked against comes from the application itself, so the assertion cannot drift from the configured table."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responds 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const fx = pm.response.json().fx;",
+                  "",
+                  "pm.test('EGP is the base currency', () => {",
+                  "    pm.expect(fx.EGP).to.eql(1);",
+                  "});",
+                  "",
+                  "pm.collectionVariables.set('rateUsd', fx.USD);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Find an EGP source and a USD destination",
+          "id": "fa5f21b6-df4f-5242-9a3a-9c06c2747045",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts"
+              ]
+            },
+            "description": ""
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responds 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const accounts = pm.response.json();",
+                  "const egp = accounts.find(a => a.currency === 'EGP' && a.status === 'ACTIVE');",
+                  "const usd = accounts.find(a => a.currency === 'USD' && a.status === 'ACTIVE');",
+                  "",
+                  "pm.test('the customer holds accounts in two currencies', () => {",
+                  "    pm.expect(egp).to.be.an('object');",
+                  "    pm.expect(usd).to.be.an('object');",
+                  "});",
+                  "",
+                  "pm.collectionVariables.set('fxSourceId', egp.id);",
+                  "pm.collectionVariables.set('fxTargetId', usd.id);",
+                  "pm.collectionVariables.set('fxSourceBefore', egp.balance_minor);",
+                  "pm.collectionVariables.set('fxTargetBefore', usd.balance_minor);",
+                  "pm.collectionVariables.set('fxSourceLimit', egp.daily_limit_minor);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Convert EGP to USD",
+          "id": "d6e93e03-af74-5465-995b-c06a7361bb8d",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/transfers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "transfers"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fromAccountId\": \"{{fxSourceId}}\",\n  \"toOwnAccountId\": \"{{fxTargetId}}\",\n  \"amount\": 100,\n  \"memo\": \"FX journey\",\n  \"idempotencyKey\": \"{{$guid}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responds 201', () => pm.response.to.have.status(201));",
+                  "",
+                  "const transfer = pm.response.json();",
+                  "const rateUsd = Number(pm.collectionVariables.get('rateUsd'));",
+                  "",
+                  "pm.test('the transfer records both currencies', () => {",
+                  "    pm.expect(transfer.source_currency).to.eql('EGP');",
+                  "    pm.expect(transfer.target_currency).to.eql('USD');",
+                  "});",
+                  "",
+                  "// The stored rate is EGP-per-unit inverted: 1 / 48.5 for USD.",
+                  "pm.test('the recorded rate is the inverse of the published one', () => {",
+                  "    pm.expect(transfer.fx_rate).to.be.closeTo(1 / rateUsd, 0.00000001);",
+                  "});",
+                  "",
+                  "pm.test('the credited amount follows from the recorded rate', () => {",
+                  "    const expected = Math.round(transfer.amount_minor / rateUsd);",
+                  "    pm.expect(transfer.credited_amount_minor).to.eql(expected);",
+                  "});",
+                  "",
+                  "// The point of BUG-DB-001: a single-precision rate drifted here.",
+                  "pm.test('the rate carries enough precision to reconcile', () => {",
+                  "    const reconstructed =",
+                  "        Math.round(transfer.amount_minor * transfer.fx_rate);",
+                  "    pm.expect(reconstructed).to.eql(transfer.credited_amount_minor);",
+                  "});",
+                  "",
+                  "pm.test('an own-account transfer attracts no fee', () => {",
+                  "    pm.expect(transfer.fee_minor).to.eql(0);",
+                  "});",
+                  "",
+                  "pm.collectionVariables.set('fxCredited', transfer.credited_amount_minor);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Confirm both sides of the conversion",
+          "id": "b8a4ee61-a72d-584d-94ef-d90584f14988",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts"
+              ]
+            },
+            "description": "The source loses the EGP amount; the destination gains the converted USD amount, not the original figure."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responds 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const accounts = pm.response.json();",
+                  "const sourceId = Number(pm.collectionVariables.get('fxSourceId'));",
+                  "const targetId = Number(pm.collectionVariables.get('fxTargetId'));",
+                  "",
+                  "const sourceBefore = Number(pm.collectionVariables.get('fxSourceBefore'));",
+                  "const targetBefore = Number(pm.collectionVariables.get('fxTargetBefore'));",
+                  "const credited = Number(pm.collectionVariables.get('fxCredited'));",
+                  "",
+                  "const source = accounts.find(a => a.id === sourceId);",
+                  "const target = accounts.find(a => a.id === targetId);",
+                  "",
+                  "pm.test('the source is debited in its own currency', () => {",
+                  "    pm.expect(sourceBefore - source.balance_minor).to.eql(10000);",
+                  "});",
+                  "",
+                  "pm.test('the destination is credited the converted amount', () => {",
+                  "    pm.expect(target.balance_minor - targetBefore).to.eql(credited);",
+                  "});",
+                  "",
+                  "pm.test('the two sides are not the same number', () => {",
+                  "    // A conversion that credited the source figure verbatim",
+                  "    // would pass a naive balance check but be wrong.",
+                  "    pm.expect(credited).to.not.eql(10000);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Refuse a transfer beyond the daily ceiling",
+          "id": "f19bd59f-adb9-5f62-9631-d1454d78c594",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/transfers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "transfers"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fromAccountId\": \"{{fxSourceId}}\",\n  \"beneficiaryId\": \"{{beneficiaryId}}\",\n  \"amount\": \"{{overLimitAmount}}\",\n  \"idempotencyKey\": \"{{$guid}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Comfortably over the account's daily limit but within its",
+                  "// balance, so the limit is what refuses it and not the funds.",
+                  "const limitMinor = Number(pm.collectionVariables.get('fxSourceLimit'));",
+                  "pm.collectionVariables.set('overLimitAmount', (limitMinor / 100) + 10000);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('the daily ceiling refuses it with 409', () => {",
+                  "    pm.response.to.have.status(409);",
+                  "});",
+                  "",
+                  "pm.test('the refusal names the limit, not the balance', () => {",
+                  "    pm.expect(pm.response.json().error).to.match(/daily/i);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Confirm the ceiling moved no money",
+          "id": "025ac206-67c9-5044-8616-76e57e1e9854",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts"
+              ]
+            },
+            "description": ""
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const sourceId = Number(pm.collectionVariables.get('fxSourceId'));",
+                  "const sourceBefore = Number(pm.collectionVariables.get('fxSourceBefore'));",
+                  "",
+                  "const source = pm.response.json().find(a => a.id === sourceId);",
+                  "",
+                  "pm.test('only the successful conversion was debited', () => {",
+                  "    pm.expect(sourceBefore - source.balance_minor).to.eql(10000);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Report the amount counted against the ceiling",
+          "id": "9eff7bf4-baac-5e51-997e-431d95ce887f",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts"
+              ]
+            },
+            "description": "The daily counter tracks what has been sent today, which is what the ceiling is measured against."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const sourceId = Number(pm.collectionVariables.get('fxSourceId'));",
+                  "const source = pm.response.json().find(a => a.id === sourceId);",
+                  "",
+                  "pm.test('the daily counter is a non-negative integer', () => {",
+                  "    pm.expect(source.daily_transferred_minor % 1).to.eql(0);",
+                  "    pm.expect(source.daily_transferred_minor).to.be.at.least(0);",
+                  "});",
+                  "",
+                  "pm.test('the counter never exceeds the ceiling it guards', () => {",
+                  "    pm.expect(source.daily_transferred_minor)",
+                  "        .to.be.at.most(source.daily_limit_minor);",
+                  "});",
+                  "",
+                  "pm.test('the counter is dated, so it can reset', () => {",
+                  "    pm.expect(source.daily_counter_date).to.match(/^\\d{4}-\\d{2}-\\d{2}$/);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const signIn = (done) => {",
+              "    pm.sendRequest({",
+              "        url: pm.environment.get('baseUrl') + '/api/auth/login',",
+              "        method: 'POST',",
+              "        header: { 'Content-Type': 'application/json' },",
+              "        body: { mode: 'raw', raw: JSON.stringify({",
+              "            email: pm.environment.get('customerEmail'),",
+              "            password: pm.environment.get('customerPassword')",
+              "        }) }",
+              "    }, (loginError, login) => {",
+              "        if (loginError) { throw loginError; }",
+              "",
+              "        const challenge = login.json().challenge;",
+              "        const code = login.json().demoCode || pm.environment.get('mfaCode');",
+              "",
+              "        pm.sendRequest({",
+              "            url: pm.environment.get('baseUrl') + '/api/auth/mfa',",
+              "            method: 'POST',",
+              "            header: { 'Content-Type': 'application/json' },",
+              "            body: { mode: 'raw', raw: JSON.stringify({ challenge, code }) }",
+              "        }, (mfaError, mfa) => {",
+              "            if (mfaError) { throw mfaError; }",
+              "",
+              "            pm.collectionVariables.set('token', mfa.json().token);",
+              "            done(mfa.json().token);",
+              "        });",
+              "    });",
+              "};",
+              "",
+              "const resolveBeneficiary = (bearer) => {",
+              "    if (pm.collectionVariables.get('beneficiaryId')) { return; }",
+              "",
+              "    pm.sendRequest({",
+              "        url: pm.environment.get('baseUrl') + '/api/beneficiaries',",
+              "        method: 'GET',",
+              "        header: { 'Authorization': 'Bearer ' + bearer }",
+              "    }, (error, response) => {",
+              "        if (error) { throw error; }",
+              "",
+              "        const usable = response.json()",
+              "            .find(b => b.verified === 1 && b.status === 'ACTIVE');",
+              "",
+              "        if (!usable) {",
+              "            throw new Error('No verified beneficiary is available to send to.');",
+              "        }",
+              "",
+              "        pm.collectionVariables.set('beneficiaryId', usable.id);",
+              "    });",
+              "};",
+              "",
+              "const current = pm.collectionVariables.get('token');",
+              "",
+              "if (current) {",
+              "    resolveBeneficiary(current);",
+              "} else {",
+              "    signIn(resolveBeneficiary);",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "11 Lending and bills",
+      "id": "1c8c16fe-1f1e-596e-85ec-834ccce11161",
+      "description": "A loan from application to repayment, and a bill paid once and then scheduled to recur.\n\nBoth were reachable but unexercised. The loan endpoints appeared only in an authorization matrix, which proves who may call them and nothing about what they do; bill payment appeared only as a means to an end inside an audit test.",
+      "item": [
+        {
+          "name": "Find a disbursement account",
+          "id": "9b8ede16-0747-5e42-9ff6-be544ac4a1a8",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts"
+              ]
+            },
+            "description": ""
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responds 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const account = pm.response.json()",
+                  "    .find(a => a.currency === 'EGP' && a.status === 'ACTIVE');",
+                  "",
+                  "pm.collectionVariables.set('loanAccountId', account.id);",
+                  "pm.collectionVariables.set('loanAccountBefore', account.balance_minor);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Refuse a loan below the minimum",
+          "id": "3a774508-6c6f-5c42-ac1c-a873d338aa8a",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/loans",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "loans"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"loanType\": \"PERSONAL\",\n  \"amount\": 100,\n  \"termMonths\": 24,\n  \"purpose\": \"below minimum\",\n  \"disbursementAccountId\": \"{{loanAccountId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('an undersized loan is refused', () => {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "",
+                  "pm.test('the reason names the minimum', () => {",
+                  "    pm.expect(pm.response.json().error).to.match(/1,?000/);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Refuse an unsupported term",
+          "id": "6a50f16f-d387-518a-8c6c-4d5501c3daab",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/loans",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "loans"
+              ]
+            },
+            "description": "Terms are a fixed set, not a free number.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"loanType\": \"PERSONAL\",\n  \"amount\": 50000,\n  \"termMonths\": 7,\n  \"purpose\": \"odd term\",\n  \"disbursementAccountId\": \"{{loanAccountId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('an unsupported term is refused', () => {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "",
+                  "pm.test('the reason lists the permitted terms', () => {",
+                  "    pm.expect(pm.response.json().error).to.match(/12.*24.*36/);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Apply for a loan",
+          "id": "7adeb146-3240-58e2-aece-86839610711a",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/loans",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "loans"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"loanType\": \"PERSONAL\",\n  \"amount\": 50000,\n  \"termMonths\": 24,\n  \"purpose\": \"Postman lending journey\",\n  \"disbursementAccountId\": \"{{loanAccountId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responds 201', () => pm.response.to.have.status(201));",
+                  "",
+                  "const loan = pm.response.json();",
+                  "",
+                  "pm.test('the application awaits a decision', () => {",
+                  "    pm.expect(loan.status).to.eql('SUBMITTED');",
+                  "});",
+                  "",
+                  "pm.test('50,000 is recorded as 5,000,000 minor units', () => {",
+                  "    pm.expect(loan.amount_minor).to.eql(5000000);",
+                  "});",
+                  "",
+                  "pm.test('nothing is owed beyond the principal yet', () => {",
+                  "    pm.expect(loan.remaining_principal_minor).to.eql(loan.amount_minor);",
+                  "});",
+                  "",
+                  "// Standard amortisation at the quoted annual rate.",
+                  "pm.test('the monthly payment matches the amortisation formula', () => {",
+                  "    const r = loan.interest_rate / 100 / 12;",
+                  "    const n = loan.term_months;",
+                  "    const expected = Math.round(",
+                  "        loan.amount_minor * r * Math.pow(1 + r, n) /",
+                  "        (Math.pow(1 + r, n) - 1)",
+                  "    );",
+                  "    pm.expect(loan.monthly_payment_minor).to.eql(expected);",
+                  "});",
+                  "",
+                  "pm.test('repaying the full term costs more than the principal', () => {",
+                  "    pm.expect(loan.monthly_payment_minor * loan.term_months)",
+                  "        .to.be.above(loan.amount_minor);",
+                  "});",
+                  "",
+                  "pm.collectionVariables.set('loanId', loan.id);",
+                  "pm.collectionVariables.set('loanAmountMinor', loan.amount_minor);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Sign in as administrator",
+          "id": "2e57f1b2-5e31-5092-ae91-76466f865fa6",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responds 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.collectionVariables.set('lendingChallenge', body.challenge);",
+                  "if (body.demoCode) { pm.collectionVariables.set('mfaCode', body.demoCode); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Complete the administrator's MFA",
+          "id": "92206fa1-7885-5d78-976b-8ef817e875c9",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/mfa",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "mfa"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"challenge\": \"{{lendingChallenge}}\",\n  \"code\": \"{{mfaCode}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responds 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('lendingAdminToken', pm.response.json().token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Approve the loan",
+          "id": "57b01951-1061-5ba8-8ca8-d65e1ecbcd64",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/loans/{{loanId}}/review",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "loans",
+                "{{loanId}}",
+                "review"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"decision\": \"APPROVED\",\n  \"note\": \"Approved by the Postman lending journey\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.request.headers.upsert({",
+                  "    key: 'Authorization',",
+                  "    value: 'Bearer ' + pm.collectionVariables.get('lendingAdminToken')",
+                  "});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responds 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const loan = pm.response.json();",
+                  "",
+                  "pm.test('the loan becomes active on approval', () => {",
+                  "    pm.expect(loan.status).to.eql('ACTIVE');",
+                  "});",
+                  "",
+                  "pm.test('the decision is attributed and timestamped', () => {",
+                  "    pm.expect(loan.reviewer_id).to.be.a('number');",
+                  "    pm.expect(loan.reviewed_at).to.be.a('string');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Confirm the disbursement landed",
+          "id": "0b207bf0-3ae5-5004-894b-e811c5876b17",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts"
+              ]
+            },
+            "description": "Approval is only real if the money arrived."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responds 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const id = Number(pm.collectionVariables.get('loanAccountId'));",
+                  "const before = Number(pm.collectionVariables.get('loanAccountBefore'));",
+                  "const principal = Number(pm.collectionVariables.get('loanAmountMinor'));",
+                  "",
+                  "const account = pm.response.json().find(a => a.id === id);",
+                  "",
+                  "pm.test('the account was credited the full principal', () => {",
+                  "    pm.expect(account.balance_minor - before).to.eql(principal);",
+                  "});",
+                  "",
+                  "pm.collectionVariables.set('loanAccountAfter', account.balance_minor);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Refuse approving an already-active loan",
+          "id": "f368c8e2-8b16-5a39-b758-6d3cace346e7",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/loans/{{loanId}}/review",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "loans",
+                "{{loanId}}",
+                "review"
+              ]
+            },
+            "description": "A second approval would disburse the principal twice.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"decision\": \"APPROVED\",\n  \"note\": \"again\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.request.headers.upsert({",
+                  "    key: 'Authorization',",
+                  "    value: 'Bearer ' + pm.collectionVariables.get('lendingAdminToken')",
+                  "});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('a decided loan cannot be decided again', () => {",
+                  "    pm.response.to.have.status(409);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Confirm nothing was disbursed twice",
+          "id": "5910318f-1e81-515c-933a-88566e9b486f",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts"
+              ]
+            },
+            "description": ""
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const id = Number(pm.collectionVariables.get('loanAccountId'));",
+                  "const after = Number(pm.collectionVariables.get('loanAccountAfter'));",
+                  "",
+                  "const account = pm.response.json().find(a => a.id === id);",
+                  "",
+                  "pm.test('the balance is unchanged by the refused approval', () => {",
+                  "    pm.expect(account.balance_minor).to.eql(after);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Repay part of the loan",
+          "id": "fc155c01-21ab-522b-90fa-91b2050b6b48",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/loans/{{loanId}}/pay",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "loans",
+                "{{loanId}}",
+                "pay"
+              ]
+            },
+            "description": "A repayment splits between principal and interest, so the outstanding balance falls by less than the payment.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"accountId\": \"{{loanAccountId}}\",\n  \"amount\": 1000\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responds 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const loan = pm.response.json();",
+                  "const principal = Number(pm.collectionVariables.get('loanAmountMinor'));",
+                  "",
+                  "pm.test('the outstanding principal falls', () => {",
+                  "    pm.expect(loan.remaining_principal_minor).to.be.below(principal);",
+                  "});",
+                  "",
+                  "pm.test('it falls by less than the payment, the rest being interest', () => {",
+                  "    const reduction = principal - loan.remaining_principal_minor;",
+                  "    pm.expect(reduction).to.be.below(100000);",
+                  "    pm.expect(reduction).to.be.above(0);",
+                  "});",
+                  "",
+                  "pm.test('the loan stays active while a balance remains', () => {",
+                  "    pm.expect(loan.status).to.eql('ACTIVE');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List billers",
+          "id": "b85ce538-d2c0-5adc-a0ff-7d5caac85ff9",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/billers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "billers"
+              ]
+            },
+            "description": ""
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responds 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const body = pm.response.json();",
+                  "",
+                  "pm.test('a biller catalogue is published', () => {",
+                  "    pm.expect(body.billers).to.be.an('array').and.not.empty;",
+                  "});",
+                  "",
+                  "pm.test('each biller says what reference it needs', () => {",
+                  "    body.billers.forEach(b => {",
+                  "        pm.expect(b.code).to.be.a('string');",
+                  "        pm.expect(b.customer_reference_label).to.be.a('string');",
+                  "    });",
+                  "});",
+                  "",
+                  "pm.collectionVariables.set('billerId', body.billers[0].id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Save a biller",
+          "id": "0734dc20-b609-5737-98c1-5925585b9361",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/billers/saved",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "billers",
+                "saved"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"billerId\": \"{{billerId}}\",\n  \"alias\": \"Postman saved biller\",\n  \"customerReference\": \"{{billerReference}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('billerReference', 'PM-' + Date.now());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responds 201', () => pm.response.to.have.status(201));",
+                  "",
+                  "const saved = pm.response.json();",
+                  "",
+                  "pm.test('the reference is stored as given', () => {",
+                  "    pm.expect(saved.customer_reference)",
+                  "        .to.eql(pm.collectionVariables.get('billerReference'));",
+                  "});",
+                  "",
+                  "pm.collectionVariables.set('savedBillerId', saved.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Refuse saving the same reference twice",
+          "id": "7a2a9724-2da5-54f2-8804-4d30d98bc697",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/billers/saved",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "billers",
+                "saved"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"billerId\": \"{{billerId}}\",\n  \"alias\": \"Duplicate\",\n  \"customerReference\": \"{{billerReference}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('a duplicate saved reference is refused', () => {",
+                  "    pm.response.to.have.status(409);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Pay a bill",
+          "id": "3bf713c2-3461-58e0-914f-664836455001",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/bill-payments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "bill-payments"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"accountId\": \"{{loanAccountId}}\",\n  \"billerId\": \"{{billerId}}\",\n  \"savedBillerId\": \"{{savedBillerId}}\",\n  \"customerReference\": \"{{billerReference}}\",\n  \"amount\": 25\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responds 201', () => pm.response.to.have.status(201));",
+                  "",
+                  "const payment = pm.response.json();",
+                  "",
+                  "pm.test('the payment completes', () => {",
+                  "    pm.expect(payment.status).to.eql('COMPLETED');",
+                  "});",
+                  "",
+                  "pm.test('25 is recorded as 2500 minor units', () => {",
+                  "    pm.expect(payment.amount_minor).to.eql(2500);",
+                  "});",
+                  "",
+                  "pm.test('it is traceable by its own reference', () => {",
+                  "    pm.expect(payment.reference).to.match(/^BILL-/);",
+                  "});",
+                  "",
+                  "pm.test('completion is timestamped', () => {",
+                  "    pm.expect(payment.processed_at).to.be.a('string');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Pay a recurring bill",
+          "id": "40dcf3fb-c443-50b9-b09c-3509499c70b8",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/bill-payments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "bill-payments"
+              ]
+            },
+            "description": "A recurring payment settles now and queues its next occurrence, which is the behaviour nothing else tests.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"accountId\": \"{{loanAccountId}}\",\n  \"billerId\": \"{{billerId}}\",\n  \"customerReference\": \"{{recurringReference}}\",\n  \"amount\": 10,\n  \"recurringFrequency\": \"MONTHLY\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('recurringReference', 'PM-REC-' + Date.now());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responds 201', () => pm.response.to.have.status(201));",
+                  "",
+                  "const payment = pm.response.json();",
+                  "",
+                  "pm.test('the first instalment settles immediately', () => {",
+                  "    pm.expect(payment.status).to.eql('COMPLETED');",
+                  "});",
+                  "",
+                  "pm.test('the recurrence is recorded on it', () => {",
+                  "    pm.expect(payment.recurring_frequency).to.eql('MONTHLY');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Confirm the next occurrence was queued",
+          "id": "9148678d-3b78-519d-b373-28240021c6d6",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/bill-payments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "bill-payments"
+              ]
+            },
+            "description": ""
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responds 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const reference = pm.collectionVariables.get('recurringReference');",
+                  "const mine = pm.response.json()",
+                  "    .filter(p => p.customer_reference === reference);",
+                  "",
+                  "pm.test('the recurrence produced two records, not one', () => {",
+                  "    pm.expect(mine.length).to.eql(2);",
+                  "});",
+                  "",
+                  "pm.test('one settled and one is waiting', () => {",
+                  "    pm.expect(mine.some(p => p.status === 'COMPLETED')).to.be.true;",
+                  "    pm.expect(mine.some(p => p.status === 'SCHEDULED')).to.be.true;",
+                  "});",
+                  "",
+                  "pm.test('the waiting one is dated in the future', () => {",
+                  "    const scheduled = mine.find(p => p.status === 'SCHEDULED');",
+                  "    pm.expect(new Date(scheduled.scheduled_for).getTime())",
+                  "        .to.be.above(Date.now());",
+                  "});",
+                  "",
+                  "pm.test('the queued occurrence carries the same amount', () => {",
+                  "    const scheduled = mine.find(p => p.status === 'SCHEDULED');",
+                  "    pm.expect(scheduled.amount_minor).to.eql(1000);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Refuse a bill payment beyond the balance",
+          "id": "c999c6c4-c849-5d7f-a89f-0df6247f2eec",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/bill-payments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "bill-payments"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"accountId\": \"{{loanAccountId}}\",\n  \"billerId\": \"{{billerId}}\",\n  \"customerReference\": \"OVERDRAW\",\n  \"amount\": 99999999\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('an unaffordable payment is refused with 409', () => {",
+                  "    pm.response.to.have.status(409);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const signIn = (done) => {",
+              "    pm.sendRequest({",
+              "        url: pm.environment.get('baseUrl') + '/api/auth/login',",
+              "        method: 'POST',",
+              "        header: { 'Content-Type': 'application/json' },",
+              "        body: { mode: 'raw', raw: JSON.stringify({",
+              "            email: pm.environment.get('customerEmail'),",
+              "            password: pm.environment.get('customerPassword')",
+              "        }) }",
+              "    }, (loginError, login) => {",
+              "        if (loginError) { throw loginError; }",
+              "",
+              "        const challenge = login.json().challenge;",
+              "        const code = login.json().demoCode || pm.environment.get('mfaCode');",
+              "",
+              "        pm.sendRequest({",
+              "            url: pm.environment.get('baseUrl') + '/api/auth/mfa',",
+              "            method: 'POST',",
+              "            header: { 'Content-Type': 'application/json' },",
+              "            body: { mode: 'raw', raw: JSON.stringify({ challenge, code }) }",
+              "        }, (mfaError, mfa) => {",
+              "            if (mfaError) { throw mfaError; }",
+              "",
+              "            pm.collectionVariables.set('token', mfa.json().token);",
+              "            done(mfa.json().token);",
+              "        });",
+              "    });",
+              "};",
+              "",
+              "const existing = pm.collectionVariables.get('token');",
+              "",
+              "if (!existing) {",
+              "    signIn(() => {});",
+              "}"
+            ]
+          }
+        }
+      ]
     }
   ],
   "variable": [
@@ -4376,6 +6493,11 @@
     },
     {
       "key": "beneficiaryId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "beneficiaryName",
       "value": "",
       "type": "string"
     },
@@ -4512,6 +6634,111 @@
     {
       "key": "stateAccountLimitMajor",
       "value": "0",
+      "type": "string"
+    },
+    {
+      "key": "rateUsd",
+      "value": "0",
+      "type": "string"
+    },
+    {
+      "key": "fxSourceId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "fxTargetId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "fxSourceBefore",
+      "value": "0",
+      "type": "string"
+    },
+    {
+      "key": "fxTargetBefore",
+      "value": "0",
+      "type": "string"
+    },
+    {
+      "key": "fxSourceLimit",
+      "value": "0",
+      "type": "string"
+    },
+    {
+      "key": "fxCredited",
+      "value": "0",
+      "type": "string"
+    },
+    {
+      "key": "overLimitAmount",
+      "value": "0",
+      "type": "string"
+    },
+    {
+      "key": "loanAccountId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "loanAccountBefore",
+      "value": "0",
+      "type": "string"
+    },
+    {
+      "key": "loanAccountAfter",
+      "value": "0",
+      "type": "string"
+    },
+    {
+      "key": "loanId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "loanAmountMinor",
+      "value": "0",
+      "type": "string"
+    },
+    {
+      "key": "lendingChallenge",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "lendingAdminToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "billerId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "savedBillerId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "billerReference",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "recurringReference",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "fraudChallenge",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "fraudAlertId",
+      "value": "",
       "type": "string"
     }
   ],

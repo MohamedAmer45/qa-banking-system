@@ -1,7 +1,7 @@
 # Postman Collection
 
 Functional API coverage organised as **journeys** rather than endpoint-by-endpoint
-checks. 37 requests, 152 assertions.
+checks. 104 requests, 440 assertions.
 
 ## Running
 
@@ -33,7 +33,23 @@ npm run db:reset && npm start
 | `03 Money movement` | 7 | Transfer with balance and ledger checked on both sides |
 | `04 Idempotency` | 4 | One key, two submissions, one debit |
 | `05 Error contract` | 7 | Every documented status code |
-| `06 Back office` | 4 | Admin views, and the audit trail finding this run's own transfer |
+| `06 Back office` | 10 | Admin views, fraud triage, and the audit trail finding this run's own transfer |
+| `07 Credential recovery` | 12 | forgot → reset → sign in → change |
+| `08 Card lifecycle` | 10 | The card state machine, including the moves it refuses |
+| `09 Account state transitions` | 12 | freeze/dormant/activate, each with a transfer attempted |
+| `10 Currency and limits` | 7 | FX conversion reconciled against the published rate; the daily ceiling |
+| `11 Lending and bills` | 18 | Loan apply → approve → disburse → repay; a bill paid and made recurring |
+
+## Coverage
+
+Between this collection and the other six suites, all 65 endpoints the
+application serves are exercised by at least one of them.
+
+Four behaviours were reachable but untested anywhere until folders 10 and 11:
+cross-currency conversion, the daily transfer ceiling, the loan lifecycle, and
+recurring bill payments. `BUG-DB-001` was about the precision of `fx_rate`, so
+until folder 10 its regression check was a column type rather than an actual
+conversion.
 
 ## Why this exists alongside REST Assured
 
@@ -77,12 +93,20 @@ Folders `00` and `05` are read-only and safe anywhere, including production.
 Folders `02`, `03` and `04` create data and move money — point those at a local
 or CI database.
 
-`05` signs itself in through a folder-level pre-request when no session exists,
-so running it alone actually works. It did not at first: three of its requests
-needed the session folder `01` establishes, and running the folder standalone
-against production returned `401` where `403`, `400` and `404` were expected.
-The folder claimed to be independently runnable, so the fix was to make the
-claim true rather than to document the dependency.
+Six folders carry a pre-request script and can be run on their own: `05`, `07`,
+`08`, `09`, `10` and `11`. Each establishes the session — and where needed, the
+beneficiary — that its requests depend on.
+
+That independence was got wrong three separate times. Folders `05`, `09` and
+`10` each shipped using a variable an earlier folder produced without resolving
+it themselves, and each passed in a full run because the variable happened to be
+set. Only running the folder in isolation exposed it: standalone, `05` returned
+`401` where `403`/`400`/`404` were expected, and `09` and `10` got
+`400 "destination or beneficiary required"` instead of the state and limit
+refusals they were asserting.
+
+The generator now refuses to build a collection where a folder claims
+independence it does not have, so the mistake cannot be made quietly again.
 
 ## Collection-level assertions
 
