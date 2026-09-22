@@ -1,0 +1,14 @@
+{
+  "name": "novabank-postman",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Postman collection and Newman runner for the NovaBank API",
+  "scripts": {
+    "test": "newman run NovaBank.postman_collection.json -e environments/local.postman_environment.json",
+    "test:ci": "newman run NovaBank.postman_collection.json -e environments/ci.postman_environment.json --reporters cli,junit --reporter-junit-export results/newman-junit.xml",
+    "test:production": "newman run NovaBank.postman_collection.json -e environments/production.postman_environment.json --folder \"00 Environment\" --folder \"05 Error contract\""
+  },
+  "devDependencies": {
+    "newman": "^6.2.2"
+  }
+}

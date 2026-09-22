@@ -14,6 +14,7 @@ All four UI/BDD suites are retargeted at the real application and passing.
 | Cucumber JVM | 21 scenarios | Passing | Chrome |
 | Database (JDBC + TestNG) | 59 | Passing | n/a |
 | REST Assured (API) | 107 | Passing | n/a |
+| Postman / Newman | 37 requests, 152 assertions | Passing | n/a |
 
 Every suite starts the application inside the CI runner against a `postgres:16`
 service container, so runs are isolated and begin from an identical seed. No
@@ -86,7 +87,7 @@ navigating.
 
 | Area | Status |
 |---|---|
-| Postman / Newman | Not started. Unblocked |
+
 | REST Assured | Not started. Unblocked |
 | Jest | Not started. Unblocked |
 

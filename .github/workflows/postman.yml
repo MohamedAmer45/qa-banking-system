@@ -1,0 +1,65 @@
+name: Postman Tests (Newman)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ["postman/**", ".github/workflows/postman.yml", ".github/actions/start-novabank/**"]
+  pull_request:
+    branches: [main]
+    paths: ["postman/**", ".github/workflows/postman.yml", ".github/actions/start-novabank/**"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: postman-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  newman:
+    name: API journeys
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: novabank
+          POSTGRES_PASSWORD: novabank
+          POSTGRES_DB: novabank_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U novabank"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - name: Check out QA repository
+        uses: actions/checkout@v4
+
+      - name: Start NovaBank
+        uses: ./.github/actions/start-novabank
+
+      - name: Install Newman
+        working-directory: postman
+        run: npm ci
+
+      - name: Run the collection
+        working-directory: postman
+        run: npm run test:ci
+
+      - name: Application log
+        if: always()
+        run: cat "${RUNNER_TEMP}/novabank.log" || true
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: postman-results-${{ github.run_id }}
+          path: postman/results/
+          if-no-files-found: ignore
+          retention-days: 14

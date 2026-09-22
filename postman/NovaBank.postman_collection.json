@@ -1,0 +1,2327 @@
+{
+  "info": {
+    "_postman_id": "21d6eeda-d4d2-5ff9-a3c6-8f6d5cc7c2e5",
+    "name": "NovaBank API",
+    "description": "Functional API coverage for NovaBank, organised as journeys rather than as endpoint-by-endpoint checks.\n\nEach folder tells a story whose steps depend on one another: the account, the beneficiary, the opening balance and the resulting transfer reference are all carried forward from the request that produced them. That chaining is what this collection contributes that the REST Assured suite does not \u2014 that suite owns the authorization matrix, the response schemas and the regression sweep, which are awkward to express here.\n\nFolders 00 and 05 are read-only and safe against any environment. Folders 02, 03 and 04 create data and move money, so point them at a local or CI database.\n\nRun everything with Newman:\n\n    npm run test\n\nSign-in is two steps everywhere: credentials raise an MFA challenge, and the challenge is exchanged for a session. With QA_MODE on, the one-time code comes back in the response, so no mail server is needed.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "00 Environment",
+      "id": "4146bd9e-2d96-52c3-9cc9-b34816641636",
+      "description": "Confirms the target is reachable and is the build the rest of the collection assumes. Running this folder alone is a safe smoke check against any environment, including production.",
+      "item": [
+        {
+          "name": "Health",
+          "id": "687584f3-bec7-5537-9a7a-86489e63c765",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "health"
+              ]
+            },
+            "description": "Unauthenticated. Also captures the FX table so later requests can reason about conversion."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responds 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const body = pm.response.json();",
+                  "",
+                  "pm.test('reports healthy', () => {",
+                  "    pm.expect(body.status).to.eql('ok');",
+                  "});",
+                  "",
+                  "pm.test('is the PostgreSQL build, not an older one', () => {",
+                  "    pm.expect(body.database).to.eql('postgresql');",
+                  "});",
+                  "",
+                  "pm.test('publishes an FX table for every supported currency', () => {",
+                  "    ['EGP', 'USD', 'EUR', 'GBP'].forEach(c =>",
+                  "        pm.expect(body.fx).to.have.property(c));",
+                  "});",
+                  "",
+                  "// Later folders behave differently when QA affordances are off.",
+                  "pm.collectionVariables.set('qaMode', String(body.qaMode === true));",
+                  "pm.collectionVariables.set('fxUsd', body.fx.USD);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "01 Authentication",
+      "id": "bbb991a9-fe6d-551d-85ef-25062de5a32c",
+      "description": "The two-step handshake. Credentials raise an MFA challenge; the challenge is exchanged for a session. Both are always required, and the token captured here is used by every folder that follows.",
+      "item": [
+        {
+          "name": "Sign in - credentials",
+          "id": "6b63fa28-4272-565c-a4db-a190774e4f41",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Returns a challenge, never a session token.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{customerEmail}}\",\n  \"password\": \"{{customerPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responds 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const body = pm.response.json();",
+                  "",
+                  "pm.test('demands a second factor', () => {",
+                  "    pm.expect(body.mfaRequired).to.be.true;",
+                  "    pm.expect(body.challenge).to.be.a('string').and.not.empty;",
+                  "});",
+                  "",
+                  "pm.test('does not issue a session at this stage', () => {",
+                  "    pm.expect(body).to.not.have.property('token');",
+                  "});",
+                  "",
+                  "pm.collectionVariables.set('challenge', body.challenge);",
+                  "",
+                  "// QA mode returns the code a real bank would send out of band.",
+                  "if (body.demoCode) {",
+                  "    pm.collectionVariables.set('mfaCode', body.demoCode);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Sign in - one-time code",
+          "id": "2ff64c9b-f839-5be8-9172-1a33a9eef4b8",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/mfa",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "mfa"
+              ]
+            },
+            "description": "Exchanges the challenge for a session token.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"challenge\": \"{{challenge}}\",\n  \"code\": \"{{mfaCode}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responds 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const body = pm.response.json();",
+                  "",
+                  "pm.test('issues a session token', () => {",
+                  "    pm.expect(body.token).to.be.a('string').and.have.length.above(16);",
+                  "});",
+                  "",
+                  "pm.test('identifies the signed-in customer', () => {",
+                  "    pm.expect(body.user.email).to.eql(pm.environment.get('customerEmail'));",
+                  "    pm.expect(body.user.role).to.eql('CUSTOMER');",
+                  "});",
+                  "",
+                  "pm.test('never returns credential material', () => {",
+                  "    pm.expect(body.user).to.not.have.property('password_hash');",
+                  "    pm.expect(body.user).to.not.have.property('mfa_code');",
+                  "});",
+                  "",
+                  "pm.collectionVariables.set('token', body.token);",
+                  "pm.collectionVariables.set('customerId', body.user.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reject a replayed challenge",
+          "id": "b5981c69-b8f2-5bb5-ac45-dc457c525ddb",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/mfa",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "mfa"
+              ]
+            },
+            "description": "The same challenge, submitted twice. A challenge is single-use, so the replay must fail.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"challenge\": \"{{challenge}}\",\n  \"code\": \"{{mfaCode}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('a spent challenge cannot be reused', () => {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "",
+                  "pm.test('says why without leaking internals', () => {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.error).to.be.a('string');",
+                  "    pm.expect(body).to.not.have.property('stack');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Sign in as administrator",
+          "id": "2e57f1b2-5e31-5092-ae91-76466f865fa6",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Captures a second challenge so the back-office folder has its own session.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responds 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.collectionVariables.set('adminChallenge', body.challenge);",
+                  "if (body.demoCode) pm.collectionVariables.set('mfaCode', body.demoCode);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Administrator one-time code",
+          "id": "a03917a8-bce1-5404-81c7-52c070d36b69",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/mfa",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "mfa"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"challenge\": \"{{adminChallenge}}\",\n  \"code\": \"{{mfaCode}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responds 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const body = pm.response.json();",
+                  "",
+                  "pm.test('signs in with the administrator role', () => {",
+                  "    pm.expect(body.user.role).to.eql('ADMIN');",
+                  "});",
+                  "",
+                  "pm.collectionVariables.set('adminToken', body.token);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "02 Onboarding journey",
+      "id": "2ce1131b-0268-5004-9b2d-5a85b884ff0e",
+      "description": "A new customer from nothing to a usable profile: register, verify the email, sign in, submit KYC. Each step consumes something the previous step returned, which is the workflow this collection exists to express.",
+      "item": [
+        {
+          "name": "Register a new customer",
+          "id": "5149f502-a708-5098-89ff-283354bb2e28",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "register"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{newEmail}}\",\n  \"password\": \"{{newPassword}}\",\n  \"firstName\": \"Journey\",\n  \"lastName\": \"Customer\",\n  \"phone\": \"+20 100 000 0001\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// A fresh identity per run, so the journey can be replayed",
+                  "// without colliding with an earlier one.",
+                  "const stamp = Date.now();",
+                  "pm.collectionVariables.set('newEmail', 'journey-' + stamp + '@novabank.test');",
+                  "pm.collectionVariables.set('newPassword', 'Journey123!');"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responds 201', () => pm.response.to.have.status(201));",
+                  "",
+                  "const body = pm.response.json();",
+                  "",
+                  "pm.test('requires the email to be verified first', () => {",
+                  "    pm.expect(body.message).to.match(/verify/i);",
+                  "});",
+                  "",
+                  "// QA mode returns the code the simulated mail service would send.",
+                  "pm.test('QA mode supplies the verification code', () => {",
+                  "    pm.expect(body.demoVerificationCode).to.be.a('string');",
+                  "});",
+                  "",
+                  "pm.collectionVariables.set('verificationCode', body.demoVerificationCode);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reject a duplicate registration",
+          "id": "c8eda233-8529-5c93-969d-a798d89ea022",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "register"
+              ]
+            },
+            "description": "The same address again. Uniqueness is enforced, and the conflict is reported as 409 rather than 400.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{newEmail}}\",\n  \"password\": \"{{newPassword}}\",\n  \"firstName\": \"Duplicate\",\n  \"lastName\": \"Attempt\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('an address cannot be registered twice', () => {",
+                  "    pm.response.to.have.status(409);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Sign in before verifying",
+          "id": "9e55a466-1d18-585f-bae0-3dd07ba202ba",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Correct credentials, unverified address. Banking services stay closed until the address is confirmed.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{newEmail}}\",\n  \"password\": \"{{newPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('unverified sign-in is refused with 403', () => {",
+                  "    pm.response.to.have.status(403);",
+                  "});",
+                  "",
+                  "pm.test('the reason names verification', () => {",
+                  "    pm.expect(pm.response.json().error).to.match(/verif/i);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Verify the email",
+          "id": "b3456c2d-18c5-5f38-89b3-0b0670eb1588",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/verify-email",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "verify-email"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"{{verificationCode}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responds 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('confirms the address', () => {",
+                  "    pm.expect(pm.response.json().message).to.match(/verified/i);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reject a reused verification code",
+          "id": "d744fed9-e493-575c-bae1-5a46c32f98f2",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/verify-email",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "verify-email"
+              ]
+            },
+            "description": "Verification codes are single-use.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"{{verificationCode}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('a spent code cannot be reused', () => {",
+                  "    pm.response.to.have.status(400);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Sign in as the new customer",
+          "id": "e8a2f341-1897-5edc-a30d-5a09d3a02816",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{newEmail}}\",\n  \"password\": \"{{newPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('verification unlocks sign-in', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "pm.collectionVariables.set('newChallenge', body.challenge);",
+                  "if (body.demoCode) { pm.collectionVariables.set('mfaCode', body.demoCode); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Complete the new customer's MFA",
+          "id": "0a99adfe-65d5-57be-9d2f-656b311d6190",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/mfa",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "mfa"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"challenge\": \"{{newChallenge}}\",\n  \"code\": \"{{mfaCode}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responds 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('newToken', pm.response.json().token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Open an account before KYC is approved",
+          "id": "7cb307d8-6a37-511c-87e3-d3e9b69e1371",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts"
+              ]
+            },
+            "description": "A new customer's KYC has not been reviewed, so account opening is refused. This is the documented precondition, not a defect.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"accountType\": \"SAVINGS\",\n  \"currency\": \"EGP\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.request.headers.upsert({",
+                  "    key: 'Authorization',",
+                  "    value: 'Bearer ' + pm.collectionVariables.get('newToken')",
+                  "});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('unapproved KYC blocks account opening', () => {",
+                  "    pm.response.to.have.status(403);",
+                  "});",
+                  "",
+                  "pm.test('the reason names KYC', () => {",
+                  "    pm.expect(pm.response.json().error).to.match(/KYC/i);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Submit KYC",
+          "id": "6a4daba5-c756-595b-b99e-155383da363e",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/kyc",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "kyc"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"dateOfBirth\": \"1995-06-15\",\n  \"nationality\": \"Egyptian\",\n  \"address\": \"Nasr City, Cairo, Egypt\",\n  \"employment\": \"Quality Engineer\",\n  \"annualIncome\": 480000,\n  \"idType\": \"NATIONAL_ID\",\n  \"idNumber\": \"29506151234567\",\n  \"documentName\": \"journey-id.pdf\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.request.headers.upsert({",
+                  "    key: 'Authorization',",
+                  "    value: 'Bearer ' + pm.collectionVariables.get('newToken')",
+                  "});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responds 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const body = pm.response.json();",
+                  "",
+                  "pm.test('the profile moves to review', () => {",
+                  "    pm.expect(body.kyc.status).to.eql('UNDER_REVIEW');",
+                  "});",
+                  "",
+                  "pm.test('the identity number is masked in the response', () => {",
+                  "    pm.expect(body.kyc.id_number).to.match(/^[*]+/);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "03 Money movement",
+      "id": "44de9635-235b-5969-935e-f28b69b96606",
+      "description": "A transfer end to end, with the balance and the ledger checked on either side of it. The chaining is the point: the account, the beneficiary, the opening balance and the resulting reference are all carried forward from the request that produced them.",
+      "item": [
+        {
+          "name": "List accounts",
+          "id": "69d87f67-aeeb-5584-b82a-3a9ccce493ff",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts"
+              ]
+            },
+            "description": "Captures the first active EGP account and its balance, so the transfer below can be asserted as a delta rather than against a fixed figure."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responds 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const accounts = pm.response.json();",
+                  "",
+                  "pm.test('the customer holds at least one active EGP account', () => {",
+                  "    pm.expect(accounts.some(a => a.status === 'ACTIVE' && a.currency === 'EGP'))",
+                  "        .to.be.true;",
+                  "});",
+                  "",
+                  "pm.test('money is reported in integer minor units', () => {",
+                  "    accounts.forEach(a => {",
+                  "        pm.expect(a.balance_minor % 1).to.eql(0);",
+                  "        pm.expect(a.available_minor % 1).to.eql(0);",
+                  "    });",
+                  "});",
+                  "",
+                  "pm.test('no account carries credential material', () => {",
+                  "    accounts.forEach(a => {",
+                  "        pm.expect(a).to.not.have.property('password_hash');",
+                  "    });",
+                  "});",
+                  "",
+                  "const source = accounts.find(a => a.status === 'ACTIVE' && a.currency === 'EGP');",
+                  "pm.collectionVariables.set('accountId', source.id);",
+                  "pm.collectionVariables.set('balanceBefore', source.balance_minor);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List beneficiaries",
+          "id": "5ca06960-d039-5c05-8f52-41db9ab0ef2a",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/beneficiaries",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "beneficiaries"
+              ]
+            },
+            "description": ""
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responds 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const beneficiaries = pm.response.json();",
+                  "",
+                  "pm.test('a verified beneficiary is available to send to', () => {",
+                  "    pm.expect(beneficiaries.some(b => b.verified === 1 && b.status === 'ACTIVE'))",
+                  "        .to.be.true;",
+                  "});",
+                  "",
+                  "const target = beneficiaries.find(b => b.verified === 1 && b.status === 'ACTIVE');",
+                  "pm.collectionVariables.set('beneficiaryId', target.id);",
+                  "pm.collectionVariables.set('beneficiaryName', target.name);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Send a transfer",
+          "id": "870d228a-4e40-5a45-aea7-abe18802e11b",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/transfers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "transfers"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fromAccountId\": \"{{accountId}}\",\n  \"beneficiaryId\": \"{{beneficiaryId}}\",\n  \"amount\": 12.34,\n  \"memo\": \"Postman journey\",\n  \"idempotencyKey\": \"{{transferKey}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// A key unique to this run, so the idempotency folder below",
+                  "// can replay a different one deliberately.",
+                  "pm.collectionVariables.set('transferKey', 'pm-' + Date.now());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responds 201', () => pm.response.to.have.status(201));",
+                  "",
+                  "const transfer = pm.response.json();",
+                  "",
+                  "pm.test('the transfer completes', () => {",
+                  "    pm.expect(transfer.status).to.eql('COMPLETED');",
+                  "});",
+                  "",
+                  "pm.test('12.34 is recorded as 1234 minor units', () => {",
+                  "    pm.expect(transfer.amount_minor).to.eql(1234);",
+                  "});",
+                  "",
+                  "pm.test('a traceable reference is issued', () => {",
+                  "    pm.expect(transfer.reference).to.match(/^TRF-\\d{8}-[A-F0-9]+$/);",
+                  "});",
+                  "",
+                  "pm.test('completion is timestamped', () => {",
+                  "    pm.expect(transfer.completed_at).to.be.a('string');",
+                  "});",
+                  "",
+                  "pm.collectionVariables.set('transferReference', transfer.reference);",
+                  "pm.collectionVariables.set('transferFee', transfer.fee_minor);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Confirm the debit",
+          "id": "b0461f09-cf4b-59cb-8a80-9aa5c3895b71",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts"
+              ]
+            },
+            "description": "Re-reads the same account and asserts the balance fell by exactly the amount plus the fee the transfer reported."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responds 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const accountId = Number(pm.collectionVariables.get('accountId'));",
+                  "const before = Number(pm.collectionVariables.get('balanceBefore'));",
+                  "const fee = Number(pm.collectionVariables.get('transferFee'));",
+                  "",
+                  "const account = pm.response.json().find(a => a.id === accountId);",
+                  "",
+                  "pm.test('the account was debited by amount plus fee', () => {",
+                  "    pm.expect(before - account.balance_minor).to.eql(1234 + fee);",
+                  "});",
+                  "",
+                  "pm.collectionVariables.set('balanceAfter', account.balance_minor);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Confirm the ledger entry",
+          "id": "c5021896-bdd4-5168-bad9-8f2a12d8e6f0",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts/{{accountId}}/transactions?type=TRANSFER",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts",
+                "{{accountId}}",
+                "transactions"
+              ],
+              "query": [
+                {
+                  "key": "type",
+                  "value": "TRANSFER"
+                }
+              ]
+            },
+            "description": "The transfer must appear in the account's own history, with a closing balance matching the account."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responds 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const reference = pm.collectionVariables.get('transferReference');",
+                  "const after = Number(pm.collectionVariables.get('balanceAfter'));",
+                  "const ledger = pm.response.json();",
+                  "",
+                  "pm.test('a debit was written for this transfer', () => {",
+                  "    pm.expect(ledger.some(t => t.direction === 'DEBIT')).to.be.true;",
+                  "});",
+                  "",
+                  "pm.test('the newest debit closes at the account balance', () => {",
+                  "    const debit = ledger.filter(t => t.direction === 'DEBIT')[0];",
+                  "    pm.expect(debit.balance_after_minor).to.eql(after);",
+                  "});",
+                  "",
+                  "pm.test('the transfer is findable by its reference', () => {",
+                  "    pm.expect(ledger.some(t => (t.description || '').includes(reference)))",
+                  "        .to.be.true;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reject an unaffordable transfer",
+          "id": "0866117c-908b-5046-9bd0-5219f4aad33a",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/transfers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "transfers"
+              ]
+            },
+            "description": "A business rejection, not a validation error: 409.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fromAccountId\": \"{{accountId}}\",\n  \"beneficiaryId\": \"{{beneficiaryId}}\",\n  \"amount\": 99999999,\n  \"idempotencyKey\": \"{{$guid}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('an unaffordable transfer is refused with 409', () => {",
+                  "    pm.response.to.have.status(409);",
+                  "});",
+                  "",
+                  "pm.test('the reason is stated', () => {",
+                  "    pm.expect(pm.response.json().error).to.match(/balance|insufficient/i);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Confirm nothing moved",
+          "id": "01e4f21c-c8ac-5736-a1eb-28b6c770625a",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts"
+              ]
+            },
+            "description": ""
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const accountId = Number(pm.collectionVariables.get('accountId'));",
+                  "const after = Number(pm.collectionVariables.get('balanceAfter'));",
+                  "",
+                  "const account = pm.response.json().find(a => a.id === accountId);",
+                  "",
+                  "pm.test('a rejected transfer leaves the balance untouched', () => {",
+                  "    pm.expect(account.balance_minor).to.eql(after);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "04 Idempotency",
+      "id": "2f5d1b88-a266-5068-89dc-d6e3a8077b53",
+      "description": "The same request sent twice under one key. A retry after a dropped response must not debit the customer a second time, which is the whole reason the key exists.",
+      "item": [
+        {
+          "name": "First submission",
+          "id": "d57f2171-111b-5a8d-885b-59baad6d4fa1",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/transfers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "transfers"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fromAccountId\": \"{{accountId}}\",\n  \"beneficiaryId\": \"{{beneficiaryId}}\",\n  \"amount\": 5,\n  \"idempotencyKey\": \"{{replayKey}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('replayKey', 'pm-replay-' + Date.now());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responds 201', () => pm.response.to.have.status(201));",
+                  "",
+                  "const transfer = pm.response.json();",
+                  "pm.collectionVariables.set('replayReference', transfer.reference);",
+                  "pm.collectionVariables.set('replayId', transfer.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Read the balance between attempts",
+          "id": "db3fb73a-b8c4-5e07-a028-b1bc0fb8fe54",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts"
+              ]
+            },
+            "description": ""
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const accountId = Number(pm.collectionVariables.get('accountId'));",
+                  "const account = pm.response.json().find(a => a.id === accountId);",
+                  "pm.collectionVariables.set('replayBalance', account.balance_minor);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Identical resubmission",
+          "id": "f69064ad-7319-56e3-a1d2-475346bd589b",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/transfers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "transfers"
+              ]
+            },
+            "description": "Byte-for-byte the same request, including the key.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fromAccountId\": \"{{accountId}}\",\n  \"beneficiaryId\": \"{{beneficiaryId}}\",\n  \"amount\": 5,\n  \"idempotencyKey\": \"{{replayKey}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const transfer = pm.response.json();",
+                  "",
+                  "pm.test('the original transfer is returned, not a new one', () => {",
+                  "    pm.expect(transfer.reference)",
+                  "        .to.eql(pm.collectionVariables.get('replayReference'));",
+                  "    pm.expect(String(transfer.id))",
+                  "        .to.eql(String(pm.collectionVariables.get('replayId')));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Confirm a single debit",
+          "id": "4c7152d0-fab0-5eb7-9c9e-6fd8dae08342",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts"
+              ]
+            },
+            "description": ""
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const accountId = Number(pm.collectionVariables.get('accountId'));",
+                  "const between = Number(pm.collectionVariables.get('replayBalance'));",
+                  "",
+                  "const account = pm.response.json().find(a => a.id === accountId);",
+                  "",
+                  "pm.test('the resubmission did not debit the account again', () => {",
+                  "    pm.expect(account.balance_minor).to.eql(between);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "05 Error contract",
+      "id": "99faf8c4-52aa-5ace-a261-72bf7f9317df",
+      "description": "The documented status codes, one request each. Nothing here moves money or changes state, and the folder signs itself in when run on its own, so it is safe against any environment including production.",
+      "item": [
+        {
+          "name": "401 - no session",
+          "id": "bea1c666-29d2-5c6a-95d6-0d3910c41a1a",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts"
+              ]
+            },
+            "description": ""
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('a protected endpoint refuses an anonymous caller', () => {",
+                  "    pm.response.to.have.status(401);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "401 - malformed token",
+          "id": "f52fe07d-5957-5b61-b314-fbfb5c4669ff",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts"
+              ]
+            },
+            "description": "An unrecognised token must be refused, not ignored."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.request.headers.upsert({",
+                  "    key: 'Authorization',",
+                  "    value: 'Bearer not-a-real-token'",
+                  "});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('a malformed token is refused', () => {",
+                  "    pm.response.to.have.status(401);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "403 - wrong role",
+          "id": "ee808d8c-8a25-500a-ac80-470f002b56b7",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/dashboard",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "dashboard"
+              ]
+            },
+            "description": "A customer's own token against a back-office endpoint."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('a customer cannot reach the back office', () => {",
+                  "    pm.response.to.have.status(403);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "404 - unknown route",
+          "id": "2be45f7c-62bc-542b-b0ad-c4b0522cdfa1",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/does-not-exist",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "does-not-exist"
+              ]
+            },
+            "description": ""
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('an unknown route is 404', () => {",
+                  "    pm.response.to.have.status(404);",
+                  "});",
+                  "",
+                  "pm.test('and answers with JSON, not an HTML page', () => {",
+                  "    pm.response.to.be.json;",
+                  "    pm.expect(pm.response.json().error).to.be.a('string');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "400 - malformed JSON",
+          "id": "e5ff058d-f90f-565f-ac90-e68453c204bb",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/transfers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "transfers"
+              ]
+            },
+            "description": "A parse failure is the client's error, not a crash.",
+            "body": {
+              "mode": "raw",
+              "raw": "{ this is not valid json",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('unparseable JSON is 400', () => {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "",
+                  "pm.test('the error names the problem without leaking internals', () => {",
+                  "    const raw = pm.response.text().toLowerCase();",
+                  "    pm.expect(raw).to.not.include('node_modules');",
+                  "    pm.expect(raw).to.not.include('at object.');",
+                  "    pm.expect(raw).to.not.include('select ');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "401 - wrong password",
+          "id": "a6217029-7085-53e5-8989-ea54ba57c620",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{customerEmail}}\",\n  \"password\": \"DefinitelyNotThePassword123!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('a wrong password is 401', () => {",
+                  "    pm.response.to.have.status(401);",
+                  "});",
+                  "",
+                  "pm.test('the message does not reveal whether the address exists', () => {",
+                  "    const error = pm.response.json().error.toLowerCase();",
+                  "    pm.expect(error).to.not.include('no such user');",
+                  "    pm.expect(error).to.not.include('not found');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "404 - another customer's resource",
+          "id": "a57821d2-c1d2-5ae1-af6e-68a3bf6bb615",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts/999999/transactions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "accounts",
+                "999999",
+                "transactions"
+              ]
+            },
+            "description": "Ownership failures answer 404 rather than 403, so the API never confirms that someone else's resource exists."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('an unowned resource is 404, not 403', () => {",
+                  "    pm.response.to.have.status(404);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (pm.collectionVariables.get('token')) { return; }",
+              "",
+              "const base = pm.environment.get('baseUrl');",
+              "",
+              "pm.sendRequest({",
+              "    url: base + '/api/auth/login',",
+              "    method: 'POST',",
+              "    header: { 'Content-Type': 'application/json' },",
+              "    body: { mode: 'raw', raw: JSON.stringify({",
+              "        email: pm.environment.get('customerEmail'),",
+              "        password: pm.environment.get('customerPassword')",
+              "    }) }",
+              "}, (loginError, login) => {",
+              "    if (loginError) { throw loginError; }",
+              "",
+              "    const challenge = login.json().challenge;",
+              "    const code = login.json().demoCode || pm.environment.get('mfaCode');",
+              "",
+              "    pm.sendRequest({",
+              "        url: base + '/api/auth/mfa',",
+              "        method: 'POST',",
+              "        header: { 'Content-Type': 'application/json' },",
+              "        body: { mode: 'raw', raw: JSON.stringify({ challenge, code }) }",
+              "    }, (mfaError, mfa) => {",
+              "        if (mfaError) { throw mfaError; }",
+              "        pm.collectionVariables.set('token', mfa.json().token);",
+              "    });",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "06 Back office",
+      "id": "0ed52028-5751-58d5-a40d-3b19f3368274",
+      "description": "The administrator session captured in folder 01, used to read the operational views and confirm the audit trail recorded the transfer this collection performed.",
+      "item": [
+        {
+          "name": "Operations dashboard",
+          "id": "0bba6d58-1cc0-5a02-b117-c65dfcd69ef9",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/dashboard",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "dashboard"
+              ]
+            },
+            "description": ""
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.request.headers.upsert({",
+                  "    key: 'Authorization',",
+                  "    value: 'Bearer ' + pm.collectionVariables.get('adminToken')",
+                  "});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responds 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const metrics = pm.response.json();",
+                  "",
+                  "pm.test('reports operational counts', () => {",
+                  "    ['customers', 'activeAccounts', 'pendingKyc', 'openFraud',",
+                  "     'pendingLoans', 'transferVolumeMinor'].forEach(key =>",
+                  "        pm.expect(metrics).to.have.property(key));",
+                  "});",
+                  "",
+                  "pm.test('volume is reported in minor units', () => {",
+                  "    pm.expect(metrics.transferVolumeMinor % 1).to.eql(0);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "KYC review queue",
+          "id": "8af569fd-7328-5c9c-a896-20e7655f45ed",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/kyc",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "kyc"
+              ]
+            },
+            "description": "The customer onboarded in folder 02 should be waiting here, which links the two journeys together."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.request.headers.upsert({",
+                  "    key: 'Authorization',",
+                  "    value: 'Bearer ' + pm.collectionVariables.get('adminToken')",
+                  "});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responds 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const queue = pm.response.json();",
+                  "const newEmail = pm.collectionVariables.get('newEmail');",
+                  "",
+                  "pm.test('the newly onboarded customer is awaiting review', () => {",
+                  "    pm.expect(queue.some(k => k.email === newEmail &&",
+                  "        k.status === 'UNDER_REVIEW')).to.be.true;",
+                  "});",
+                  "",
+                  "pm.test('the queue never exposes a raw document payload', () => {",
+                  "    queue.forEach(k => pm.expect(k).to.not.have.property('document_data_b64'));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Audit trail",
+          "id": "18a88ea1-de98-52a9-9afe-5d9dee2505be",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/audit?action=TRANSFER",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "audit"
+              ],
+              "query": [
+                {
+                  "key": "action",
+                  "value": "TRANSFER"
+                }
+              ]
+            },
+            "description": "The transfer performed in folder 03, found by its own reference. Asserting the trail is merely non-empty would pass against a log recording nothing real."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.request.headers.upsert({",
+                  "    key: 'Authorization',",
+                  "    value: 'Bearer ' + pm.collectionVariables.get('adminToken')",
+                  "});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responds 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "const reference = pm.collectionVariables.get('transferReference');",
+                  "const entries = pm.response.json();",
+                  "",
+                  "pm.test('this collection\\'s own transfer is in the trail', () => {",
+                  "    pm.expect(entries.some(e => e.entity_id === reference)).to.be.true;",
+                  "});",
+                  "",
+                  "pm.test('each entry names an action, a subject and a time', () => {",
+                  "    entries.slice(0, 20).forEach(e => {",
+                  "        pm.expect(e.action).to.be.a('string');",
+                  "        pm.expect(e.entity_type).to.be.a('string');",
+                  "        pm.expect(e.created_at).to.be.a('string');",
+                  "    });",
+                  "});",
+                  "",
+                  "pm.test('the trail records no credential material', () => {",
+                  "    const raw = pm.response.text();",
+                  "    pm.expect(raw).to.not.include('password_hash');",
+                  "    pm.expect(raw).to.not.include('mfa_code');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Customer directory",
+          "id": "dc91844f-797b-55a1-9d71-6a6e6901c37c",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/customers?q=customer",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "customers"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "customer"
+                }
+              ]
+            },
+            "description": ""
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.request.headers.upsert({",
+                  "    key: 'Authorization',",
+                  "    value: 'Bearer ' + pm.collectionVariables.get('adminToken')",
+                  "});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responds 200', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('the search matches the seeded customer', () => {",
+                  "    pm.expect(pm.response.json().some(",
+                  "        c => c.email === pm.environment.get('customerEmail'))).to.be.true;",
+                  "});",
+                  "",
+                  "pm.test('the directory carries no credential material', () => {",
+                  "    pm.expect(pm.response.text()).to.not.include('password_hash');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "adminToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "newToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "challenge",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "adminChallenge",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "newChallenge",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "accountId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "beneficiaryId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "transferReference",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "transferKey",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "transferFee",
+      "value": "0",
+      "type": "string"
+    },
+    {
+      "key": "balanceBefore",
+      "value": "0",
+      "type": "string"
+    },
+    {
+      "key": "balanceAfter",
+      "value": "0",
+      "type": "string"
+    },
+    {
+      "key": "replayKey",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "replayReference",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "replayId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "replayBalance",
+      "value": "0",
+      "type": "string"
+    },
+    {
+      "key": "newEmail",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "newPassword",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "verificationCode",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "customerId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "qaMode",
+      "value": "true",
+      "type": "string"
+    },
+    {
+      "key": "fxUsd",
+      "value": "0",
+      "type": "string"
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Fail fast and legibly when the collection is run without",
+          "// an environment, rather than sending requests to 'undefined'.",
+          "if (!pm.environment.get('baseUrl')) {",
+          "    throw new Error(",
+          "        'No baseUrl. Select an environment from environments/, ' +",
+          "        'or run newman with -e environments/local.postman_environment.json'",
+          "    );",
+          "}"
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Applies to every request in the collection.",
+          "pm.test('responds within 10 seconds', () => {",
+          "    pm.expect(pm.response.responseTime).to.be.below(10000);",
+          "});",
+          "",
+          "pm.test('never returns a server error', () => {",
+          "    pm.expect(pm.response.code).to.be.below(500);",
+          "});"
+        ]
+      }
+    }
+  ]
+}
