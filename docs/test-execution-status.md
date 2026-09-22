@@ -15,7 +15,7 @@ suites are retargeted at the real application and passing.
 | Selenium | Yes | 21 passing |
 | Cucumber | Yes | 21 scenarios passing |
 | REST Assured | Yes | **107 passing** |
-| Postman / Newman | Yes | **104 requests, 440 assertions passing** |
+| Postman / Newman | Yes | **103 requests, 440 assertions passing** |
 | Database (SQL) | Yes | **59 passing** |
 | Performance (JMeter, k6) | Yes | Not yet written |
 

@@ -1,7 +1,14 @@
 # Postman Collection
 
 Functional API coverage organised as **journeys** rather than endpoint-by-endpoint
-checks. 104 requests, 440 assertions.
+checks. 103 requests, 440 assertions.
+
+Newman reports 104 requests executed rather than 103: it counts calls made by
+`pm.sendRequest` from a script as well as the requests in the file, and folder
+06 signs in from a pre-request to raise the fraud signal it then triages. The
+same reason explains why a standalone folder run executes more requests than
+it defines — its pre-request helper establishes the session it needs, which in
+a full run is already there and so sends nothing.
 
 ## Running
 
