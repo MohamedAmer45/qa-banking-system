@@ -926,7 +926,7 @@ string `"completed"` without touching an account. That stub has been deleted.
 - Manual test design
 - Application implementation and deployment
 - Selenium, Cypress, Playwright and Cucumber — all retargeted and passing
-- GitHub Actions for all four, running against an app started in the runner
+- GitHub Actions for every suite, running against an app started in the runner
 
 | Suite | Tests | Browsers |
 |---|---:|---|

@@ -1,6 +1,6 @@
 # Known Issues and Limitations
 
-Last synchronized: 2026-09-21
+Last synchronized: 2026-09-23
 
 ## Closed gaps
 
@@ -27,7 +27,7 @@ given a real Pass or Fail.
 | ID | Area | Limitation | Impact on testing |
 |---|---|---|---|
 | ~~LIM-001~~ | UI automation | ~~No `data-testid` attributes~~ | **Closed** — 48 test ids added; every suite resolves through them |
-| ~~LIM-002~~ | UI automation | ~~Page objects target the deleted stub~~ | **Closed** — all four suites retargeted and passing |
+| ~~LIM-002~~ | UI automation | ~~Page objects target the deleted stub~~ | **Closed** — every UI suite retargeted and passing |
 | LIM-003 | Hosting | Vercel serverless has no long-lived process | Scheduled transfers and bills are swept on API traffic, at most once per 30s. A scheduled-item test must make a request after the due time rather than waiting passively |
 | LIM-004 | Environment | Production and CI share no database | CI provisions its own PostgreSQL. Tests must not assume state created in one environment exists in the other |
 | LIM-005 | Test data | Suites mutate shared seed data | Against the hosted environment, tests that move money are order-dependent. Prefer CI (reseeded per run), or make assertions relative to a balance read at test start rather than absolute |

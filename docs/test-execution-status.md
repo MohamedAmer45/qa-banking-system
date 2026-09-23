@@ -1,11 +1,11 @@
 # Test Execution Status
 
-Last synchronized: 2026-09-21
+Last synchronized: 2026-09-23
 
 ## Status
 
-Nothing is blocked. Every documented module is implemented, and all four UI
-suites are retargeted at the real application and passing.
+Nothing is blocked. Every documented module is implemented, and all seven
+suites pass against the running application.
 
 | Layer | Executable | Result |
 |---|---|---|
@@ -19,7 +19,7 @@ suites are retargeted at the real application and passing.
 | Database (SQL) | Yes | **59 passing** |
 | Performance (JMeter, k6) | Yes | Not yet written |
 
-See `docs/automation-status.md` for how the four suites divide the work.
+See `docs/automation-status.md` for how the seven suites divide the work.
 
 ## Open defects
 

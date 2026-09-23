@@ -1,6 +1,6 @@
 # Requirements Traceability Matrix
 
-Last synchronized: 2026-09-21
+Last synchronized: 2026-09-23
 Source of truth: `requirements/requirements-catalog.md` — **187 requirements**
 
 ## Purpose
@@ -40,25 +40,27 @@ no implementation) entered the project and survived unnoticed.
 | Module | Reqs | Scenarios | Test cases | Implemented | Manual coverage | Automated |
 |---|---:|---|---|---|---|---|
 | `AUTH` | 17 | `authentication-scenarios.md` | `authentication-test-cases.md` | Yes | Covered | **Automated** |
-| `KYC` | 12 | `customer-scenarios.md` | `customer-test-cases.md`, `profile-settings-test-cases.md` | Yes | Covered | Not started |
+| `KYC` | 12 | `customer-scenarios.md` | `customer-test-cases.md`, `profile-settings-test-cases.md` | Yes | Covered | Automated |
 | `ACC` | 12 | `account-scenarios.md`, `statement-scenarios.md` | `account-test-cases.md`, `statement-test-cases.md` | Yes | Covered | Automated |
-| `BEN` | 9 | `beneficiary-scenarios.md` | `beneficiary-test-cases.md` | Yes | Covered | Not started |
+| `BEN` | 9 | `beneficiary-scenarios.md` | `beneficiary-test-cases.md` | Yes | Covered | Automated |
 | `TRF` | 22 | `transfer-scenarios.md` | `transfer-test-cases.md` | Yes | Covered | Automated |
 | `PAY` | 10 | `payment-scenarios.md` | `payment-test-cases.md` | Yes | Covered | Automated |
 | `CARD` | 10 | `card-scenarios.md` | `card-test-cases.md` | Yes | Covered | Automated |
 | `LOAN` | 11 | `loan-scenarios.md` | `loan-test-cases.md` | Yes | Covered | Automated |
 | `TXN` | 13 | `transaction-scenarios.md` | `transaction-test-cases.md` | Yes | Covered | Automated |
 | `NOTIF` | 7 | `notification-scenarios.md` | `notification-test-cases.md` | Yes | Covered | Automated |
-| `DASH` | 7 | — | — | Yes | **Partial** | Automated |
+| `DASH` | 7 | — | — | Yes | **Partial** | **Incidental only** |
 | `ADMIN` | 12 | `admin-scenarios.md` | `admin-test-cases.md` | Yes | Covered | Automated |
 | `AUDIT` | 10 | `admin-scenarios.md` | `rest-assured/` | Yes | Covered | **Automated** |
-| `SEC` | 10 | `security-scenarios.md` | `security-test-cases.md` | Yes | Covered | Not started |
+| `SEC` | 10 | `security-scenarios.md` | `security-test-cases.md` | Yes | Covered | Automated |
 | `DB` | 15 | — | `database-testing/` | Yes | Covered | **Automated** |
 | `SYS` | 10 | — | `rest-assured/` | Yes | Covered | **Automated** |
 
-"Automated" means automation exists and is well built, but its page
-objects select against the stub this project tested until 2026-09-20. See
-`docs/automation-status.md`.
+"Automated" means at least one suite covers the module against the running
+application. Which suite, and why that one, is in `docs/automation-status.md`.
+
+Cucumber feature files tag the requirement ids they trace to, so a single
+requirement can be run on its own — `mvn test -Dcucumber.filter.tags="@TRF-004"`.
 
 ## Gaps
 
