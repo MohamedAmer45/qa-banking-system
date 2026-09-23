@@ -27,13 +27,12 @@ public class LoginPage extends BasePage {
 
     /** Credentials only; the session stays on the MFA challenge. */
     public void submitCredentials(String email, String password) {
-        find("login-email").clear();
-        find("login-email").sendKeys(email);
+        typeInto("login-email", email);
+        typeInto("login-password", password);
 
-        find("login-password").clear();
-        find("login-password").sendKeys(password);
-
-        clickable("login-submit").click();
+        clickUntilSettled("login-submit",
+                "performance.getEntriesByType('resource')"
+                        + ".some(r => r.name.includes('/api/auth/login'))");
 
         wait.waitForJavaScriptCondition(
                 "return !!document.querySelector(\"[data-testid='mfa-form']\")"
@@ -58,10 +57,11 @@ public class LoginPage extends BasePage {
         Optional<WebElement> staleToast =
                 driver.findElements(testId("toast")).stream().findFirst();
 
-        find("mfa-code").clear();
-        find("mfa-code").sendKeys(code);
+        typeInto("mfa-code", code);
 
-        clickable("mfa-submit").click();
+        clickUntilSettled("mfa-submit",
+                "performance.getEntriesByType('resource')"
+                        + ".some(r => r.name.includes('/api/auth/mfa'))");
 
         staleToast.ifPresent(wait::waitForStaleness);
 

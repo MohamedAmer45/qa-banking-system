@@ -3,6 +3,8 @@ package com.bankingsystem.qa.pages;
 import com.bankingsystem.qa.utils.ConfigReader;
 import com.bankingsystem.qa.utils.TestCredentials;
 
+import org.openqa.selenium.JavascriptExecutor;
+import org.openqa.selenium.TimeoutException;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 
@@ -37,13 +39,12 @@ public class LoginPage extends BasePage {
      * as it was before the request completed.
      */
     public LoginPage submitCredentials(String email, String password) {
-        find("login-email").clear();
-        find("login-email").sendKeys(email);
+        typeInto("login-email", email);
+        typeInto("login-password", password);
 
-        find("login-password").clear();
-        find("login-password").sendKeys(password);
-
-        clickable("login-submit").click();
+        clickUntilSettled("login-submit",
+                "performance.getEntriesByType('resource')"
+                        + ".some(r => r.name.includes('/api/auth/login'))");
         waitForCredentialOutcome();
         return this;
     }
@@ -73,19 +74,60 @@ public class LoginPage extends BasePage {
         Optional<WebElement> staleToast =
                 driver.findElements(testId("toast")).stream().findFirst();
 
-        find("mfa-code").clear();
-        find("mfa-code").sendKeys(code);
+        typeInto("mfa-code", code);
 
-        clickable("mfa-submit").click();
+        /*
+         * Settled once the page has actually asked the server to verify the
+         * code. Anything weaker cannot tell "the click did nothing" apart from
+         * "the server has not answered yet".
+         */
+        clickUntilSettled("mfa-submit",
+                "performance.getEntriesByType('resource')"
+                        + ".some(r => r.name.includes('/api/auth/mfa'))");
 
         staleToast.ifPresent(wait::waitForStaleness);
 
-        wait.waitForJavaScriptCondition(
-                "return !!document.querySelector(\"[data-testid='user-chip']\")"
-                        + " || !!document.querySelector(\"[data-testid='toast']\");"
-        );
+        try {
+            wait.waitForJavaScriptCondition(
+                    "return !!document.querySelector(\"[data-testid='user-chip']\")"
+                            + " || !!document.querySelector(\"[data-testid='toast']\");"
+            );
+        } catch (TimeoutException e) {
+            /*
+             * A bare "expected condition failed" says nothing about which of
+             * the two outcomes was missing, and sign-in sits under every test
+             * in the suite. Name what the page was actually showing.
+             */
+            throw new TimeoutException(
+                    "Sign-in did not resolve: after submitting the one-time code, neither the "
+                            + "application shell nor a toast appeared within the wait. "
+                            + "Page state: " + describeAuthState(), e);
+        }
 
         return this;
+    }
+
+    /**
+     * What the page is showing, for a sign-in failure message.
+     *
+     * Includes the API calls the page has actually made. Whether a request was
+     * issued at all is the difference between "the server is slow" and "the
+     * click did nothing", and without it the two look identical from a
+     * timeout.
+     */
+    private String describeAuthState() {
+        String requests = String.valueOf(((JavascriptExecutor) driver).executeScript(
+                "return performance.getEntriesByType('resource')"
+                        + ".filter(r => r.name.includes('/api/'))"
+                        + ".map(r => r.name.split('/api/')[1])"
+                        + ".join(', ') || 'none';"
+        ));
+
+        return "login form " + (isPresent("login-form") ? "present" : "absent")
+                + ", MFA form " + (isPresent("mfa-form") ? "present" : "absent")
+                + ", shell " + (isPresent("user-chip") ? "present" : "absent")
+                + ", toast " + (isPresent("toast") ? "present" : "absent")
+                + "; requests made: " + requests;
     }
 
     /** The full handshake, through to an authenticated shell. */

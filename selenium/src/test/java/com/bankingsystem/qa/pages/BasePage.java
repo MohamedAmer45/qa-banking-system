@@ -85,6 +85,111 @@ public abstract class BasePage {
         }
     }
 
+    /**
+     * Type into a field and confirm the value actually landed.
+     *
+     * sendKeys dispatches real key events to whatever holds focus, and under
+     * rapid successive sessions ChromeDriver sometimes delivers none of them:
+     * clear() empties the field, the keys go nowhere, and the field stays
+     * empty without any exception being raised.
+     *
+     * That failed silently in the worst possible way here. The sign-in inputs
+     * are `required`, so an empty field makes the browser block the submit
+     * locally: no request is sent, no toast appears, and the test times out
+     * thirty seconds later waiting for a response nobody asked for. The
+     * failure pointed at the wait rather than the typing.
+     *
+     * So the value is read back. Clicking first to take focus, then retrying,
+     * fixes almost every occurrence; the JavaScript fallback covers the rest.
+     * The fallback only fills the field — the test still clicks the real
+     * button and still asserts the real outcome.
+     */
+    protected void typeInto(String id, String text) {
+        for (int attempt = 1; attempt <= 3; attempt++) {
+            WebElement field = clickable(id);
+
+            field.click();
+            field.clear();
+            field.sendKeys(text);
+
+            if (text.equals(field.getAttribute("value"))) {
+                return;
+            }
+        }
+
+        WebElement field = find(id);
+        ((JavascriptExecutor) driver).executeScript(
+                "arguments[0].value = arguments[1];"
+                        + "arguments[0].dispatchEvent(new Event('input', { bubbles: true }));"
+                        + "arguments[0].dispatchEvent(new Event('change', { bubbles: true }));",
+                field, text
+        );
+
+        if (!text.equals(field.getAttribute("value"))) {
+            throw new IllegalStateException(
+                    "Could not type into '" + id + "': the value did not stick after three "
+                            + "attempts and a direct assignment. Last value: '"
+                            + field.getAttribute("value") + "'"
+            );
+        }
+    }
+
+    /**
+     * Click, then confirm the click actually did something.
+     *
+     * Same class of problem as {@link #typeInto}: ChromeDriver occasionally
+     * synthesizes a click that dispatches no event. On a submit button that
+     * fails silently — no request is made, the form simply stays as it was —
+     * and the test then waits out its full timeout on a response that was
+     * never requested. Confirmed by reading performance.getEntriesByType:
+     * after such a click, the only request the page had ever made was the
+     * previous one.
+     *
+     * The application is not at fault here; the same flow runs cleanly under a
+     * different driver. So this retries the real click and only falls back to
+     * dispatching one directly, rather than working around the page.
+     *
+     * @param settled JavaScript returning true once the click has taken effect
+     */
+    protected void clickUntilSettled(String id, String settled) {
+        for (int attempt = 1; attempt <= 3; attempt++) {
+            clickable(id).click();
+
+            if (waitBriefly(settled)) {
+                return;
+            }
+        }
+
+        ((JavascriptExecutor) driver).executeScript("arguments[0].click();", find(id));
+
+        if (!waitBriefly(settled)) {
+            throw new IllegalStateException(
+                    "Clicking '" + id + "' had no effect after three attempts and a "
+                            + "dispatched click."
+            );
+        }
+    }
+
+    /** Poll a condition for a few seconds without failing the test on timeout. */
+    private boolean waitBriefly(String condition) {
+        for (int i = 0; i < 20; i++) {
+            Object result = ((JavascriptExecutor) driver).executeScript("return (" + condition + ");");
+
+            if (Boolean.TRUE.equals(result)) {
+                return true;
+            }
+
+            try {
+                Thread.sleep(250);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return false;
+            }
+        }
+
+        return false;
+    }
+
     public void openView(String view) {
         dismissModal();
         waitForViewReady();
