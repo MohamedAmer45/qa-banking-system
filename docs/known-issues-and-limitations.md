@@ -32,6 +32,7 @@ given a real Pass or Fail.
 | LIM-004 | Environment | Production and CI share no database | CI provisions its own PostgreSQL. Tests must not assume state created in one environment exists in the other |
 | LIM-005 | Test data | Suites mutate shared seed data | Against the hosted environment, tests that move money are order-dependent. Prefer CI (reseeded per run), or make assertions relative to a balance read at test start rather than absolute |
 | LIM-006 | Security | `QA_MODE=true` exposes one-time codes | Intentional, so tests need no mail server. Any test asserting on `demoCode`/`demoOtp` is invalid against a hardened environment |
+| LIM-007 | UI automation | ChromeDriver occasionally dispatches no event for a `sendKeys` or `click` | Handled in both JVM suites by `typeInto` and `clickUntilSettled`, which read the result back and retry. Any new interaction with a `required` field should use them: an empty required field makes the browser block the submit locally, so the failure appears much later as a timeout on a request that was never sent |
 
 ## Open defects
 
