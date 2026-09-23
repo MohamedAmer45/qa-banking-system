@@ -31,6 +31,10 @@ See `docs/automation-status.md` for how the suites divide the work.
 **None.** Every recorded defect is closed, each with regression cover in the
 suite that found it.
 
+Closed means fixed in the application repository and verified in CI. The
+deployed environment has not picked those commits up yet — see the note in
+`docs/current-build-status.md`.
+
 | Defect | Status |
 |---|---|
 | `BUG-UI-001` | Closed — fixed; found by Cypress |

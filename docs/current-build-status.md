@@ -9,6 +9,18 @@ Last synchronized: 2026-09-23
 Application source: [`novabank-banking-system`](https://github.com/MohamedAmer45/novabank-banking-system)
 (a separate repository; this one holds only the QA project).
 
+> **The live environment is behind the application repository.** Checked
+> 2026-09-23: the deployed build predates the `BUG-API-001` fix of 2026-09-22,
+> so it is also missing `BUG-BEN-001`, `BUG-UI-002` and `BUG-DASH-001`.
+> Observed directly — an oversized body answers `400` rather than the fixed
+> `413`, `/api/me` carries no `permissions` field, and the beneficiary list
+> still returns soft-deleted rows.
+>
+> Every "fixed" in these documents therefore means **fixed in the repository
+> and verified in CI**, which is where the suites run. It does not yet mean
+> fixed at this URL. A redeploy is needed, and until then this environment is
+> not a valid target for the suites.
+
 ## What changed
 
 Until 2026-09-20 this project tested a deterministic stub — a single static
