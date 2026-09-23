@@ -946,22 +946,28 @@ string `"completed"` without touching an account. That stub has been deleted.
 
 | Suite | Tests | Browsers |
 |---|---:|---|
-| Playwright | 24 | Chromium, Firefox, WebKit |
+| Playwright | 37 | Chromium, Firefox, WebKit |
 | Cypress | 26 | Chrome |
-| Selenium | 21 | Chrome |
-| Cucumber | 21 scenarios | Chrome |
+| Selenium | 27 | Chrome |
+| Cucumber | 24 scenarios | Chrome |
 | Database (JDBC + TestNG) | 59 | n/a |
-| REST Assured | 107 | n/a |
+| REST Assured | 113 | n/a |
 | Postman / Newman | 103 requests, 440 assertions | n/a |
-| Jest (unit, in the app repo) | 128 | n/a |
+| Jest (unit, in the app repo) | 134 | n/a |
 
 They divide the work rather than duplicating it; see
 [`docs/automation-status.md`](docs/automation-status.md). That division is what
 found the defects: `BUG-UI-001` (Cypress), `BUG-UI-002` (Selenium),
 `BUG-DB-001` (database suite, by reading `information_schema` rather than
-driving the application) and `BUG-API-001` (REST Assured).
+driving the application), `BUG-API-001` (REST Assured) and `BUG-DASH-001`
+(found by writing the `DASH` tests — three requirements had never been
+rendered, which is why the module had no coverage to begin with).
 
-All 65 endpoints the application serves are exercised by at least one suite.
+All 65 endpoints the application serves are exercised by at least one suite,
+and all 187 requirements across all 16 modules are covered.
+
+**No defect is open.** All eight are closed, each with regression cover in the
+suite that found it.
 
 ## Not yet started
 
@@ -970,9 +976,11 @@ axe-core accessibility and OWASP ZAP. Pact, WireMock and Testcontainers were
 evaluated and deliberately not adopted, with reasons recorded in
 [`docs/automation-status.md`](docs/automation-status.md).
 
-The remaining coverage gap is the `DASH` module: 7 requirements reached only
-incidentally, by suites that pass through the dashboard on the way somewhere
-else, with no test asserting dashboard behaviour itself.
+There is no remaining coverage gap. `DASH` was the last one, and closing it is
+the most instructive thing in this repository: the module was not untested
+because nobody had got to it, but because three of its seven requirements were
+never implemented. Suites passed through that dashboard constantly and none
+could notice a panel that was absent.
 
 ---
 

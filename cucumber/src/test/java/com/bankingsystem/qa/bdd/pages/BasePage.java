@@ -84,6 +84,21 @@ public abstract class BasePage {
         waitForViewReady();
     }
 
+    /**
+     * Open a view without the sidebar.
+     *
+     * Since BUG-UI-002 was fixed the sidebar offers only what a role may open,
+     * so a scenario about a withheld module has no button to click. Reaching
+     * it directly is also the more honest check: it arrives the way a bookmark
+     * would, and the server still has to refuse it.
+     */
+    public void openViewDirectly(String view) {
+        dismissModal();
+        waitForViewReady();
+        ((JavascriptExecutor) driver).executeScript("navigate(arguments[0]);", view);
+        waitForViewReady();
+    }
+
     public boolean hasNavItem(String view) {
         return !driver.findElements(testId("nav-" + view)).isEmpty();
     }

@@ -5,7 +5,7 @@
 | Module | Beneficiaries |
 | Severity | Medium |
 | Priority | Medium |
-| Status | **Open — confirmed on the current build** |
+| Status | **Closed — fixed 2026-09-23** |
 | Raised against | Pre-port build |
 | Re-verified | 2026-09-21 against `novabank-banking-system.vercel.app` |
 
@@ -58,5 +58,34 @@ Either resolves it. Fix (1) matches what the endpoint's consumers expect.
 A beneficiary count assertion after a delete will fail unless it filters on
 status. Any test that picks "the first beneficiary" can select a deleted one.
 
-Deliberately left open: this is a real defect found by re-verification and is
-worth carrying through the defect workflow rather than quietly patching.
+## Fix
+
+Fix (1), as assessed above. `GET /api/beneficiaries` now filters
+`status <> 'DELETED'`, and `?includeDeleted=true` returns the full lifecycle
+for the cases that need it.
+
+The soft delete is unchanged — the row must survive, because transfers
+reference it. What changed is that a client asking for "my beneficiaries" is no
+longer handed records it cannot pay.
+
+No payment path changed. A transfer to a non-`ACTIVE` beneficiary was already
+refused with 409, and that held throughout the time this defect was open.
+
+## Verification
+
+`rest-assured/.../api/banking/BeneficiaryLifecycleTest.java` — 6 tests:
+
+- a deleted beneficiary disappears from the list
+- the list never contains a `DELETED` status, asserted as a property rather
+  than against one record
+- `?includeDeleted=true` still returns it, with the status intact
+- the default list is a strict subset of the included list
+- a repeated delete is idempotent and does not resurrect the record
+- a deleted beneficiary still cannot be paid — the boundary the filter sits in
+  front of
+
+One assumption was wrong and is recorded rather than hidden: a second `DELETE`
+returns `200`, not `404`, because the delete handler looks the record up
+without a status filter. That is defensible for `DELETE`, which is meant to be
+idempotent, so the test asserts the real behaviour and the record staying
+retired.

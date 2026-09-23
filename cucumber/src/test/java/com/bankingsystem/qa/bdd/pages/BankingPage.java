@@ -91,6 +91,11 @@ public class BankingPage extends BasePage {
         openView(view);
     }
 
+    /** Reach a back-office module the sidebar does not offer this role. */
+    public void openBackOfficeDirectly(String view) {
+        openViewDirectly(view);
+    }
+
     public String viewText() {
         return find("view").getText();
     }

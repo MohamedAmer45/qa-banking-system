@@ -8,14 +8,14 @@ Eight suites, all passing against the PostgreSQL build.
 
 | Suite | Tests | Browsers |
 |---|---|---|
-| Playwright + TypeScript | 24 | Chromium, Firefox, WebKit |
+| Playwright + TypeScript | 37 | Chromium, Firefox, WebKit |
 | Cypress + TypeScript | 26 | Chrome / Electron |
-| Selenium + Java + TestNG | 21 | Chrome |
-| Cucumber JVM | 21 scenarios | Chrome |
+| Selenium + Java + TestNG | 27 | Chrome |
+| Cucumber JVM | 24 scenarios | Chrome |
 | Database (JDBC + TestNG) | 59 | n/a |
-| REST Assured | 107 | n/a |
+| REST Assured | 113 | n/a |
 | Postman / Newman | 103 requests, 440 assertions | n/a |
-| Jest (unit) | 128 | n/a |
+| Jest (unit) | 134 | n/a |
 
 Every suite starts the application inside the CI runner against a `postgres:16`
 service container, so runs are isolated and begin from an identical seed. No
@@ -50,7 +50,7 @@ driving the running application; Jest calls functions directly, with no server
 and no database. Adding it as a column would be a row of "No" that reads like a
 gap rather than a different layer.
 
-That division has earned itself five times:
+That division has earned itself six times:
 
 - **Cypress found `BUG-UI-001`** — a `TypeError` thrown on every page load — on
   its first `cy.visit`, because it fails a test on any uncaught application
@@ -62,8 +62,10 @@ That division has earned itself five times:
   Playwright and Cypress retry assertions until the text matches, which silently
   papers over the stale element; Selenium's explicit waits do not, so the
   bad-code test was asserting against the wrong message.
-- **Selenium also found `BUG-UI-002`** — the back-office sidebar is not
-  role-filtered.
+- **Selenium also found `BUG-UI-002`** — the back-office sidebar was not
+  role-filtered, so four of the five staff roles were offered modules the
+  server refuses. Fixed; the sidebar is now filtered on the permissions the
+  server reports.
 - **The database suite found `BUG-DB-001`** by reading `information_schema`
   rather than driving the application: two money-adjacent columns were stored as
   binary floats, drifting two minor units on a 10,000.00 conversion. The
@@ -72,6 +74,12 @@ That division has earned itself five times:
   oversized body but dropped the connection instead. curl had always shown the
   413; a different HTTP client did not, which is the point of testing a contract
   with more than one consumer.
+- **Writing `DASH` coverage found `BUG-DASH-001`** — the sixth, and the one
+  that says most about the other five. Three of the dashboard's seven
+  requirements were never rendered, so the module had nothing to test. Every UI
+  suite crossed that page constantly, and an absent panel is invisible to a
+  suite that was never told to look for it. Coverage measured against
+  requirements caught what coverage measured against the application could not.
 
 ## Shared conventions
 
@@ -115,7 +123,7 @@ the failure at the line that caused it.
 | `database.test.js` | 29 | `toPositional`, `withReturningId` |
 | `security.test.js` | 30 | Password hashing, token generation, masking, ISO-8601 ordering |
 | `money.test.js` | 31 | `moneyMinor`, `convertMinor`, loan amortisation, recurrence dates |
-| `access.test.js` | 38 | The role/permission grid, `publicUser`, `sanitizeIdNumber` |
+| `access.test.js` | 44 | The role/permission grid, `permissionsFor`, `publicUser`, `sanitizeIdNumber` |
 
 The permission grid is asserted as a whole rather than case by case. A
 permission table is only correct if every cell is, and the failure worth
@@ -135,10 +143,10 @@ Two tests assert behaviour that is not ideal, rather than omitting it:
 A test that passes while hiding a known limitation is worth less than one that
 states it.
 
-**Coverage is 16.7% of statements, and that is the unscoped figure.**
-`security.js` reaches 100% while `banking.js` sits at 7.6%, because the rest of
-`banking.js` is asynchronous database work that the API, UI and database suites
-cover instead. Narrowing the denominator to the tested files would produce a
+**Coverage is 17.3% of statements, and that is the unscoped figure.**
+`security.js` reaches 100% and `access.js` 32.4%, while `banking.js` sits at
+7.6%, because the rest of `banking.js` is asynchronous database work that the
+API, UI and database suites cover instead. Narrowing the denominator to the tested files would produce a
 flattering number that measures nothing. The per-file table is in the coverage
 output so the split stays visible.
 
@@ -163,10 +171,39 @@ Recorded rather than silently dropped, since the original plan named them:
 
 ## Coverage
 
-180 of 187 requirements are covered. The remainder is `DASH` (7), which has no
-dedicated scenarios or test cases and is reached only incidentally through
-account and transaction coverage.
+**All 187 requirements across all 16 modules are covered.**
+
+`DASH` (7) was the last gap and is now automated, in
+`playwright/tests/dashboard/dashboard.spec.ts`. Closing it turned up something
+worth recording rather than quietly fixing: the module was not untested because
+nobody had reached it. Three of its seven requirements — recent transactions,
+active cards and upcoming scheduled payments — were never rendered at all, so
+there was nothing to assert against, and the overview carried no `data-testid`
+attributes either. That is `BUG-DASH-001`.
+
+It is the sharpest illustration in this project of what "covered incidentally"
+is worth. Every UI suite passed through the customer overview constantly on the
+way somewhere else, and not one of them could notice a panel that was absent,
+because none of them had been told to look for it.
 
 `DB` (15) is closed by `database-testing/`; `SYS` (10) and `AUDIT` (10) by
 `rest-assured/`. Those two suites together cover 35 requirements no UI test
 could reach.
+
+## Open defects
+
+**None.** All eight recorded defects are closed:
+
+| Defect | Found by | Resolution |
+|---|---|---|
+| `BUG-UI-001` | Cypress | Fixed — `TypeError` on every page load |
+| `BUG-DB-001` | Database suite | Fixed — FX and interest rates were binary floats |
+| `BUG-API-001` | REST Assured | Fixed — oversized bodies dropped the connection |
+| `BUG-BEN-001` | API re-verification | Fixed — the list returned soft-deleted rows |
+| `BUG-UI-002` | Selenium | Fixed — the back-office sidebar was not role-filtered |
+| `BUG-DASH-001` | Writing `DASH` coverage | Fixed — three requirements were never rendered |
+| `BUG-AUTH-001` | — | Closed, not reproducible after the PostgreSQL port |
+| `BUG-ACC-001` | — | Closed as obsolete; the UI it described no longer exists |
+
+Each carries regression cover in the suite that found it, so a reappearance
+fails the same suite rather than waiting for someone to re-check by hand.

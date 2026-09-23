@@ -35,13 +35,13 @@ given a real Pass or Fail.
 
 ## Open defects
 
-| Defect | Area | Summary |
-|---|---|---|
-| `BUG-BEN-001` | Beneficiaries | `GET /api/beneficiaries` applies no status filter, so soft-deleted beneficiaries are still returned |
-| `BUG-UI-002` | Back office | The sidebar is not role-filtered, so read-only roles are offered modules the server refuses |
+**None.** All eight recorded defects are closed, each with regression cover in
+the suite that found it. See `docs/defects/` and the table in
+`docs/test-execution-status.md`.
 
-Both are left open deliberately: they are real findings carried through the
-defect workflow rather than quietly patched.
+`BUG-BEN-001` and `BUG-UI-002` were carried open through the defect workflow
+for two days rather than quietly patched, and were fixed on 2026-09-23 along
+with `BUG-DASH-001`.
 
 ## Notes
 
@@ -50,3 +50,17 @@ balance in the seed is 25,000,000 minor units on account `1000000001`, but any
 suite that has already run will have moved it. Assertions of the form
 "balance decreased by exactly N" survive; assertions of the form
 "balance equals 24,900,000" do not.
+
+A worked example, from 2026-09-23. The Postman request *Refuse a transfer
+beyond the daily ceiling* asked for the whole daily limit plus 10,000, on the
+assumption that the account's balance exceeds its daily limit. After the other
+suites had moved money it no longer did, so the **balance** check refused the
+transfer before the daily-limit check could, and the assertion failed against
+the wrong rule — reporting a limits defect where there was none.
+
+The fix generalises past this one request: exceed the *remaining* allowance by
+one minor unit rather than the whole limit by a round number. That is the
+smallest amount that still triggers the rule, so it is the amount least likely
+to trip a different one first. Where even that cannot fit the balance, the
+request now says the rule is not isolable instead of asserting the wrong
+reason.

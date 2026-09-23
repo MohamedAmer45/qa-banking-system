@@ -26,9 +26,21 @@ public class BackOfficeSteps {
         context.bankingPage().openBackOffice("admin-audit");
     }
 
-    @When("user administration is opened")
-    public void userAdministrationIsOpened() {
-        context.bankingPage().openBackOffice("admin-users");
+    @When("user administration is opened directly")
+    public void userAdministrationIsOpenedDirectly() {
+        context.bankingPage().openBackOfficeDirectly("admin-users");
+    }
+
+    @Then("the {string} module is not offered in the sidebar")
+    public void theModuleIsNotOffered(String view) {
+        assertFalse(context.bankingPage().hasNavItem(view),
+                view + " must not be offered to a role the server refuses it");
+    }
+
+    @Then("the {string} module is offered in the sidebar")
+    public void theModuleIsOffered(String view) {
+        assertTrue(context.bankingPage().hasNavItem(view),
+                view + " should be offered to this role");
     }
 
     @Then("the directory lists {string}")

@@ -5,6 +5,7 @@ import com.bankingsystem.qa.pages.AdminPage;
 import com.bankingsystem.qa.pages.LoginPage;
 import com.bankingsystem.qa.utils.TestCredentials;
 
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 
@@ -60,13 +61,14 @@ public class RoleAuthorizationTest extends BaseTest {
                 "SUPPORT should be able to read customers");
 
         /*
-         * The sidebar is not role-filtered, so SUPPORT is offered the user
-         * administration item even though only ADMIN may use it — recorded as
-         * BUG-UI-002. The property that matters is that the module yields no
-         * user data: the server answers 403 and the view reports the failure.
+         * The sidebar is filtered on the permissions /api/me reports, so this
+         * entry is no longer offered (BUG-UI-002, fixed). Hiding it is not the
+         * authorization, though, and this test does not treat it as such: the
+         * property asserted below is that the module still yields no user data
+         * when opened directly.
          */
-        assertTrue(admin.hasNavItem("admin-users"),
-                "the sidebar currently offers this to every staff role");
+        assertFalse(admin.hasNavItem("admin-users"),
+                "SUPPORT must not be offered user administration");
 
         admin.openUsersExpectingDenial();
 
@@ -74,5 +76,69 @@ public class RoleAuthorizationTest extends BaseTest {
                         || admin.viewText().toLowerCase().contains("unable"),
                 "a denied module must report the failure, not render data: "
                         + admin.viewText());
+    }
+
+    /*
+     * BUG-UI-002 regression. The defect was that every staff role received the
+     * full nine-item sidebar, so four of the five were offered modules the
+     * server refuses. Driving it by role rather than writing one test per role
+     * means a new role added to the table is a row here, not a forgotten case.
+     */
+    @DataProvider(name = "staffNavigation")
+    public Object[][] staffNavigation() {
+        return new Object[][]{
+                //        role                        offered              withheld
+                {TestCredentials.SUPPORT,  new String[]{"admin-customers", "admin-accounts", "admin-transfers"},
+                                           new String[]{"admin-fraud", "admin-audit", "admin-users"}},
+                {TestCredentials.EMPLOYEE, new String[]{"admin-customers", "admin-kyc", "admin-accounts"},
+                                           new String[]{"admin-fraud", "admin-audit", "admin-users"}},
+                {TestCredentials.AUDITOR,  new String[]{"admin-audit", "admin-fraud", "admin-customers"},
+                                           new String[]{"admin-users"}},
+                {TestCredentials.MANAGER,  new String[]{"admin-audit", "admin-fraud", "admin-loans"},
+                                           new String[]{"admin-users"}},
+                {TestCredentials.ADMIN,    new String[]{"admin-users", "admin-audit", "admin-fraud"},
+                                           new String[]{}}
+        };
+    }
+
+    @Test(dataProvider = "staffNavigation",
+          description = "The sidebar offers a staff role only the modules it may open")
+    public void sidebarIsFilteredByRole(TestCredentials.User user,
+                                        String[] offered,
+                                        String[] withheld) {
+        new LoginPage(getDriver()).open().loginAs(user);
+
+        AdminPage admin = new AdminPage(getDriver());
+
+        for (String view : offered) {
+            assertTrue(admin.hasNavItem(view),
+                    user.role() + " should be offered " + view);
+        }
+
+        for (String view : withheld) {
+            assertFalse(admin.hasNavItem(view),
+                    user.role() + " must not be offered " + view
+                            + ", which the server refuses it (BUG-UI-002)");
+        }
+    }
+
+    @Test(description = "A withheld module is still refused when opened directly")
+    public void withheldModuleIsRefusedWhenOpenedDirectly() {
+        /*
+         * The sidebar filter is a convenience. This asserts the boundary it
+         * sits in front of: an AUDITOR that reaches user administration
+         * without the nav entry still gets nothing.
+         */
+        new LoginPage(getDriver()).open().loginAs(TestCredentials.AUDITOR);
+
+        AdminPage admin = new AdminPage(getDriver());
+
+        assertFalse(admin.hasNavItem("admin-users"),
+                "AUDITOR should not be offered user administration");
+
+        admin.openUsersExpectingDenial();
+
+        assertFalse(admin.viewText().contains(TestCredentials.CUSTOMER.email()),
+                "user data must not render for a role without the permission");
     }
 }

@@ -23,11 +23,25 @@ Feature: Role boundaries
     Then banking navigation is available
     And back-office navigation is not available
 
-  # The sidebar is not role-filtered, so a read-only role is offered user
-  # administration it cannot use — recorded as BUG-UI-002. What matters, and
-  # what this asserts, is that the module yields no user data.
+  # The sidebar is filtered on the permissions the server reports, so a
+  # read-only role is no longer offered user administration (BUG-UI-002,
+  # fixed). Hiding the entry is not the authorization, so the scenario below
+  # still reaches the module directly and asserts it yields nothing.
   @SEC-003 @BUG-UI-002
   Scenario: A read-only role cannot obtain user administration data
     Given a signed-in "support agent"
-    When user administration is opened
+    Then the "admin-users" module is not offered in the sidebar
+    When user administration is opened directly
     Then no user data is shown
+
+  @SEC-003 @BUG-UI-002
+  Scenario Outline: The sidebar offers a staff role only what it may open
+    Given a signed-in "<role>"
+    Then the "<offered>" module is offered in the sidebar
+    And the "<withheld>" module is not offered in the sidebar
+
+    Examples:
+      | role          | offered          | withheld    |
+      | support agent | admin-customers  | admin-audit |
+      | auditor       | admin-audit      | admin-users |
+      | manager       | admin-fraud      | admin-users |

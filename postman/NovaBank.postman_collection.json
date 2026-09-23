@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "21d6eeda-d4d2-5ff9-a3c6-8f6d5cc7c2e5",
     "name": "NovaBank API",
-    "description": "Functional API coverage for NovaBank, organised as journeys rather than as endpoint-by-endpoint checks.\n\nEach folder tells a story whose steps depend on one another: the account, the beneficiary, the opening balance and the resulting transfer reference are all carried forward from the request that produced them. That chaining is what this collection contributes that the REST Assured suite does not \u2014 that suite owns the authorization matrix, the response schemas and the regression sweep, which are awkward to express here.\n\nFolders 00 and 05 are read-only and safe against any environment. The rest create data, move money or change state, so point them at a local or CI database. Folders 07, 09 and 10 restore what they changed, so they can be run repeatedly.\n\nAny folder carrying a pre-request script can be run on its own: it establishes the session, and where needed the beneficiary, that its requests depend on.\n\nRun everything with Newman:\n\n    npm run test\n\nSign-in is two steps everywhere: credentials raise an MFA challenge, and the challenge is exchanged for a session. With QA_MODE on, the one-time code comes back in the response, so no mail server is needed.",
+    "description": "Functional API coverage for NovaBank, organised as journeys rather than as endpoint-by-endpoint checks.\n\nEach folder tells a story whose steps depend on one another: the account, the beneficiary, the opening balance and the resulting transfer reference are all carried forward from the request that produced them. That chaining is what this collection contributes that the REST Assured suite does not — that suite owns the authorization matrix, the response schemas and the regression sweep, which are awkward to express here.\n\nFolders 00 and 05 are read-only and safe against any environment. The rest create data, move money or change state, so point them at a local or CI database. Folders 07, 09 and 10 restore what they changed, so they can be run repeatedly.\n\nAny folder carrying a pre-request script can be run on its own: it establishes the session, and where needed the beneficiary, that its requests depend on.\n\nRun everything with Newman:\n\n    npm run test\n\nSign-in is two steps everywhere: credentials raise an MFA challenge, and the challenge is exchanged for a session. With QA_MODE on, the one-time code comes back in the response, so no mail server is needed.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
@@ -4947,7 +4947,12 @@
                   "pm.collectionVariables.set('fxTargetId', usd.id);",
                   "pm.collectionVariables.set('fxSourceBefore', egp.balance_minor);",
                   "pm.collectionVariables.set('fxTargetBefore', usd.balance_minor);",
-                  "pm.collectionVariables.set('fxSourceLimit', egp.daily_limit_minor);"
+                  "pm.collectionVariables.set('fxSourceLimit', egp.daily_limit_minor);",
+                  "",
+                  "// Captured so the daily-ceiling request can size its amount against",
+                  "// the allowance that is actually left, rather than the whole limit.",
+                  "pm.collectionVariables.set('fxSourceTransferred', egp.daily_transferred_minor);",
+                  "pm.collectionVariables.set('fxSourceAvailable', egp.available_minor);"
                 ]
               }
             }
@@ -5141,10 +5146,32 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "// Comfortably over the account's daily limit but within its",
-                  "// balance, so the limit is what refuses it and not the funds.",
+                  "/*",
+                  " * Exceed the daily ceiling by the smallest amount that still does.",
+                  " *",
+                  " * This used to ask for the whole daily limit plus 10,000, which only",
+                  " * works while the account's balance happens to exceed its daily limit.",
+                  " * Once earlier folders had moved money, the balance check refused the",
+                  " * transfer first and the assertion failed against the wrong rule.",
+                  " *",
+                  " * Going one minor unit past the remaining allowance keeps the amount as",
+                  " * small as it can be, so the limit is what refuses it.",
+                  " */",
                   "const limitMinor = Number(pm.collectionVariables.get('fxSourceLimit'));",
-                  "pm.collectionVariables.set('overLimitAmount', (limitMinor / 100) + 10000);"
+                  "const usedMinor = Number(pm.collectionVariables.get('fxSourceTransferred'));",
+                  "const availableMinor = Number(pm.collectionVariables.get('fxSourceAvailable'));",
+                  "",
+                  "const remainingMinor = Math.max(limitMinor - usedMinor, 0);",
+                  "const overLimitMinor = remainingMinor + 1;",
+                  "",
+                  "// If even that does not fit the balance, no amount can isolate the",
+                  "// daily rule on this account, so say so rather than assert the wrong one.",
+                  "pm.collectionVariables.set(",
+                  "    'dailyCeilingIsolable',",
+                  "    overLimitMinor <= availableMinor ? 'true' : 'false'",
+                  ");",
+                  "",
+                  "pm.collectionVariables.set('overLimitAmount', (overLimitMinor / 100).toFixed(2));"
                 ]
               }
             },
@@ -5153,13 +5180,20 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('the daily ceiling refuses it with 409', () => {",
+                  "const isolable = pm.collectionVariables.get('dailyCeilingIsolable') === 'true';",
+                  "",
+                  "pm.test('the transfer is refused with 409', () => {",
                   "    pm.response.to.have.status(409);",
                   "});",
                   "",
-                  "pm.test('the refusal names the limit, not the balance', () => {",
-                  "    pm.expect(pm.response.json().error).to.match(/daily/i);",
-                  "});"
+                  "// Both rules return 409. Which one fired is the point of this request,",
+                  "// so the reason is only asserted when the amount could isolate it.",
+                  "(isolable ? pm.test : pm.test.skip)(",
+                  "    'the refusal names the daily limit, not the balance',",
+                  "    () => {",
+                  "        pm.expect(pm.response.json().error).to.match(/daily/i);",
+                  "    }",
+                  ");"
                 ]
               }
             }

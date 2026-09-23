@@ -29,6 +29,9 @@ public final class TestCredentials {
     public static final User AUDITOR =
             new User("auditor@novabank.test", "Auditor123!", "AUDITOR");
 
+    public static final User EMPLOYEE =
+            new User("employee@novabank.test", "Employee123!", "EMPLOYEE");
+
     private TestCredentials() {
     }
 

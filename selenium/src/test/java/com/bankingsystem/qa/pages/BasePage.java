@@ -93,6 +93,22 @@ public abstract class BasePage {
         waitForViewReady();
     }
 
+    /**
+     * Open a view without using the sidebar.
+     *
+     * Since BUG-UI-002 was fixed the sidebar only offers modules the role may
+     * open, so a test for a withheld module has no button to click. This is
+     * also the more honest check: it reaches the view the way a bookmark or a
+     * hand-edited link would, and asserts the server still refuses it.
+     */
+    public void openViewDirectly(String view) {
+        dismissModal();
+        waitForViewReady();
+
+        ((JavascriptExecutor) driver).executeScript("navigate(arguments[0]);", view);
+        waitForViewReady();
+    }
+
     protected void scrollIntoView(WebElement element) {
         ((JavascriptExecutor) driver)
                 .executeScript("arguments[0].scrollIntoView({block:'center'});", element);

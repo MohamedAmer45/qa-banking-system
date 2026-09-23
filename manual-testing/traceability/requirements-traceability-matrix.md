@@ -25,7 +25,7 @@ the catalog's, the mapping is explicit:
 | `NOTIF-` | `NOT-TC-` | Abbreviated in test cases |
 | `KYC-` | `CUST-TC-` | KYC cases live in the customer file |
 | `AUDIT-` | `ADM-TC-`, `SEC-TC-` | No dedicated audit file |
-| `DASH-` | — | No dedicated file; covered via account and transaction cases |
+| `DASH-` | `DASH-TC-` | Dedicated file added 2026-09-23 |
 | `DB-`, `SYS-` | — | Verified by SQL and API layers, not manual cases |
 | — | `STMT-TC-` | Statements are catalogued under `ACC-` |
 | — | `PROF-TC-` | Profile is catalogued under `KYC-` |
@@ -49,7 +49,7 @@ no implementation) entered the project and survived unnoticed.
 | `LOAN` | 11 | `loan-scenarios.md` | `loan-test-cases.md` | Yes | Covered | Automated |
 | `TXN` | 13 | `transaction-scenarios.md` | `transaction-test-cases.md` | Yes | Covered | Automated |
 | `NOTIF` | 7 | `notification-scenarios.md` | `notification-test-cases.md` | Yes | Covered | Automated |
-| `DASH` | 7 | — | — | Yes | **Partial** | **Incidental only** |
+| `DASH` | 7 | `dashboard-scenarios.md` | `dashboard-test-cases.md` | Yes | Covered | **Automated** |
 | `ADMIN` | 12 | `admin-scenarios.md` | `admin-test-cases.md` | Yes | Covered | Automated |
 | `AUDIT` | 10 | `admin-scenarios.md` | `rest-assured/` | Yes | Covered | **Automated** |
 | `SEC` | 10 | `security-scenarios.md` | `security-test-cases.md` | Yes | Covered | Automated |
@@ -73,15 +73,23 @@ this matrix.
 
 ## Gaps
 
-One module, 7 requirements, is the remaining coverage debt.
+**None.** All 187 requirements across all 16 modules are covered.
+
+`DASH` was the last one, and closing it turned up something worth recording.
+The module was not untested because nobody had got to it: three of its seven
+requirements — recent transactions, active cards and upcoming scheduled
+payments — were never rendered, so there was nothing to write a test against.
+It had nonetheless been marked "Implemented: Yes" here, which was wrong in the
+flattering direction. That is `BUG-DASH-001`, now fixed, and the module has
+scenarios, test cases and 13 Playwright tests.
+
+The lesson is about what "covered incidentally" was worth. Other suites passed
+through the overview constantly on their way somewhere else, and not one of
+them could notice a panel that was absent.
 
 `DB` (15) is closed by `database-testing/`, and `SYS` (10) and `AUDIT` (10) by
 `rest-assured/`. Between them those two suites cover 35 requirements that no
 UI test could reach.
-
-| Module | Reqs | Gap | Route to coverage |
-|---|---:|---|---|
-| `DASH` | 7 | No dedicated scenarios or cases | Small module; fold into account and transaction cases or add a file |
 
 `DB` was previously blocked because no persistent database existed, then the
 largest single gap. It is now the only module covered by assertions against
@@ -130,14 +138,17 @@ re-executed. All six are now implemented — see
 `docs/known-issues-and-limitations.md`. A `Blocked` status that outlived its
 cause reads as a product gap that no longer exists.
 
-## Open defects
+## Defects
+
+None open.
 
 | Defect | Requirement | Status |
 |---|---|---|
-| `BUG-BEN-001` | `BEN-007` — deleted beneficiary must not be usable | Open, confirmed 2026-09-21 |
+| `BUG-BEN-001` | `BEN-007` — deleted beneficiary must not be usable | Closed, fixed 2026-09-23 |
 | `BUG-DB-001` | `DB-006`, `DB-007` — financial precision | Closed, fixed 2026-09-21 |
 | `BUG-API-001` | `SYS-002`, `SYS-008` — documented status for oversized bodies | Closed, fixed 2026-09-22 |
-| `BUG-UI-002` | `SEC-003`, `ADMIN-002` — role boundaries in the interface | Open, confirmed 2026-09-21 |
+| `BUG-UI-002` | `SEC-003`, `ADMIN-002` — role boundaries in the interface | Closed, fixed 2026-09-23 |
+| `BUG-DASH-001` | `DASH-003`, `DASH-004`, `DASH-005` — dashboard panels never rendered | Closed, fixed 2026-09-23 |
 | `BUG-UI-001` | `SYS-*` — application stability | Closed, fixed 2026-09-21 |
 | `BUG-AUTH-001` | `AUTH-012` — session validity | Closed, not reproducible after the port |
 | `BUG-ACC-001` | `ACC-001` — account opening | Closed as obsolete; UI replaced |

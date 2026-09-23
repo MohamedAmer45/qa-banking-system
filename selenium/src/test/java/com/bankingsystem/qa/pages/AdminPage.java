@@ -33,9 +33,13 @@ public class AdminPage extends BasePage {
         return find("audit-table").getText();
     }
 
-    /** Open user administration without expecting it to render data. */
+    /**
+     * Open user administration without expecting it to render data. Navigates
+     * directly, because a role that may not use the module is no longer
+     * offered the sidebar entry for it.
+     */
     public AdminPage openUsersExpectingDenial() {
-        openView("admin-users");
+        openViewDirectly("admin-users");
         return this;
     }
 
