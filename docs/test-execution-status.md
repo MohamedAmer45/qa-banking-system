@@ -4,8 +4,8 @@ Last synchronized: 2026-09-23
 
 ## Status
 
-Nothing is blocked. Every documented module is implemented, and all seven
-suites pass against the running application.
+Nothing is blocked. Every documented module is implemented, and all eight
+suites pass.
 
 | Layer | Executable | Result |
 |---|---|---|
@@ -17,9 +17,14 @@ suites pass against the running application.
 | REST Assured | Yes | **107 passing** |
 | Postman / Newman | Yes | **103 requests, 440 assertions passing** |
 | Database (SQL) | Yes | **59 passing** |
+| Jest (unit, app repo) | Yes | **128 passing** |
 | Performance (JMeter, k6) | Yes | Not yet written |
 
-See `docs/automation-status.md` for how the seven suites divide the work.
+Seven of the eight drive the running application. Jest is the exception: it
+imports application internals directly, so it lives in the application
+repository and runs with no server and no database.
+
+See `docs/automation-status.md` for how the suites divide the work.
 
 ## Open defects
 

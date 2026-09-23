@@ -242,22 +242,38 @@ qa-banking-system/
 ├── selenium/
 ├── cypress/
 ├── playwright/
-├── jest/
 ├── postman/
 ├── rest-assured/
 ├── database-testing/
-├── jmeter/
 ├── cucumber/
 │
-├── ci-cd/
-│   ├── github-actions/
-│   └── jenkins/
+├── docs/
+│   ├── automation-status.md
+│   ├── test-execution-status.md
+│   ├── current-build-status.md
+│   ├── known-issues-and-limitations.md
+│   ├── test-environment.md
+│   ├── api/
+│   └── defects/
 │
-├── reports/
+├── .github/
+│   ├── actions/
+│   │   └── start-novabank/
+│   └── workflows/
 │
 ├── .gitignore
 └── README.md
 ```
+
+The Jest unit suite is not in this tree. It lives in the
+[application repository](https://github.com/MohamedAmer45/novabank-banking-system)
+under `tests/`, because it imports application internals directly rather than
+driving the running application over HTTP. Every other suite here talks to the
+application the way a client does, which is why they can live apart from it.
+
+JMeter and a Jenkins pipeline are planned and not yet written; see
+[`docs/automation-status.md`](docs/automation-status.md) for what is and is not
+built.
 
 ---
 
@@ -925,7 +941,7 @@ string `"completed"` without touching an account. That stub has been deleted.
 - Requirements and planning
 - Manual test design
 - Application implementation and deployment
-- Selenium, Cypress, Playwright and Cucumber — all retargeted and passing
+- Eight automated suites, all passing in CI
 - GitHub Actions for every suite, running against an app started in the runner
 
 | Suite | Tests | Browsers |
@@ -934,21 +950,29 @@ string `"completed"` without touching an account. That stub has been deleted.
 | Cypress | 26 | Chrome |
 | Selenium | 21 | Chrome |
 | Cucumber | 21 scenarios | Chrome |
+| Database (JDBC + TestNG) | 59 | n/a |
+| REST Assured | 107 | n/a |
+| Postman / Newman | 103 requests, 440 assertions | n/a |
+| Jest (unit, in the app repo) | 128 | n/a |
 
-The four divide the work rather than duplicating it; see
-[`docs/automation-status.md`](docs/automation-status.md). That division found
-two defects the others missed — `BUG-UI-001` (Cypress) and `BUG-UI-002`
-(Selenium).
+They divide the work rather than duplicating it; see
+[`docs/automation-status.md`](docs/automation-status.md). That division is what
+found the defects: `BUG-UI-001` (Cypress), `BUG-UI-002` (Selenium),
+`BUG-DB-001` (database suite, by reading `information_schema` rather than
+driving the application) and `BUG-API-001` (REST Assured).
 
-## Unblocked and not started
+All 65 endpoints the application serves are exercised by at least one suite.
 
-API testing (Postman, REST Assured), database testing, Jest, and performance
-testing are all unblocked for the first time — there is now a real backend with
-a real database behind a documented API. None of them depend on the UI
-retarget.
+## Not yet started
 
-The largest coverage gap is the `DB` module: 15 requirements with no tests,
-previously blocked because no persistent database existed.
+JMeter and k6 performance testing, a Jenkins pipeline that drives these suites,
+axe-core accessibility and OWASP ZAP. Pact, WireMock and Testcontainers were
+evaluated and deliberately not adopted, with reasons recorded in
+[`docs/automation-status.md`](docs/automation-status.md).
+
+The remaining coverage gap is the `DASH` module: 7 requirements reached only
+incidentally, by suites that pass through the dashboard on the way somewhere
+else, with no test asserting dashboard behaviour itself.
 
 ---
 

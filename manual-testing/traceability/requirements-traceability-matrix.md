@@ -62,6 +62,15 @@ application. Which suite, and why that one, is in `docs/automation-status.md`.
 Cucumber feature files tag the requirement ids they trace to, so a single
 requirement can be run on its own — `mvn test -Dcucumber.filter.tags="@TRF-004"`.
 
+**The Jest unit suite is deliberately not counted in that column.** It covers
+functions, not modules, and it never starts the application, so counting it
+would inflate this table against its own definition. It adds depth beneath
+`SEC` (password hashing and token generation), `TRF` (FX conversion and
+rounding), `LOAN` (amortisation), `ADMIN` (the role/permission grid asserted as
+a matrix) and `DB` (the placeholder rewriter every query passes through). It
+closes no module that is not already closed above, and it changes no number in
+this matrix.
+
 ## Gaps
 
 One module, 7 requirements, is the remaining coverage debt.

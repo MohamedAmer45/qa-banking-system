@@ -4,7 +4,7 @@ Last synchronized: 2026-09-23
 
 ## Summary
 
-Seven suites, all passing against the PostgreSQL build.
+Eight suites, all passing against the PostgreSQL build.
 
 | Suite | Tests | Browsers |
 |---|---|---|
@@ -15,12 +15,19 @@ Seven suites, all passing against the PostgreSQL build.
 | Database (JDBC + TestNG) | 59 | n/a |
 | REST Assured | 107 | n/a |
 | Postman / Newman | 103 requests, 440 assertions | n/a |
+| Jest (unit) | 128 | n/a |
 
 Every suite starts the application inside the CI runner against a `postgres:16`
 service container, so runs are isolated and begin from an identical seed. No
 suite depends on a hosted environment.
 
 All 65 endpoints the application serves are exercised by at least one suite.
+
+The Jest suite is the exception to the layout: it lives in the **application**
+repository, not this one, because it imports application internals directly.
+Holding it here would mean either publishing those internals as a package or
+reaching across repositories on every run. It is listed here because it is part
+of the same testing stack and the same coverage argument.
 
 ## How the suites divide the work
 
@@ -37,6 +44,11 @@ They are deliberately not seven copies of the same coverage.
 | Stored state | No | No | No | No | Primary | No | No |
 | Chained journeys | Some | No | No | Yes | No | No | Primary |
 | Requirement traceability | Test ids | Test ids | Test ids | Gherkin tags | Requirement ids | Requirement ids | Folder names |
+
+Jest is absent from that table on purpose. Every column above describes a suite
+driving the running application; Jest calls functions directly, with no server
+and no database. Adding it as a column would be a row of "No" that reads like a
+gap rather than a different layer.
 
 That division has earned itself five times:
 
@@ -90,11 +102,50 @@ not exist until opened, and a rejected submission leaves the modal up where it
 swallows the next navigation click. Every suite dismisses an open modal before
 navigating.
 
+## What the unit layer adds
+
+The seven application-driving suites exercise these functions constantly, but
+they report a fault in one as something else. A bug in the `?` to `$n`
+placeholder rewriter surfaces as "the transfer credited the wrong account"; a
+wrong cell in the permission table surfaces as a 403 nobody expected. Jest names
+the failure at the line that caused it.
+
+| File | Tests | Covers |
+|---|---|---|
+| `database.test.js` | 29 | `toPositional`, `withReturningId` |
+| `security.test.js` | 30 | Password hashing, token generation, masking, ISO-8601 ordering |
+| `money.test.js` | 31 | `moneyMinor`, `convertMinor`, loan amortisation, recurrence dates |
+| `access.test.js` | 38 | The role/permission grid, `publicUser`, `sanitizeIdNumber` |
+
+The permission grid is asserted as a whole rather than case by case. A
+permission table is only correct if every cell is, and the failure worth
+catching is a role quietly gaining access — which shows up in a matrix as one
+wrong cell, and in case-by-case tests as a test nobody thought to write. A
+further test fails if a permission is added to the table without the grid
+deciding who holds it.
+
+Two tests assert behaviour that is not ideal, rather than omitting it:
+
+- `toPositional` rewrites a question mark inside a string literal. No query in
+  the application contains one, which is why the simple approach is safe, but a
+  future query with a literal `?` would break and the test says so.
+- `moneyMinor(8.165)` is 816, because `8.165 * 100` is `816.4999999999999`.
+  Reachable only with sub-cent input, which `step="0.01"` prevents.
+
+A test that passes while hiding a known limitation is worth less than one that
+states it.
+
+**Coverage is 16.7% of statements, and that is the unscoped figure.**
+`security.js` reaches 100% while `banking.js` sits at 7.6%, because the rest of
+`banking.js` is asynchronous database work that the API, UI and database suites
+cover instead. Narrowing the denominator to the tested files would produce a
+flattering number that measures nothing. The per-file table is in the coverage
+output so the split stays visible.
+
 ## Not yet started
 
 | Area | Status |
 |---|---|
-| Jest | Not started. Ten pure functions have no direct test, including the `?` to `$n` placeholder rewriter every query passes through |
 | JMeter / k6 | Not started. The row-locking work gives load testing something real to prove |
 | Jenkins | A `Jenkinsfile` exists in the application repository but drives none of these suites |
 | axe-core | Not started. No accessibility coverage anywhere |
