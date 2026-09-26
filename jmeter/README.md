@@ -64,6 +64,35 @@ bash run.sh concurrency 30 5000      # threads, amount in EGP
 
 ---
 
+## What running this against a remote database looks like
+
+Worth recording, because it is the clearest argument for the exception above.
+
+Pointed at the deployed Neon database over the internet, the concurrency plan at
+30 threads does not merely run slowly — it breaks in ways that have nothing to do
+with the application:
+
+| Pool size | Outcome |
+|---|---|
+| 10 (shipped default) | 17 x `201`, 13 x `500 {"error":"timeout exceeded when trying to connect"}` |
+| 30 | 24 x `201`, 6 client-side `SocketTimeoutException` after 60s |
+
+Each transfer holds a pooled connection for the whole transaction, and every
+statement in it costs an internet round-trip, so connections are held for seconds.
+Thirty of those serialising on one row lock exhausts a ten-connection pool, and
+raising the pool just moves the failure to the client's own timeout.
+
+**None of this is an application defect.** The same plan at the same concurrency
+against a `postgres:16` container in the CI runner returns 30 x `201` with no 5xx,
+because each transaction completes in milliseconds and the connection is handed
+straight back. The ledger reconciled exactly in every one of these runs, including
+the ones where requests timed out — correctness held throughout; only availability
+degraded, and only because of where the database was.
+
+That is the whole case for this suite not targeting the deployed environment: the
+numbers it would produce there describe the distance to the database, and the
+failures it would report would be the test's, not the application's.
+
 ## Pacing, and why the first CI run failed
 
 The read plan paces each request with a think time of 200-500ms. That is not

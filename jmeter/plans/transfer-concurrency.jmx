@@ -226,14 +226,30 @@ def beneficiaries = new JsonSlurper().parseText(prev.getResponseDataAsString())
 
 // A transfer is refused unless the beneficiary is ACTIVE and verified, so the
 // load test must pick one that is both or it measures the rejection path.
-def payable = beneficiaries.find { b -&gt; b.status == 'ACTIVE' &amp;&amp; b.verified }
+def candidates = beneficiaries.findAll { b -&gt; b.status == 'ACTIVE' &amp;&amp; b.verified }
 
-if (payable == null) {
+if (candidates.isEmpty()) {
     throw new IllegalStateException("No ACTIVE, verified beneficiary to pay.")
 }
 
+/*
+ * Prefer one at another bank. Those transfers are EXTERNAL, which is the only
+ * kind that attracts a fee, so choosing one exercises the fee arithmetic as
+ * well as the locking. A NOVABANK beneficiary is accepted if that is all there
+ * is.
+ */
+def payable = candidates.find { b -&gt; b.bank_name != 'NOVABANK' } ?: candidates.first()
+
 props.put("beneficiaryId", payable.id.toString())
-log.info("setUp chose beneficiary " + payable.id)
+
+/*
+ * The bank decides whether a fee applies, so the analyzer cannot assume it.
+ * Recording it here is what lets the reconciliation stay an exact equality
+ * instead of a range.
+ */
+new File(vars.get("resultsDir") + "/beneficiary-bank.txt").text = payable.bank_name.toString()
+
+log.info("setUp chose beneficiary " + payable.id + " at " + payable.bank_name)
 </stringProp>
           </JSR223PostProcessor>
           <hashTree/>

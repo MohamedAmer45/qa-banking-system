@@ -56,9 +56,19 @@ function percentile(values, p) {
   return sorted[Math.max(0, index)];
 }
 
-/** The application's external-transfer fee, mirrored from src/banking.js. */
-function feeMinor(amountMinor) {
-  return Math.max(500, Math.round(amountMinor * 0.001));
+/**
+ * The per-transfer fee, mirrored from src/banking.js.
+ *
+ * Only an EXTERNAL transfer is charged, and a transfer is EXTERNAL exactly when
+ * the beneficiary is not at NOVABANK. The bank therefore cannot be assumed: the
+ * plan records which beneficiary it chose, and this reads it. Assuming external
+ * is what made the first CI run fail — the seeded beneficiary it picked was
+ * internal, so the balance moved by the amount alone and the reconciliation was
+ * short by exactly the fees.
+ */
+function feeMinor(amountMinor, bankName) {
+  const external = bankName !== null && bankName !== "NOVABANK";
+  return external ? Math.max(500, Math.round(amountMinor * 0.001)) : 0;
 }
 
 const jtlPath = arg("jtl");
@@ -131,7 +141,21 @@ if (plan === "concurrency") {
     const moved = before - after;
 
     const amountMinor = Math.round(amountMajor * 100);
-    const expected = created * (amountMinor + feeMinor(amountMinor));
+
+    const bankPath = join(resultsDir, "beneficiary-bank.txt");
+    const bankName = existsSync(bankPath)
+      ? readFileSync(bankPath, "utf8").trim()
+      : null;
+
+    if (bankName === null) {
+      failures.push(
+        "The plan did not record which beneficiary it paid, so the fee " +
+        "(and therefore the expected debit) is unknown"
+      );
+    }
+
+    const fee = feeMinor(amountMinor, bankName);
+    const expected = created * (amountMinor + fee);
 
     /*
      * The strongest statement this test can make. The fee is deterministic, so
@@ -142,7 +166,7 @@ if (plan === "concurrency") {
       failures.push(
         `Ledger did not reconcile: balance fell by ${moved} minor units, but ` +
         `${created} successful transfer(s) of ${amountMinor} plus a ` +
-        `${feeMinor(amountMinor)} fee should move exactly ${expected}`
+        `${fee} fee (beneficiary at ${bankName}) should move exactly ${expected}`
       );
     }
 
@@ -153,7 +177,8 @@ if (plan === "concurrency") {
     notes.push(`opening balance      ${before.toLocaleString()} minor units`);
     notes.push(`closing balance      ${after.toLocaleString()} minor units`);
     notes.push(`moved                ${moved.toLocaleString()} minor units`);
-    notes.push(`reconciles to        ${created} x (${amountMinor} + ${feeMinor(amountMinor)})`);
+    notes.push(`beneficiary bank     ${bankName} (fee ${fee})`);
+    notes.push(`reconciles to        ${created} x (${amountMinor} + ${fee})`);
   }
 
   notes.push(`created (201)        ${created}`);
