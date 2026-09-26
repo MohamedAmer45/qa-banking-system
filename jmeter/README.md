@@ -64,6 +64,27 @@ bash run.sh concurrency 30 5000      # threads, amount in EGP
 
 ---
 
+## Pacing, and why the first CI run failed
+
+The read plan paces each request with a think time of 200-500ms. That is not
+cosmetic, and it was not there at first.
+
+Without pacing a thread loops as fast as the server answers, so **the load the
+plan generates is set by how fast the system under test is.** Run locally against
+a database across the internet, each request cost around 460ms and twenty threads
+offered about 20 requests a second. The identical plan in CI, against a
+`postgres:16` container in the same runner, answered in milliseconds and so
+offered orders of magnitude more — enough to exhaust the application's
+ten-connection pool and return 5xx. The gate caught it and failed the build.
+
+That failure was real, but it was a property of the test, not of the
+application: a load test whose intensity depends on the backend's speed cannot be
+compared between environments and will fail intermittently in the faster one. It
+passed on a re-run, which is the signature worth distrusting.
+
+With a think time the offered rate is `threads / think time`, set by the plan
+rather than discovered by it.
+
 ## What is gated, and what is only reported
 
 JMeter's non-GUI mode exits 0 whether or not the numbers were acceptable, so on

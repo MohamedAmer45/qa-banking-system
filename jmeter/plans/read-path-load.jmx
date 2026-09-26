@@ -7,8 +7,19 @@
   concurrency; it deliberately moves no money, so it can be run repeatedly
   without changing state.
 
+  Each request is paced by a think time, which is not decoration. Without it a
+  thread loops as fast as the server answers, so the load the plan generates
+  depends on how fast the backend is: this plan run against a database across the
+  internet produced about 26 requests a second, and the same plan against a local
+  container produced enough to exhaust the connection pool and return 5xx. A load
+  test whose intensity is set by the system under test cannot be compared between
+  environments, and it fails intermittently in the faster one.
+
+  Pacing fixes the offered rate instead, so threads x think time is the load.
+
   Everything is a property so CI can scale it without editing the plan:
     -Jhost -Jport -Jprotocol -Jthreads -Jrampup -Jduration
+    -JthinkTimeMs -JthinkJitterMs
 -->
 <jmeterTestPlan version="1.2" properties="5.0" jmeter="5.6.3">
   <hashTree>
@@ -152,6 +163,11 @@
         <hashTree/>
         <GenericController guiclass="LogicControllerGui" testclass="GenericController" testname="Session reads" enabled="true"/>
         <hashTree>
+          <UniformRandomTimer guiclass="UniformRandomTimerGui" testclass="UniformRandomTimer" testname="Think time" enabled="true">
+            <stringProp name="ConstantTimer.delay">${__P(thinkTimeMs,200)}</stringProp>
+            <stringProp name="RandomTimer.range">${__P(thinkJitterMs,300)}</stringProp>
+          </UniformRandomTimer>
+          <hashTree/>
           <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="GET me" enabled="true">
             <elementProp name="HTTPsampler.Arguments" elementType="Arguments">
               <collectionProp name="Arguments.arguments"/>
