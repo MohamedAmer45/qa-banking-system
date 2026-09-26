@@ -281,6 +281,10 @@ if (rows.length >= 40) {
 
   const drift = percentile(quarters[3], 95) - percentile(quarters[0], 95);
   console.log(`  drift in p95, first quarter to last: ${drift >= 0 ? "+" : ""}${drift} ms`);
+  notes.push(
+    "p95 by quarter       " + quarters.map(q => percentile(q, 95)).join(" -> ") +
+    ` ms (drift ${drift >= 0 ? "+" : ""}${drift})`
+  );
 }
 
 console.log(
