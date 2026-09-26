@@ -72,6 +72,9 @@ const notes = [];
 
 if (rows.length === 0) {
   console.error(`No samples in ${jtlPath} — the plan did not run.`);
+  if (process.env.GITHUB_ACTIONS === "true") {
+    console.error(`::error title=JMeter ${plan}::no samples were recorded`);
+  }
   process.exit(1);
 }
 
@@ -196,6 +199,17 @@ console.log(
 if (failures.length > 0) {
   console.error("\nFAILED");
   failures.forEach(f => console.error(`  - ${f}`));
+
+  /*
+   * Also emit workflow annotations, so a failure is legible on the run
+   * summary and in a pull request without opening the log.
+   */
+  if (process.env.GITHUB_ACTIONS === "true") {
+    failures.forEach(f => {
+      console.error(`::error title=JMeter ${plan}::${f}`);
+    });
+  }
+
   process.exit(1);
 }
 
