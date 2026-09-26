@@ -4,11 +4,12 @@ Last synchronized: 2026-09-26
 
 ## Summary
 
-Nine suites, all passing against the PostgreSQL build.
+Nine suites, all passing against the PostgreSQL build. Accessibility runs
+inside Playwright rather than as a tenth.
 
 | Suite | Tests | Browsers |
 |---|---|---|
-| Playwright + TypeScript | 37 | Chromium, Firefox, WebKit |
+| Playwright + TypeScript | 67 | Chromium, Firefox, WebKit |
 | Cypress + TypeScript | 26 | Chrome / Electron |
 | Selenium + Java + TestNG | 27 | Chrome |
 | Cucumber JVM | 24 scenarios | Chrome |
@@ -17,6 +18,7 @@ Nine suites, all passing against the PostgreSQL build.
 | Postman / Newman | 103 requests, 440 assertions | n/a |
 | Jest (unit) | 134 | n/a |
 | JMeter (performance) | 5 shapes | n/a |
+| axe-core (accessibility) | 30 | Chromium |
 
 Every suite starts the application inside the CI runner against a `postgres:16`
 service container, so runs are isolated and begin from an identical seed. No
@@ -242,11 +244,52 @@ and smoke-tests the application alone. That one is not redundant with this: it
 answers "is the build good", where this answers "does the build pass the
 regression".
 
+## Accessibility
+
+`playwright/tests/accessibility/` — 30 tests against the nine `A11Y`
+requirements added to the catalog on 2026-09-26. axe-core 4.13 scans 23 views
+plus an open modal, asserting **zero** violations rather than a tolerated list.
+
+It is in Playwright only. Running the same engine over the same DOM from Cypress
+as well would duplicate rather than divide, which is the one thing the table
+above exists to avoid.
+
+**The first scan found five violation types across 24 views**, recorded as
+`BUG-A11Y-001` and fixed:
+
+| Rule | Count | Cause |
+|---|---|---|
+| `label` | 73 controls | `<div class="field"><label>X</label><input>` — adjacent, never associated |
+| `select-name` | 6 selects | Filter and account selects with no name at all |
+| `color-contrast` | 1 | Sidebar heading at 3.73:1 where 4.5:1 is required |
+| `scrollable-region-focusable` | 1 | The audit table scrolls with a pointer, not a keyboard |
+
+One pattern repeated 73 times is why a single root cause produced the largest
+violation count in the project. Sighted users read the label-field pairing from
+the layout; nothing in the markup stated it.
+
+A fifth fault was invisible to the scanner and found by driving the interaction:
+modals had no `role="dialog"`, moved no focus, trapped no focus, ignored Escape,
+and returned focus nowhere. They now do all four.
+
+**What "Automated" means here, and what it does not.** `A11Y-001` to `A11Y-006`
+are decided by the engine — a control either exposes a name or it does not.
+`A11Y-007` to `A11Y-009` are not fully machine-decidable and are driven as
+interactions: focus entering a dialog and staying there, Escape returning focus
+to the trigger, a status message announced without stealing focus, sign-in
+completed with no pointer.
+
+Beyond that, automated checks find only a minority of WCAG issues. No engine
+judges whether alt text is useful, whether reading order makes sense, or whether
+a screen reader announces a transfer coherently. Three test cases in
+`accessibility-test-cases.md` are marked manual-only for exactly that, and are
+deliberately absent from the automated count. A green run is a floor, not a claim
+that the application is accessible.
+
 ## Not yet started
 
 | Area | Status |
 |---|---|
-| axe-core | Not started. No accessibility coverage anywhere |
 | OWASP ZAP | Not started |
 
 ### Evaluated and not adopted
@@ -261,7 +304,7 @@ Recorded rather than silently dropped, since the original plan named them:
 
 ## Coverage
 
-**All 187 requirements across all 16 modules are covered.**
+**All 196 requirements across all 17 modules are covered.**
 
 `DASH` (7) was the last gap and is now automated, in
 `playwright/tests/dashboard/dashboard.spec.ts`. Closing it turned up something
@@ -282,7 +325,7 @@ could reach.
 
 ## Open defects
 
-**None.** All eight recorded defects are closed:
+**None.** All nine recorded defects are closed:
 
 | Defect | Found by | Resolution |
 |---|---|---|
@@ -292,6 +335,7 @@ could reach.
 | `BUG-BEN-001` | API re-verification | Fixed — the list returned soft-deleted rows |
 | `BUG-UI-002` | Selenium | Fixed — the back-office sidebar was not role-filtered |
 | `BUG-DASH-001` | Writing `DASH` coverage | Fixed — three requirements were never rendered |
+| `BUG-A11Y-001` | First axe-core scan | Fixed — 73 unnamed controls, one unreachable region, dialogs not announced |
 | `BUG-AUTH-001` | — | Closed, not reproducible after the PostgreSQL port |
 | `BUG-ACC-001` | — | Closed as obsolete; the UI it described no longer exists |
 

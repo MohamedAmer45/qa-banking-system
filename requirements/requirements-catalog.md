@@ -320,7 +320,39 @@ Each requirement has a unique ID that will later be referenced by:
 
 ---
 
-# 18. Requirement Traceability
+# 18. Accessibility
+
+The application is a consumer banking interface, so accessibility is a
+functional obligation rather than a preference. Each requirement below names the
+WCAG 2.1 success criterion it comes from, at level AA, so it can be argued about
+against a standard instead of an opinion.
+
+Machine checks satisfy some of these and not others. `A11Y-001` to `A11Y-006`
+are detectable by an automated engine; `A11Y-007` to `A11Y-009` are not fully,
+and are marked accordingly. A requirement is not dropped for being awkward to
+automate.
+
+| ID        | Requirement                                                                                                              | WCAG 2.1 AA | Priority |
+| --------- | ------------------------------------------------------------------------------------------------------------------------ | ----------- | -------- |
+| A11Y-001  | Every form control shall have a programmatically associated label.                                                        | 1.3.1, 4.1.2 | Critical |
+| A11Y-002  | Text and interactive controls shall meet the minimum contrast ratio against their background.                             | 1.4.3, 1.4.11 | High     |
+| A11Y-003  | Every interactive control shall expose an accessible name, including controls presented only as an icon.                  | 4.1.2       | Critical |
+| A11Y-004  | Each page shall expose a correct heading structure and landmark regions.                                                  | 1.3.1, 2.4.6 | Medium   |
+| A11Y-005  | ARIA roles, states and properties shall be valid and applied to elements that permit them.                                | 4.1.2       | High     |
+| A11Y-006  | Element ids used for labelling or references shall be unique within a page.                                               | 4.1.1       | Medium   |
+| A11Y-007  | A modal dialog shall confine keyboard focus while open and return focus to the control that opened it on close.            | 2.1.2, 2.4.3 | Critical |
+| A11Y-008  | Status messages, including transfer outcomes and error toasts, shall be announced to assistive technology without taking focus. | 4.1.3  | High     |
+| A11Y-009  | Every operation a customer can complete with a pointer shall be completable with a keyboard alone.                        | 2.1.1       | Critical |
+
+Requirements `A11Y-007` to `A11Y-009` are only partly machine-detectable. An
+engine can confirm a dialog has the right role and that a live region exists; it
+cannot confirm that focus behaves correctly through a real interaction, or that
+an announcement is coherent. Those parts are verified by scripted UI tests and by
+manual checks, not by the scanner.
+
+---
+
+# 19. Requirement Traceability
 
 The following naming convention shall be used throughout the project:
 
@@ -351,7 +383,7 @@ This allows every test result to be traced back to the original system requireme
 
 ---
 
-# 19. Requirement Categories
+# 20. Requirement Categories
 
 | Prefix | Module                      |
 | ------ | --------------------------- |
@@ -371,6 +403,7 @@ This allows every test result to be traced back to the original system requireme
 | AUDIT  | Audit Logging               |
 | DB     | Database Integrity          |
 | SYS    | General System Requirements |
+| A11Y   | Accessibility               |
 
 <!-- NOVABANK-REQUIREMENTS-SYNC-START -->
 

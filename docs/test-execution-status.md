@@ -10,7 +10,7 @@ suites pass.
 | Layer | Executable | Result |
 |---|---|---|
 | Manual testing | Yes | Ready to execute |
-| Playwright | Yes | **37 passing**, 3 browsers |
+| Playwright | Yes | **67 passing**, 3 browsers |
 | Cypress | Yes | 26 passing |
 | Selenium | Yes | **27 passing** |
 | Cucumber | Yes | **24 scenarios passing** |
@@ -42,6 +42,7 @@ the deployed environment (redeployed 2026-09-26).
 | `BUG-BEN-001` | Closed — fixed 2026-09-23; the beneficiary list returned soft-deleted rows |
 | `BUG-UI-002` | Closed — fixed 2026-09-23; the back-office sidebar was not role-filtered |
 | `BUG-DASH-001` | Closed — fixed 2026-09-23; three dashboard requirements were never rendered |
+| `BUG-A11Y-001` | Closed — fixed 2026-09-26; 73 form controls exposed no accessible name, found by the first axe-core scan |
 | `BUG-AUTH-001` | Closed — not reproducible after the PostgreSQL port |
 | `BUG-ACC-001` | Closed — obsolete; the UI it described no longer exists |
 

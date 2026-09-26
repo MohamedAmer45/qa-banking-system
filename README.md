@@ -1005,7 +1005,7 @@ string `"completed"` without touching an account. That stub has been deleted.
 
 | Suite | Tests | Browsers |
 |---|---:|---|
-| Playwright | 37 | Chromium, Firefox, WebKit |
+| Playwright | 67 | Chromium, Firefox, WebKit |
 | Cypress | 26 | Chrome |
 | Selenium | 27 | Chrome |
 | Cucumber | 24 scenarios | Chrome |
@@ -1024,17 +1024,18 @@ driving the application), `BUG-API-001` (REST Assured) and `BUG-DASH-001`
 rendered, which is why the module had no coverage to begin with).
 
 All 65 endpoints the application serves are exercised by at least one suite,
-and all 187 requirements across all 16 modules are covered.
+and all 196 requirements across all 17 modules are covered.
 
 **No defect is open.** All eight are closed, each with regression cover in the
 suite that found it.
 
 ## Not yet started
 
-axe-core accessibility and OWASP ZAP.
+OWASP ZAP.
 
-Done since this list was first written: JMeter (see [`jmeter/`](jmeter/)) and
-the Jenkins pipeline (see [`Jenkinsfile`](Jenkinsfile)). k6 was not added
+Done since this list was first written: JMeter (see [`jmeter/`](jmeter/)), the
+Jenkins pipeline (see [`Jenkinsfile`](Jenkinsfile)), and axe-core accessibility
+checks, which live inside the Playwright suite rather than as a tenth suite. k6 was not added
 alongside JMeter, because a second load tool would measure the same thing
 twice. Pact, WireMock and Testcontainers were evaluated and deliberately not
 adopted, with reasons recorded in

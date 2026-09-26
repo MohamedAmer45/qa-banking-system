@@ -1,7 +1,7 @@
 # Requirements Traceability Matrix
 
 Last synchronized: 2026-09-26
-Source of truth: `requirements/requirements-catalog.md` — **187 requirements**
+Source of truth: `requirements/requirements-catalog.md` — **196 requirements**
 
 ## Purpose
 
@@ -27,6 +27,7 @@ the catalog's, the mapping is explicit:
 | `AUDIT-` | `ADM-TC-`, `SEC-TC-` | No dedicated audit file |
 | `DASH-` | `DASH-TC-` | Dedicated file added 2026-09-23 |
 | `DB-`, `SYS-` | — | Verified by SQL and API layers, not manual cases |
+| `A11Y-` | `A11Y-TC-` | Added 2026-09-26 with the module |
 | — | `STMT-TC-` | Statements are catalogued under `ACC-` |
 | — | `PROF-TC-` | Profile is catalogued under `KYC-` |
 
@@ -55,12 +56,28 @@ no implementation) entered the project and survived unnoticed.
 | `SEC` | 10 | `security-scenarios.md` | `security-test-cases.md` | Yes | Covered | Automated |
 | `DB` | 15 | — | `database-testing/` | Yes | Covered | **Automated** |
 | `SYS` | 10 | — | `rest-assured/` | Yes | Covered | **Automated** |
+| `A11Y` | 9 | `accessibility-scenarios.md` | `accessibility-test-cases.md` | Yes | Covered | **Automated** |
 
 "Automated" means at least one suite covers the module against the running
 application. Which suite, and why that one, is in `docs/automation-status.md`.
 
 Cucumber feature files tag the requirement ids they trace to, so a single
 requirement can be run on its own — `mvn test -Dcucumber.filter.tags="@TRF-004"`.
+
+**Accessibility is counted, and the limit of the count is stated.** `A11Y`
+(9 requirements) is automated in `playwright/tests/accessibility/`, but the
+column hides a distinction the module itself makes. `A11Y-001` to `A11Y-006` are
+decided by axe-core: a control either exposes an accessible name or it does not.
+`A11Y-007` to `A11Y-009` are not fully machine-decidable and are driven as
+interactions instead — focus moving into a dialog, staying there, and returning
+to its trigger; a status message announced without stealing focus; a sign-in
+completed with no pointer at all.
+
+Automated accessibility checks find a minority of WCAG issues in any case. No
+engine judges whether alt text is useful, whether reading order makes sense, or
+whether a screen reader announces a transfer coherently. "Automated" here means
+the machine-checkable part is checked every run, not that the application is
+accessible.
 
 **The JMeter suite adds no row and no module.** It exercises `DB-010`
 (*concurrent financial operations shall maintain correct balances*) at a
@@ -84,7 +101,7 @@ this matrix.
 
 ## Gaps
 
-**None.** All 187 requirements across all 16 modules are covered.
+**None.** All 196 requirements across all 17 modules are covered.
 
 `DASH` was the last one, and closing it turned up something worth recording.
 The module was not untested because nobody had got to it: three of its seven

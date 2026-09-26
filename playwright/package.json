@@ -22,5 +22,9 @@
     "@playwright/test": "^1.63.0",
     "@types/node": "^26.6.0",
     "typescript": "^7.0.2"
+  },
+  "dependencies": {
+    "@axe-core/playwright": "^4.13.0",
+    "axe-core": "^4.13.0"
   }
 }
