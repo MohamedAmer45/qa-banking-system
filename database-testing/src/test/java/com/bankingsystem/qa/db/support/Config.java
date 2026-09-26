@@ -57,6 +57,6 @@ public final class Config {
     }
 
     public static String apiBaseUrl() {
-        return get("api.base.url", "BASE_URL", "http://localhost:3000");
+        return get("api.base.url", "BASE_URL", "https://novabank-banking-system.vercel.app");
     }
 }

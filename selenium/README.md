@@ -242,6 +242,17 @@ Run all tests:
 mvn clean test
 ```
 
+That targets the deployed application at `https://novabank-banking-system.vercel.app`,
+so no local server or database is needed. To run against localhost instead:
+
+```bash
+mvn clean test -Dbase.url=http://localhost:3000
+```
+
+The deployed environment has one shared database that is never reset, so
+balance assertions here are relative rather than absolute (`LIM-005` in
+`docs/known-issues-and-limitations.md`).
+
 ## Expected Framework Validation
 
 The initial framework smoke test should produce:

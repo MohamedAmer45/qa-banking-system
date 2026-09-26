@@ -66,7 +66,7 @@ public abstract class ApiTest {
             throw new IllegalStateException("Could not read config.properties", e);
         }
 
-        return properties.getProperty("api.base.url", "http://localhost:3000");
+        return properties.getProperty("api.base.url", "https://novabank-banking-system.vercel.app");
     }
 
     /** A request with no credentials. */

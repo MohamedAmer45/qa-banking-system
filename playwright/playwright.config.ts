@@ -1,8 +1,18 @@
 ﻿import { defineConfig, devices } from "@playwright/test";
 
+/*
+ * Defaults to the deployed environment so a fresh clone runs with no local
+ * setup. CI sets BASE_URL to the app it starts inside the runner; run
+ * locally the same way:
+ *   BASE_URL=http://localhost:3000 npx playwright test
+ *
+ * The deployed environment has one shared database, so tests that move money
+ * mutate it. Balance assertions stay relative for exactly this reason
+ * (LIM-005 in docs/known-issues-and-limitations.md).
+ */
 const baseURL =
   process.env.BASE_URL ??
-  "http://localhost:3000";
+  "https://novabank-banking-system.vercel.app";
 
 export default defineConfig({
   testDir: "./tests",

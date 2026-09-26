@@ -8,15 +8,22 @@ observe, because they are about what is *stored* rather than what is returned.
 ## Running
 
 ```bash
-DATABASE_URL=postgresql://user:pass@host/db \
-BASE_URL=http://localhost:3000 \
-mvn clean test
+DATABASE_URL=postgresql://user:pass@host/db mvn clean test
 ```
 
 `DATABASE_URL` is the same connection string the application uses, so the suite
-and the application can never end up on different databases. `BASE_URL` is only
-needed by the cross-layer tests, which drive a real operation before inspecting
-what it persisted.
+and the application can never end up on different databases. It has **no
+default**: pointing this suite at the deployed database means supplying that
+database's credentials, and those are deliberately not committed here. It is
+the one setting in this project you always have to provide.
+
+The HTTP base URL defaults to the deployed application (`https://novabank-banking-system.vercel.app`) like
+every other suite. It is only needed by the cross-layer tests, which drive a
+real operation before inspecting what it persisted. Override it with
+`-Dapi.base.url=http://localhost:3000`.
+
+Point both at the same place. A suite reading one database while driving an app
+backed by another reports failures that are really just two different databases.
 
 Start the application first, from the
 [`novabank-banking-system`](https://github.com/MohamedAmer45/novabank-banking-system)

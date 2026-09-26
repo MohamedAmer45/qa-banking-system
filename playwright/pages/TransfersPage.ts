@@ -54,6 +54,54 @@ export class TransfersPage extends BasePage {
   }
 
   /**
+   * Choose a source account that can actually fund the transfer.
+   *
+   * Picking the first account in the list assumes it has both the balance and
+   * the remaining daily allowance for the amount. Against a shared environment
+   * that is never reset, that assumption expires: once earlier runs have used
+   * up a day's allowance on that account, the transfer is refused by the daily
+   * limit and the test reports a transfer defect that does not exist.
+   *
+   * Selecting on the account's actual headroom keeps the test about the thing
+   * it is named for.
+   *
+   * @param amountMinor the transfer amount in minor units
+   * @returns the id of the account selected in the form
+   */
+  async selectFundedSource(amountMinor: number): Promise<number> {
+    const account = await this.page.evaluate(async (needed: number) => {
+      const token = window.localStorage.getItem("novabank_token");
+      const response = await fetch("/api/accounts", {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const accounts = await response.json();
+
+      // Headroom above the amount, because an external beneficiary also
+      // attracts a fee and the daily counter includes it.
+      const margin = Math.max(Math.round(needed * 0.1), 10_000);
+
+      return accounts.find(
+        (a: Record<string, number | string>) =>
+          a.status === "ACTIVE" &&
+          a.currency === "EGP" &&
+          Number(a.available_minor) >= needed + margin &&
+          Number(a.daily_limit_minor) - Number(a.daily_transferred_minor) >= needed + margin
+      ) ?? null;
+    }, amountMinor);
+
+    if (!account) {
+      throw new Error(
+        `No ACTIVE EGP account has both the balance and the remaining daily ` +
+        `allowance for ${amountMinor} minor units. Against a shared environment ` +
+        `this means the day's allowance is spent, not that transfers are broken.`
+      );
+    }
+
+    await this.fromAccount.selectOption({ value: String(account.id) });
+    return Number(account.id);
+  }
+
+  /**
    * Submits a transfer and waits for the API to answer, returning the status
    * so a caller can distinguish a business rejection (409) from a downstream
    * failure (422) without re-reading the DOM.

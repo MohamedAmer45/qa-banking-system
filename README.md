@@ -28,6 +28,58 @@ The banking system includes realistic customer, employee, and administrator work
 
 ---
 
+## Running the suites
+
+Every suite targets the deployed application by default:
+
+**https://novabank-banking-system.vercel.app**
+
+A fresh clone runs without installing PostgreSQL, seeding a database or
+starting a server.
+
+| Suite | Command | From |
+|---|---|---|
+| Playwright | `npm ci && npx playwright install --with-deps && npm test` | `playwright/` |
+| Cypress | `npm ci && npm run validate` | `cypress/` |
+| Selenium | `mvn clean test` | `selenium/` |
+| Cucumber | `mvn clean test` | `cucumber/` |
+| REST Assured | `mvn clean test` | `rest-assured/` |
+| Postman / Newman | `npm ci && npm test` | `postman/` |
+| Database | `DATABASE_URL=… mvn clean test` | `database-testing/` |
+| Jest (unit) | `npm test` | the application repository |
+
+The database suite is the only one needing configuration. It reads SQL directly,
+so it needs a connection string rather than a URL, and the deployed database's
+credentials are deliberately not committed here.
+
+### Running against localhost
+
+Each suite takes one override:
+
+```bash
+BASE_URL=http://localhost:3000 npm test              # Playwright
+CYPRESS_BASE_URL=http://localhost:3000 npm run validate   # Cypress
+mvn clean test -Dbase.url=http://localhost:3000      # Selenium, Cucumber
+mvn clean test -Dapi.base.url=http://localhost:3000  # REST Assured, Database
+npm run test:local                                   # Postman / Newman
+```
+
+### Which target to trust
+
+The deployed environment has **one** database and it is not reset between runs.
+Suites that move money mutate it, and two people running at once can interfere.
+The assertions are written for this — balances are compared as deltas, never as
+absolutes (`LIM-005` in
+[`docs/known-issues-and-limitations.md`](docs/known-issues-and-limitations.md)).
+
+CI does not use the deployed environment. Each workflow starts the application
+inside the runner against a throwaway `postgres:16` container, so every run
+begins from an identical seed and no run can see another's state. **That is the
+target to trust for a clean result.** The deployed default is for convenience
+and demonstration.
+
+---
+
 # Project Goals
 
 The main goals of this project are to:

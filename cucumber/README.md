@@ -19,6 +19,19 @@ BDD automation for selected NovaBank business workflows.
 mvn clean test
 ```
 
+That targets the deployed application at `https://novabank-banking-system.vercel.app`,
+so no local server or database is needed.
+
+## Run against localhost
+
+```powershell
+mvn clean test -Dbase.url=http://localhost:3000
+```
+
+Worth doing for an isolated run: the deployed environment has one shared
+database that is never reset, so scenarios that move money mutate state other
+runs can see (`LIM-005`).
+
 ## Run smoke scenarios
 
 ```powershell

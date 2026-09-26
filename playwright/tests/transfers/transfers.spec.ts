@@ -20,15 +20,31 @@ test.describe("NovaBank - transfers", () => {
   });
 
   test("TRF-002 - a valid transfer debits the source account", async ({ transfersPage, accountsPage }) => {
-    await accountsPage.open();
-    const before = await accountsPage.balanceMinor(0);
+    const amountMajor = 100;
+    const amountMinor = amountMajor * 100;
 
     await transfersPage.open();
     await transfersPage.openForm();
+
+    /*
+     * Choose the source on its actual headroom rather than taking the first
+     * account. Against the deployed environment the accounts are shared and
+     * never reset, so the first one can have its day's transfer allowance
+     * already spent -- which refuses this transfer for a reason that has
+     * nothing to do with what the test is checking.
+     */
+    const sourceId = await transfersPage.selectFundedSource(amountMinor);
+
+    await accountsPage.open();
+    const before = await accountsPage.balanceMinorFor(sourceId);
+
+    await transfersPage.open();
+    await transfersPage.openForm();
+    await transfersPage.selectFundedSource(amountMinor);
+
     const status = await transfersPage.submitTransfer({
-      fromIndex: 0,
       beneficiaryIndex: 0,
-      amount: 100,
+      amount: amountMajor,
       memo: "playwright delta check"
     });
 
@@ -36,11 +52,11 @@ test.describe("NovaBank - transfers", () => {
     await transfersPage.expectToast(/transfer/i);
 
     await accountsPage.open();
-    const after = await accountsPage.balanceMinor(0);
+    const after = await accountsPage.balanceMinorFor(sourceId);
 
-    // 100.00 major units is 10000 minor units. An external beneficiary also
-    // attracts a fee, so the debit is at least the transfer amount.
-    expect(before - after).toBeGreaterThanOrEqual(10000);
+    // An external beneficiary also attracts a fee, so the debit is at least
+    // the transfer amount.
+    expect(before - after).toBeGreaterThanOrEqual(amountMinor);
   });
 
   test("TRF-003 - a transfer beyond the available balance is rejected and moves nothing", async ({ transfersPage, accountsPage }) => {

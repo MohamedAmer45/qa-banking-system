@@ -11,7 +11,9 @@ export default defineConfig({
   e2e: {
 
     baseUrl:
-      process.env.CYPRESS_BASE_URL ?? "http://localhost:3000",
+      process.env.CYPRESS_BASE_URL ?? "https://novabank-banking-system.vercel.app",
+    // Deployed by default so a fresh clone needs no local server. Override
+    // with CYPRESS_BASE_URL=http://localhost:3000 to run against localhost.
 
     specPattern:
       "cypress/e2e/**/*.cy.ts",

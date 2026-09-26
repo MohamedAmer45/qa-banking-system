@@ -8,15 +8,27 @@ the application exposes for automation.
 ```bash
 npm ci
 npx playwright install --with-deps
-BASE_URL=http://localhost:3000 npm test
+npm test
 ```
 
-`BASE_URL` defaults to `http://localhost:3000`. Start the application from the
-[`novabank-banking-system`](https://github.com/MohamedAmer45/novabank-banking-system)
-repository first:
+That runs against the deployed application at `https://novabank-banking-system.vercel.app` — no local server, database
+or seed needed.
+
+### Running against localhost instead
+
+The deployed environment has one shared database that is never reset, so
+balance assertions here are relative rather than absolute (`LIM-005`). For an
+isolated run, start the application from
+[`novabank-banking-system`](https://github.com/MohamedAmer45/novabank-banking-system):
 
 ```bash
 npm run db:reset && npm start
+```
+
+then point the suite at it:
+
+```bash
+BASE_URL=http://localhost:3000 npm test
 ```
 
 ## Layout

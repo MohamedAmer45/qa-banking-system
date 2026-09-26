@@ -11,7 +11,7 @@ the assertions depend on, and the QA-mode affordances.
 
 | Environment | Base URL |
 |---|---|
-| Production | `https://novabank-banking-system.vercel.app/api` |
+| **Deployed (the default for every suite)** | `https://novabank-banking-system.vercel.app/api` |
 | Local | `http://localhost:3000/api` |
 | CI | `http://127.0.0.1:3000/api` (app started inside the runner) |
 

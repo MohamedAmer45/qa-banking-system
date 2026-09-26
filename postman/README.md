@@ -14,10 +14,19 @@ a full run is already there and so sends nothing.
 
 ```bash
 npm ci
-npm run test              # local
-npm run test:ci           # CI, with a JUnit report
-npm run test:production   # read-only folders only
+npm test                  # the deployed environment (default)
+npm run test:local        # localhost:3000
+npm run test:ci           # the app CI starts in the runner, with a JUnit report
+npm run test:smoke        # deployed, read-only folders only
 ```
+
+The default target is `https://novabank-banking-system.vercel.app`, so a fresh
+clone runs with no local server.
+
+`npm test` runs the whole collection, which **moves money** in the deployed
+environment's shared database. That is intended — the assertions are written
+as deltas rather than absolutes for this reason (`LIM-005`). Use
+`npm run test:smoke` to check a deployment is alive without changing anything.
 
 Or open `NovaBank.postman_collection.json` in Postman and pick an environment
 from `environments/`.

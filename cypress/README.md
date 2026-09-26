@@ -19,15 +19,26 @@ driving the same screens throughout the retarget without noticing.
 
 ```bash
 npm ci
-CYPRESS_BASE_URL=http://localhost:3000 npm run validate
+npm run validate
 ```
 
-Start the application first, from the
-[`novabank-banking-system`](https://github.com/MohamedAmer45/novabank-banking-system)
-repository:
+That runs against the deployed application at `https://novabank-banking-system.vercel.app` — no local server needed.
+
+### Running against localhost instead
+
+The deployed environment has one shared database that is never reset, so
+balance assertions here are relative rather than absolute (`LIM-005`). For an
+isolated run, start the application from
+[`novabank-banking-system`](https://github.com/MohamedAmer45/novabank-banking-system):
 
 ```bash
 npm run db:reset && npm start
+```
+
+then point the suite at it:
+
+```bash
+CYPRESS_BASE_URL=http://localhost:3000 npm run validate
 ```
 
 ## Custom commands
