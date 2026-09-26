@@ -33,6 +33,7 @@ given a real Pass or Fail.
 | LIM-005 | Test data | Suites mutate shared seed data | Against the hosted environment, tests that move money are order-dependent. Prefer CI (reseeded per run), or make assertions relative to a balance read at test start rather than absolute |
 | LIM-006 | Security | `QA_MODE=true` exposes one-time codes | Intentional, so tests need no mail server. Any test asserting on `demoCode`/`demoOtp` is invalid against a hardened environment |
 | LIM-007 | UI automation | ChromeDriver occasionally dispatches no event for a `sendKeys` or `click` | Handled in both JVM suites by `typeInto` and `clickUntilSettled`, which read the result back and retry. Any new interaction with a `required` field should use them: an empty required field makes the browser block the submit locally, so the failure appears much later as a timeout on a request that was never sent |
+| LIM-008 | CI | Each workflow triggers only on changes under its own directory, so a change in the **application** repository runs no suite here | Both repositories are green while the pair may not be. After an app change, trigger the suites manually (`workflow_dispatch`, available on all seven) or run them locally — they target the deployed environment by default. A nightly `schedule:` on each workflow would close it without any cross-repository secret |
 
 ## Open defects
 
