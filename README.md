@@ -47,10 +47,15 @@ starting a server.
 | Postman / Newman | `npm ci && npm test` | `postman/` |
 | Database | `DATABASE_URL=… mvn clean test` | `database-testing/` |
 | Jest (unit) | `npm test` | the application repository |
+| JMeter (performance) | `JMETER_HOME=… npm test` | `jmeter/` |
 
-The database suite is the only one needing configuration. It reads SQL directly,
-so it needs a connection string rather than a URL, and the deployed database's
-credentials are deliberately not committed here.
+Two suites are different. The database suite needs a connection string rather
+than a URL, because it reads SQL directly, and the deployed database's
+credentials are deliberately not committed here. And **JMeter deliberately does
+not target the deployed environment** — its concurrency plan exhausts an
+account's balance on purpose, which would drain the data every other suite
+reads, so it runs against a local or CI-started application. See
+[`jmeter/README.md`](jmeter/README.md).
 
 ### Running against localhost
 
@@ -298,6 +303,7 @@ qa-banking-system/
 ├── rest-assured/
 ├── database-testing/
 ├── cucumber/
+├── jmeter/
 │
 ├── docs/
 │   ├── automation-status.md
@@ -323,7 +329,7 @@ under `tests/`, because it imports application internals directly rather than
 driving the running application over HTTP. Every other suite here talks to the
 application the way a client does, which is why they can live apart from it.
 
-JMeter and a Jenkins pipeline are planned and not yet written; see
+A Jenkins pipeline is planned and not yet written; see
 [`docs/automation-status.md`](docs/automation-status.md) for what is and is not
 built.
 
@@ -993,7 +999,7 @@ string `"completed"` without touching an account. That stub has been deleted.
 - Requirements and planning
 - Manual test design
 - Application implementation and deployment
-- Eight automated suites, all passing in CI
+- Nine automated suites, all passing in CI
 - GitHub Actions for every suite, running against an app started in the runner
 
 | Suite | Tests | Browsers |
@@ -1006,6 +1012,7 @@ string `"completed"` without touching an account. That stub has been deleted.
 | REST Assured | 113 | n/a |
 | Postman / Newman | 103 requests, 440 assertions | n/a |
 | Jest (unit, in the app repo) | 134 | n/a |
+| JMeter (performance) | 2 plans | n/a |
 
 They divide the work rather than duplicating it; see
 [`docs/automation-status.md`](docs/automation-status.md). That division is what
@@ -1023,8 +1030,9 @@ suite that found it.
 
 ## Not yet started
 
-JMeter and k6 performance testing, a Jenkins pipeline that drives these suites,
-axe-core accessibility and OWASP ZAP. Pact, WireMock and Testcontainers were
+A Jenkins pipeline that drives these suites, axe-core accessibility and OWASP
+ZAP. JMeter is done — see [`jmeter/`](jmeter/) — and k6 was not added alongside
+it, because a second load tool would measure the same thing twice. Pact, WireMock and Testcontainers were
 evaluated and deliberately not adopted, with reasons recorded in
 [`docs/automation-status.md`](docs/automation-status.md).
 

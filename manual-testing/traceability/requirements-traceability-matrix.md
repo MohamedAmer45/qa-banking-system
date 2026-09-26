@@ -62,6 +62,17 @@ application. Which suite, and why that one, is in `docs/automation-status.md`.
 Cucumber feature files tag the requirement ids they trace to, so a single
 requirement can be run on its own — `mvn test -Dcucumber.filter.tags="@TRF-004"`.
 
+**The JMeter suite adds no row and no module.** It exercises `DB-010`
+(*concurrent financial operations shall maintain correct balances*) at a
+concurrency the database suite cannot reach, and through the API rather than
+through SQL: thirty threads debiting one balance at the same instant, with the
+ledger asserted to reconcile exactly. `DB-010` was already covered, so the
+figure above does not change. No `PERF` module is invented for it either — this
+matrix is explicit that test material must not introduce a module the catalog
+does not define, and performance targets belong in the catalog first if they are
+ever to be enforced. `jmeter/thresholds.json` records why latency is reported
+rather than gated until then.
+
 **The Jest unit suite is deliberately not counted in that column.** It covers
 functions, not modules, and it never starts the application, so counting it
 would inflate this table against its own definition. It adds depth beneath

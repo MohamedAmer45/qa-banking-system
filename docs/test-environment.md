@@ -55,6 +55,17 @@ mvn test -Dapi.base.url=http://localhost:3000        # REST Assured, Database
 npm run test:local                                   # Postman / Newman
 ```
 
+### The performance exception
+
+**`jmeter/` deliberately does not target the deployed environment.** It defaults
+to `127.0.0.1:3000`, and CI runs it against an application started in the runner
+against a throwaway `postgres:16` container.
+
+Its concurrency plan exists to exhaust an account's balance and daily allowance,
+which would drain the seeded data every other suite reads. The figures would also
+describe the network rather than the application: the same plan measured p95 near
+37 seconds locally, reaching Neon over the internet. See `jmeter/README.md`.
+
 ### The one exception
 
 The database suite needs a PostgreSQL connection string, not an HTTP URL, and

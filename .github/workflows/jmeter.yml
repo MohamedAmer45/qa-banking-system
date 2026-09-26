@@ -1,0 +1,141 @@
+name: Performance Tests (JMeter)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ["jmeter/**", ".github/workflows/jmeter.yml", ".github/actions/start-novabank/**"]
+  pull_request:
+    branches: [main]
+    paths: ["jmeter/**", ".github/workflows/jmeter.yml", ".github/actions/start-novabank/**"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: jmeter-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  performance:
+    name: JMeter load and concurrency
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    # The only suite here that does NOT target the deployed environment.
+    #
+    # Load testing a shared database would drain the seeded accounts and return
+    # numbers set by whatever else was hitting it at the time; on the hosted free
+    # tier it would also be measuring the database provider's limits rather than
+    # the application. So this suite runs against an app started in the runner,
+    # backed by a throwaway container, which is the only place these figures mean
+    # anything. jmeter/README.md records the exception.
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: novabank
+          POSTGRES_PASSWORD: novabank
+          POSTGRES_DB: novabank_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U novabank"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      JMETER_VERSION: 5.6.3
+
+    steps:
+      - name: Check out QA repository
+        uses: actions/checkout@v4
+
+      - name: Start NovaBank
+        uses: ./.github/actions/start-novabank
+        with:
+          database-url: postgresql://novabank:novabank@127.0.0.1:5432/novabank_test
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Cache JMeter
+        id: cache-jmeter
+        uses: actions/cache@v4
+        with:
+          path: ${{ github.workspace }}/.jmeter
+          key: jmeter-${{ env.JMETER_VERSION }}
+
+      - name: Install JMeter
+        if: steps.cache-jmeter.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p "${{ github.workspace }}/.jmeter"
+          curl -sSL -o /tmp/jmeter.tgz \
+            "https://archive.apache.org/dist/jmeter/binaries/apache-jmeter-${JMETER_VERSION}.tgz"
+          tar xzf /tmp/jmeter.tgz -C "${{ github.workspace }}/.jmeter" --strip-components=1
+          "${{ github.workspace }}/.jmeter/bin/jmeter" --version
+
+      # Read load first: it moves no money, so it measures the read path against
+      # the seeded state before the concurrency plan changes any of it.
+      - name: Read-path load
+        working-directory: jmeter
+        env:
+          JMETER_HOME: ${{ github.workspace }}/.jmeter
+          JMETER_HOST: 127.0.0.1
+          JMETER_PORT: "3000"
+        run: bash run.sh read 20 60
+
+      # Every thread debits one account at the same instant. The gate is that
+      # each answers 201 or 409 and the balance reconciles exactly.
+      - name: Transfer concurrency
+        working-directory: jmeter
+        env:
+          JMETER_HOME: ${{ github.workspace }}/.jmeter
+          JMETER_HOST: 127.0.0.1
+          JMETER_PORT: "3000"
+        run: bash run.sh concurrency 30 50
+
+      # A second run sized to exceed the account's headroom, so the refusal path
+      # is exercised too. A plan where every debit succeeds has not shown that
+      # the application refuses correctly under contention.
+      - name: Transfer concurrency under exhaustion
+        working-directory: jmeter
+        env:
+          JMETER_HOME: ${{ github.workspace }}/.jmeter
+          JMETER_HOST: 127.0.0.1
+          JMETER_PORT: "3000"
+        run: bash run.sh concurrency 30 20000
+
+      # The database's own invariant, independent of anything JMeter measured:
+      # every balance must equal the balance_after_minor of that account's most
+      # recent transaction. If concurrent debits corrupted the ledger, this is
+      # what says so.
+      - name: Ledger reconciliation
+        if: always()
+        working-directory: .novabank-app
+        env:
+          DATABASE_URL: postgresql://novabank:novabank@127.0.0.1:5432/novabank_test
+          DATABASE_SSL: "false"
+        run: npm run db:check
+
+      - name: Application log
+        if: always()
+        run: cat "${RUNNER_TEMP}/novabank.log" || true
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jmeter-results-${{ github.run_id }}
+          path: jmeter/results/
+          retention-days: 7
+          if-no-files-found: warn

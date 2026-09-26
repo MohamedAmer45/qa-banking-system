@@ -1,0 +1,12 @@
+{
+  "name": "novabank-jmeter",
+  "private": true,
+  "type": "module",
+  "description": "JMeter performance plans for NovaBank, with a gate on the correctness invariants",
+  "scripts": {
+    "test": "bash run.sh concurrency",
+    "test:concurrency": "bash run.sh concurrency",
+    "test:read": "bash run.sh read",
+    "analyze": "node analyze.mjs"
+  }
+}

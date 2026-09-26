@@ -1,0 +1,39 @@
+{
+  "enforced": {
+    "serverErrors": 0,
+    "assertionFailures": 0,
+    "concurrentTransferCodes": ["201", "409"],
+    "ledgerReconciles": true
+  },
+
+  "reported": {
+    "latency": "p50, p95 and max, per request label"
+  },
+
+  "why_latency_is_not_enforced": [
+    "There is no performance requirement in requirements/requirements-catalog.md",
+    "to enforce. Inventing a number here would put an SLA in the repository that",
+    "no requirement asked for and no stakeholder agreed, which is how a test",
+    "starts measuring the wrong thing.",
+
+    "The figures are also dominated by where the database is rather than by the",
+    "application. A local run reaches Neon over the internet, so a single",
+    "transfer costs a few hundred milliseconds before the application does any",
+    "work, and twenty concurrent debits serialising on row locks over that link",
+    "measured p95 near 37 seconds. The same plan against the postgres:16",
+    "container CI starts in the runner is an order of magnitude faster. A",
+    "threshold that passes in one and fails in the other tests the network.",
+
+    "So latency is recorded every run and gated on nothing. To turn it into a",
+    "gate: collect a baseline from several CI runs, add PERF requirements to the",
+    "catalog with targets that baseline supports, then enforce those here. That",
+    "order matters — the requirement first, then the threshold."
+  ],
+
+  "what_is_enforced_and_why_it_travels": [
+    "The correctness invariants hold on any machine at any speed. A concurrent",
+    "debit answering anything but 201 or 409, a 5xx, or a balance that does not",
+    "fall by exactly the amount plus fee of every success is a defect wherever",
+    "it appears. Those are safe to fail a build on."
+  ]
+}

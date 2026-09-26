@@ -4,7 +4,7 @@ Last synchronized: 2026-09-26
 
 ## Summary
 
-Eight suites, all passing against the PostgreSQL build.
+Nine suites, all passing against the PostgreSQL build.
 
 | Suite | Tests | Browsers |
 |---|---|---|
@@ -16,6 +16,7 @@ Eight suites, all passing against the PostgreSQL build.
 | REST Assured | 113 | n/a |
 | Postman / Newman | 103 requests, 440 assertions | n/a |
 | Jest (unit) | 134 | n/a |
+| JMeter (performance) | 2 plans | n/a |
 
 Every suite starts the application inside the CI runner against a `postgres:16`
 service container, so runs are isolated and begin from an identical seed. No
@@ -150,11 +151,50 @@ API, UI and database suites cover instead. Narrowing the denominator to the test
 flattering number that measures nothing. The per-file table is in the coverage
 output so the split stays visible.
 
+## Performance, and the one environment exception
+
+`jmeter/` holds two plans: a read-path load test, and a concurrency test in which
+every thread debits the **same** account at the same instant, released together
+by a Synchronizing Timer.
+
+The second is the point. The application claims row-level locking in
+deterministic id order so that simultaneous debits against one balance either
+commit completely or are refused. That claim is now tested at a concurrency the
+database suite's `ConcurrencyTest` cannot reach, and through the API rather than
+through SQL:
+
+| Amount | Threads | 201 | 409 | Balance moved | Reconciles to |
+|---|---:|---:|---:|---:|---|
+| 50 EGP | 20 | 20 | 0 | 110,000 | 20 x (5,000 + 500) |
+| 7,890 EGP | 20 | 9 | 11 | 7,108,101 | 9 x (789,000 + 789) |
+| 500,000 EGP | 20 | 0 | 20 | 0 | nothing succeeded, nothing moved |
+
+The middle row is the one worth having. Nine debits committed and eleven were
+refused against a single balance, and the ledger came out exact to the minor
+unit. CI runs the plan twice for this reason — once sized to fit, once sized to
+exhaust — because a run where everything succeeds has not shown that refusal
+works.
+
+**This is the only suite that does not target the deployed environment.** It runs
+against an application started in the runner against a throwaway `postgres:16`
+container. Load testing a shared database would drain the seeded data every other
+suite reads, and the figures would describe network latency to a free-tier
+database rather than this application: the same plan measured p95 near 37 seconds
+locally over the internet. `jmeter/README.md` and `docs/test-environment.md` both
+record the exception.
+
+**Latency is reported, not gated.** There is no performance requirement in the
+catalog to enforce, and a p95 target invented here would be an SLA nobody asked
+for. What is gated is correctness, which travels between machines: no 5xx, every
+concurrent debit `201` or `409`, and the balance falling by exactly the amount
+plus fee of every success. `jmeter/thresholds.json` records the order for
+changing that — baseline from CI, add `PERF` requirements to the catalog, then
+enforce them.
+
 ## Not yet started
 
 | Area | Status |
 |---|---|
-| JMeter / k6 | Not started. The row-locking work gives load testing something real to prove |
 | Jenkins | A `Jenkinsfile` exists in the application repository but drives none of these suites |
 | axe-core | Not started. No accessibility coverage anywhere |
 | OWASP ZAP | Not started |
