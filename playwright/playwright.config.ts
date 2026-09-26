@@ -34,6 +34,11 @@ export default defineConfig({
   reporter: [
     ["list"],
     ["html", { open: "never" }],
+    // JUnit XML so a CI server can publish per-test results. Every other suite
+    // here emits it (Surefire for the JVM suites, mocha-junit for Cypress,
+    // Newman for Postman); without it Playwright is the one suite Jenkins can
+    // run but cannot report on.
+    ["junit", { outputFile: "results/junit/playwright-junit.xml" }],
   ],
 
   use: {

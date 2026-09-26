@@ -200,11 +200,52 @@ plus fee of every success. `jmeter/thresholds.json` records the order for
 changing that — baseline from CI, add `PERF` requirements to the catalog, then
 enforce them.
 
+## Jenkins
+
+`Jenkinsfile` at the root of this repository runs the full regression: it clones
+the application, resets and seeds a database, starts it, then runs every suite
+and publishes per-test results.
+
+Two things about it are deliberate.
+
+**The suites run sequentially, not in parallel.** They all move money through the
+same seeded accounts, and Jenkins runs them against one application and one
+database. In parallel they would observe each other's balances and fail on
+arithmetic none of them controlled, which is `LIM-005`. GitHub Actions
+parallelises them safely only because each workflow gets its own application and
+its own throwaway database; reproducing that on Jenkins means an instance per
+suite, which is a larger change than it looks.
+
+**There is no `tools` block.** That directive refers to tool installations
+configured on the controller *by name*, so a Jenkinsfile naming them breaks on
+any Jenkins that calls them something else. A Preflight stage checks for what it
+needs and names what is missing instead.
+
+Every suite emits JUnit XML so the results are per test rather than per stage.
+Playwright gained a `junit` reporter for this; the JVM suites already had
+Surefire, Cypress `mocha-junit-reporter`, and Newman its own.
+
+**What has and has not been verified.** The pipeline is parsed as Groovy — the
+AST builds, so it has no syntax error — and its directives and steps are the
+standard Declarative set. It has **not** been executed on a Jenkins controller,
+because there is no Jenkins in the environment this was written in. Treat the
+first real run as the thing that proves it: expect to fix credential and tool
+availability on the agent before anything else, since those are the parts a
+Jenkinsfile cannot assert about itself.
+
+That is also why the Preflight stage exists and why there is no `tools` block —
+the two failure modes most likely on a first run are made loud and early rather
+than left to surface midway through a suite.
+
+The application repository keeps its own separate `Jenkinsfile`, which builds
+and smoke-tests the application alone. That one is not redundant with this: it
+answers "is the build good", where this answers "does the build pass the
+regression".
+
 ## Not yet started
 
 | Area | Status |
 |---|---|
-| Jenkins | A `Jenkinsfile` exists in the application repository but drives none of these suites |
 | axe-core | Not started. No accessibility coverage anywhere |
 | OWASP ZAP | Not started |
 

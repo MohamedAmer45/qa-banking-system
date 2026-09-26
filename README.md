@@ -314,6 +314,8 @@ qa-banking-system/
 │   ├── api/
 │   └── defects/
 │
+├── Jenkinsfile
+│
 ├── .github/
 │   ├── actions/
 │   │   └── start-novabank/
@@ -329,9 +331,8 @@ under `tests/`, because it imports application internals directly rather than
 driving the running application over HTTP. Every other suite here talks to the
 application the way a client does, which is why they can live apart from it.
 
-A Jenkins pipeline is planned and not yet written; see
-[`docs/automation-status.md`](docs/automation-status.md) for what is and is not
-built.
+See [`docs/automation-status.md`](docs/automation-status.md) for what is and is
+not built.
 
 ---
 
@@ -1030,10 +1031,13 @@ suite that found it.
 
 ## Not yet started
 
-A Jenkins pipeline that drives these suites, axe-core accessibility and OWASP
-ZAP. JMeter is done — see [`jmeter/`](jmeter/) — and k6 was not added alongside
-it, because a second load tool would measure the same thing twice. Pact, WireMock and Testcontainers were
-evaluated and deliberately not adopted, with reasons recorded in
+axe-core accessibility and OWASP ZAP.
+
+Done since this list was first written: JMeter (see [`jmeter/`](jmeter/)) and
+the Jenkins pipeline (see [`Jenkinsfile`](Jenkinsfile)). k6 was not added
+alongside JMeter, because a second load tool would measure the same thing
+twice. Pact, WireMock and Testcontainers were evaluated and deliberately not
+adopted, with reasons recorded in
 [`docs/automation-status.md`](docs/automation-status.md).
 
 There is no remaining coverage gap. `DASH` was the last one, and closing it is
