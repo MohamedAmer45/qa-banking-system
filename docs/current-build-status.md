@@ -1,6 +1,6 @@
 # NovaBank Current Build Status
 
-Last synchronized: 2026-09-23
+Last synchronized: 2026-09-26
 
 ## Live Environment
 
@@ -9,17 +9,20 @@ Last synchronized: 2026-09-23
 Application source: [`novabank-banking-system`](https://github.com/MohamedAmer45/novabank-banking-system)
 (a separate repository; this one holds only the QA project).
 
-> **The live environment is behind the application repository.** Checked
-> 2026-09-23: the deployed build predates the `BUG-API-001` fix of 2026-09-22,
-> so it is also missing `BUG-BEN-001`, `BUG-UI-002` and `BUG-DASH-001`.
-> Observed directly — an oversized body answers `400` rather than the fixed
-> `413`, `/api/me` carries no `permissions` field, and the beneficiary list
-> still returns soft-deleted rows.
->
-> Every "fixed" in these documents therefore means **fixed in the repository
-> and verified in CI**, which is where the suites run. It does not yet mean
-> fixed at this URL. A redeploy is needed, and until then this environment is
-> not a valid target for the suites.
+**Deployed and current as of 2026-09-26**, and the default target for every
+suite. All eight suites pass against it; see `docs/automation-status.md`.
+
+Deployment is manual (`vercel --prod`): the Vercel project is CLI-linked rather
+than connected to the GitHub repository, so pushing to `main` does not redeploy.
+That is why this environment was four commits behind on 2026-09-23. Running
+`vercel git connect` once would remove the gap.
+
+A correction worth keeping, since it was recorded here as fact. That staleness
+was first reported as reaching back to the 2026-09-22 `413` fix. It did not: the
+check behind that claim sent 200KB of non-JSON to an endpoint that authenticates
+before it reads the body, so the `400` it returned said nothing about the body
+limit. A 2MB authenticated body returned `413` on the deployed build all along.
+Only the four commits of 2026-09-23 were actually missing.
 
 ## What changed
 

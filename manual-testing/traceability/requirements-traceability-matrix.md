@@ -1,6 +1,6 @@
 # Requirements Traceability Matrix
 
-Last synchronized: 2026-09-23
+Last synchronized: 2026-09-26
 Source of truth: `requirements/requirements-catalog.md` — **187 requirements**
 
 ## Purpose

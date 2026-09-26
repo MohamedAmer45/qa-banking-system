@@ -1,6 +1,6 @@
 # Test Execution Status
 
-Last synchronized: 2026-09-23
+Last synchronized: 2026-09-26
 
 ## Status
 
@@ -31,9 +31,8 @@ See `docs/automation-status.md` for how the suites divide the work.
 **None.** Every recorded defect is closed, each with regression cover in the
 suite that found it.
 
-Closed means fixed in the application repository and verified in CI. The
-deployed environment has not picked those commits up yet — see the note in
-`docs/current-build-status.md`.
+Closed means fixed in the application repository, verified in CI, and live in
+the deployed environment (redeployed 2026-09-26).
 
 | Defect | Status |
 |---|---|
