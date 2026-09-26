@@ -47,7 +47,7 @@ starting a server.
 | Postman / Newman | `npm ci && npm test` | `postman/` |
 | Database | `DATABASE_URL=… mvn clean test` | `database-testing/` |
 | Jest (unit) | `npm test` | the application repository |
-| JMeter (performance) | `JMETER_HOME=… npm test` | `jmeter/` |
+| JMeter (performance) | `JMETER_HOME=… npm test` | `jmeter/` (local or CI, never the deployed app) |
 
 Two suites are different. The database suite needs a connection string rather
 than a URL, because it reads SQL directly, and the deployed database's
@@ -1012,7 +1012,7 @@ string `"completed"` without touching an account. That stub has been deleted.
 | REST Assured | 113 | n/a |
 | Postman / Newman | 103 requests, 440 assertions | n/a |
 | Jest (unit, in the app repo) | 134 | n/a |
-| JMeter (performance) | 2 plans | n/a |
+| JMeter (performance) | 5 shapes | n/a |
 
 They divide the work rather than duplicating it; see
 [`docs/automation-status.md`](docs/automation-status.md). That division is what

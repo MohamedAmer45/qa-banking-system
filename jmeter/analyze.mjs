@@ -49,6 +49,22 @@ function readJtl(path) {
   });
 }
 
+function mean(values) {
+  if (values.length === 0) return 0;
+  return Math.round(values.reduce((a, b) => a + b, 0) / values.length);
+}
+
+/** Samples per second over the wall-clock span the run actually covered. */
+function throughput(rows) {
+  if (rows.length < 2) return 0;
+  const stamps = rows.map(r => Number(r.timeStamp)).filter(Number.isFinite);
+  const elapsedSeconds =
+    (Math.max(...stamps) - Math.min(...stamps)) / 1000;
+  return elapsedSeconds > 0
+    ? Math.round((rows.length / elapsedSeconds) * 10) / 10
+    : 0;
+}
+
 function percentile(values, p) {
   if (values.length === 0) return 0;
   const sorted = [...values].sort((a, b) => a - b);
@@ -73,6 +89,18 @@ function feeMinor(amountMinor, bankName) {
 
 const jtlPath = arg("jtl");
 const plan = arg("plan");
+
+/*
+ * "gate" fails the build on a correctness breach. "observe" reports the same
+ * numbers but never fails on 5xx, because some shapes exist precisely to find
+ * where the application degrades: a stress ramp that returned no errors has not
+ * found the limit it was looking for. Infrastructure problems (an empty result
+ * file, a plan that could not set itself up) still fail in either mode.
+ */
+const mode = arg("mode", "gate");
+if (mode !== "gate" && mode !== "observe") {
+  throw new Error(`--mode must be gate or observe, got ${mode}`);
+}
 const resultsDir = arg("results-dir", "results");
 const amountMajor = Number(arg("amount-major", "50"));
 
@@ -91,13 +119,18 @@ if (rows.length === 0) {
 /* ---------------------------------------------------------------- universal */
 
 const serverErrors = rows.filter(r => /^5\d\d$/.test(r.responseCode));
-if (serverErrors.length > 0) {
+if (serverErrors.length > 0 && mode === "observe") {
+  notes.push(
+    `degraded             ${serverErrors.length} of ${rows.length} samples returned 5xx`
+  );
+}
+if (serverErrors.length > 0 && mode === "gate") {
   const codes = [...new Set(serverErrors.map(r => `${r.label} -> ${r.responseCode}`))];
   failures.push(`${serverErrors.length} sample(s) returned 5xx: ${codes.join(", ")}`);
 }
 
 const assertionFailures = rows.filter(r => r.success === "false");
-if (assertionFailures.length > 0) {
+if (assertionFailures.length > 0 && mode === "gate") {
   const detail = [...new Set(assertionFailures.map(
     r => `${r.label} (${r.responseCode}) ${r.failureMessage ?? ""}`.trim()
   ))].slice(0, 5);
@@ -196,25 +229,58 @@ if (plan === "concurrency") {
 /* ------------------------------------------------------- reported, not gated */
 
 const elapsed = rows.map(r => Number(r.elapsed)).filter(Number.isFinite);
+const errorRate = (assertionFailures.length / rows.length) * 100;
 const byLabel = new Map();
 for (const r of rows) {
   if (!byLabel.has(r.label)) byLabel.set(r.label, []);
   byLabel.get(r.label).push(Number(r.elapsed));
 }
 
-console.log(`\nJMeter analysis — ${plan}`);
-console.log("=".repeat(64));
+console.log(`
+JMeter analysis - ${plan} (${mode})`);
+console.log("=".repeat(72));
 console.log(`samples              ${rows.length}`);
-console.log(`errors               ${assertionFailures.length}`);
-console.log(`p50 / p95 / max      ${percentile(elapsed, 50)} / ${percentile(elapsed, 95)} / ${Math.max(...elapsed)} ms`);
+console.log(`errors               ${assertionFailures.length} (${errorRate.toFixed(2)}%)`);
+console.log(`throughput           ${throughput(rows)} req/s`);
+console.log(`avg                  ${mean(elapsed)} ms`);
+console.log(`p50 / p90            ${percentile(elapsed, 50)} / ${percentile(elapsed, 90)} ms`);
+console.log(`p95 / p99 / max      ${percentile(elapsed, 95)} / ${percentile(elapsed, 99)} / ${Math.max(...elapsed)} ms`);
 notes.forEach(n => console.log(n));
 
-console.log("\nper request");
+console.log("");
+console.log("per request");
+console.log(
+  `  ${"label".padEnd(28)} ${"n".padEnd(6)} ${"avg".padEnd(7)} ${"p90".padEnd(7)} ${"p95".padEnd(7)} p99`
+);
 for (const [label, values] of [...byLabel].sort()) {
   console.log(
-    `  ${label.padEnd(26)} n=${String(values.length).padEnd(5)} ` +
-    `p50=${String(percentile(values, 50)).padEnd(7)} p95=${percentile(values, 95)} ms`
+    `  ${label.padEnd(28)} ${String(values.length).padEnd(6)} ` +
+    `${String(mean(values)).padEnd(7)} ${String(percentile(values, 90)).padEnd(7)} ` +
+    `${String(percentile(values, 95)).padEnd(7)} ${percentile(values, 99)}`
   );
+}
+
+/*
+ * Latency over time, in quarters. A soak that ends slower than it started is
+ * the signature of something accumulating, and an aggregate p95 hides that
+ * completely by averaging a healthy beginning with a degraded end.
+ */
+if (rows.length >= 40) {
+  const ordered = [...rows].sort((a, b) => Number(a.timeStamp) - Number(b.timeStamp));
+  const size = Math.floor(ordered.length / 4);
+  const quarters = [0, 1, 2, 3].map(q =>
+    ordered.slice(q * size, q === 3 ? ordered.length : (q + 1) * size)
+           .map(r => Number(r.elapsed))
+  );
+
+  console.log("");
+  console.log("latency over the run (quarters)");
+  quarters.forEach((values, q) => {
+    console.log(`  Q${q + 1}  avg=${String(mean(values)).padEnd(7)} p95=${percentile(values, 95)} ms`);
+  });
+
+  const drift = percentile(quarters[3], 95) - percentile(quarters[0], 95);
+  console.log(`  drift in p95, first quarter to last: ${drift >= 0 ? "+" : ""}${drift} ms`);
 }
 
 console.log(

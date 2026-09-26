@@ -16,7 +16,7 @@ Nine suites, all passing against the PostgreSQL build.
 | REST Assured | 113 | n/a |
 | Postman / Newman | 103 requests, 440 assertions | n/a |
 | Jest (unit) | 134 | n/a |
-| JMeter (performance) | 2 plans | n/a |
+| JMeter (performance) | 5 shapes | n/a |
 
 Every suite starts the application inside the CI runner against a `postgres:16`
 service container, so runs are isolated and begin from an identical seed. No
@@ -153,9 +153,17 @@ output so the split stays visible.
 
 ## Performance, and the one environment exception
 
-`jmeter/` holds two plans: a read-path load test, and a concurrency test in which
-every thread debits the **same** account at the same instant, released together
-by a Synchronizing Timer.
+`jmeter/` holds five load shapes over two plans: `load`, `stress`, `spike` and
+`endurance` against the read path, and `concurrency`, in which every thread
+debits the **same** account at the same instant, released together by a
+Synchronizing Timer.
+
+`stress` and `spike` are *observed* rather than gated: 5xx does not fail them,
+because a ramp that produced no errors has not found the limit it went looking
+for. Correctness is gated in all five regardless. Every run reports error rate,
+throughput, average, p50/p90/p95/p99 and max, and writes JMeter's HTML
+dashboard; latency is also broken into quarters, which is what makes a spike
+recovering or a soak degrading legible at all.
 
 The second is the point. The application claims row-level locking in
 deterministic id order so that simultaneous debits against one balance either

@@ -20,7 +20,7 @@ jobs:
   performance:
     name: JMeter load and concurrency
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
 
     # The only suite here that does NOT target the deployed environment.
     #
@@ -84,15 +84,49 @@ jobs:
           tar xzf /tmp/jmeter.tgz -C "${{ github.workspace }}/.jmeter" --strip-components=1
           "${{ github.workspace }}/.jmeter/bin/jmeter" --version
 
-      # Read load first: it moves no money, so it measures the read path against
-      # the seeded state before the concurrency plan changes any of it.
-      - name: Read-path load
+      # Read shapes first: they move no money, so they measure the read path
+      # against the seeded state before the concurrency plan changes any of it.
+      - name: Load
         working-directory: jmeter
         env:
           JMETER_HOME: ${{ github.workspace }}/.jmeter
           JMETER_HOST: 127.0.0.1
           JMETER_PORT: "3000"
-        run: bash run.sh read 20 60
+        run: bash run.sh load 20 60
+
+      # Ramped well past expected load, to find where it degrades. Observed
+      # rather than gated: a ramp that produced no errors has not found the
+      # limit it went looking for.
+      - name: Stress
+        working-directory: jmeter
+        env:
+          JMETER_HOME: ${{ github.workspace }}/.jmeter
+          JMETER_HOST: 127.0.0.1
+          JMETER_PORT: "3000"
+        run: bash run.sh stress 150 120
+
+      # Steady traffic, then a burst of simultaneous sign-ins. The per-quarter
+      # latency in the report shows whether it recovered afterwards.
+      - name: Spike
+        working-directory: jmeter
+        env:
+          JMETER_HOME: ${{ github.workspace }}/.jmeter
+          JMETER_HOST: 127.0.0.1
+          JMETER_PORT: "3000"
+        run: bash run.sh spike 15 120
+
+      # A soak is only meaningful over a long run, which is time on every push,
+      # so it is reserved for a manual trigger. The gate is the same; what it
+      # adds is the latency drift between the first and last quarter, which is
+      # where anything that accumulates shows up.
+      - name: Endurance
+        if: github.event_name == 'workflow_dispatch'
+        working-directory: jmeter
+        env:
+          JMETER_HOME: ${{ github.workspace }}/.jmeter
+          JMETER_HOST: 127.0.0.1
+          JMETER_PORT: "3000"
+        run: bash run.sh endurance 15 900
 
       # Every thread debits one account at the same instant. The gate is that
       # each answers 201 or 409 and the balance reconciles exactly.

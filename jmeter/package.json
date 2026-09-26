@@ -5,8 +5,11 @@
   "description": "JMeter performance plans for NovaBank, with a gate on the correctness invariants",
   "scripts": {
     "test": "bash run.sh concurrency",
+    "test:load": "bash run.sh load",
+    "test:stress": "bash run.sh stress",
+    "test:spike": "bash run.sh spike",
+    "test:endurance": "bash run.sh endurance",
     "test:concurrency": "bash run.sh concurrency",
-    "test:read": "bash run.sh read",
     "analyze": "node analyze.mjs"
   }
 }

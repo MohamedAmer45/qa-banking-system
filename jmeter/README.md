@@ -1,13 +1,30 @@
 # JMeter Performance Suite
 
-Two plans. One measures what the application costs to read under concurrency;
-the other measures whether it stays honest when many debits hit one balance at
-the same instant.
+Five load shapes over two plans. Four measure what the application costs to
+serve under different traffic profiles; the fifth measures whether it stays
+honest when many debits hit one balance at the same instant.
 
-| Plan | What it does | Moves money |
-|---|---|---|
-| `plans/read-path-load.jmx` | Each thread signs in once, then loops `/api/me`, `/api/accounts`, `/api/transfers`, `/api/notifications` | No |
-| `plans/transfer-concurrency.jmx` | Every thread debits the **same** account simultaneously | Yes |
+| Shape | What it does | Moves money | Gated |
+|---|---|---|---|
+| `load` | Steady paced traffic across six read endpoints | No | Yes |
+| `stress` | Ramps well past expected load to find where it degrades | No | Observed |
+| `spike` | Steady traffic, then a burst of simultaneous sign-ins | No | Observed |
+| `endurance` | Modest load held long enough for drift to show | No | Yes |
+| `concurrency` | Every thread debits the **same** account at once | Yes | Yes |
+
+Two plans serve all five. `read-path-load.jmx` covers the first four — they differ
+in load profile, not in script, and a second copy of the sign-in handshake per
+shape would be four places to fix a change. `transfer-concurrency.jmx` is the
+odd one out because it needs setUp and tearDown around the debits.
+
+**Observed** means 5xx does not fail the run. A stress ramp that returned no
+errors has not found the limit it went looking for, so failing on that would
+punish the test for working. Correctness is gated in every shape regardless: the
+ledger must reconcile whatever else happens.
+
+The read shapes cover the six endpoints a customer session actually hits:
+`/api/me`, `/api/accounts`, `/api/accounts/{id}/transactions`, `/api/transfers`,
+`/api/bill-payments` and `/api/notifications`.
 
 ---
 
@@ -53,12 +70,19 @@ Then:
 ```bash
 export JMETER_HOME=/path/to/apache-jmeter-5.6.3
 
-npm run test:read                    # 10 threads, 60s
-npm run test:concurrency             # 20 threads, 50 EGP each
+bash run.sh load          10 60      # threads, seconds
+bash run.sh stress        150 180    # peak threads, seconds
+bash run.sh spike         10 100     # baseline threads, burst threads
+bash run.sh endurance     10 900     # threads, seconds
+bash run.sh concurrency   20 50      # threads, amount in EGP
 
-bash run.sh read 20 120              # threads, duration
-bash run.sh concurrency 30 5000      # threads, amount in EGP
+npm test                             # concurrency, the default
+npm run test:load
 ```
+
+Every run writes a raw `.jtl` and JMeter's own HTML dashboard to
+`results/dashboard-<shape>/index.html` — the response-time-over-time and
+throughput graphs that a percentile table cannot show.
 
 `JMETER_HOST`, `JMETER_PORT` and `JMETER_PROTOCOL` override the target.
 
@@ -131,6 +155,20 @@ The fee rule is mirrored from `src/banking.js`
 known exactly rather than bounded. That is what makes the reconciliation an
 equality instead of an inequality.
 
+**Reported every run:** error rate, throughput in requests per second, average,
+p50, p90, p95, p99 and max — overall and per request label — plus latency broken
+into quarters of the run. That last one is what makes the endurance and spike
+shapes readable: an aggregate p95 averages a healthy beginning with a degraded
+end and hides both. A soak that finishes slower than it started is the signature
+of something accumulating, and a spike that recovers looks like this:
+
+```text
+Q1  avg=538   p95=1233 ms     baseline
+Q2  avg=3166  p95=4824 ms     the burst arrives
+Q3  avg=1991  p95=3914 ms     draining
+Q4  avg=735   p95=1749 ms     recovered
+```
+
 **Reported, not enforced: latency.** There is no performance requirement in
 `requirements/requirements-catalog.md` to enforce, and inventing a p95 target
 here would put an SLA in the repository that no requirement asked for. The
@@ -181,10 +219,14 @@ is explicit that test material must not invent one.
 
 ```
 plans/
-  read-path-load.jmx          Read path under concurrent sessions
+  read-path-load.jmx          Read path: load, stress, spike and endurance
+                              shapes, plus a spike thread group that stays
+                              dormant at zero threads
   transfer-concurrency.jmx    Simultaneous debits on one account
-analyze.mjs                   Reads the .jtl and enforces the invariants
+analyze.mjs                   Reads the .jtl, reports the metrics, enforces
+                              the invariants
 thresholds.json               What is gated, what is not, and why
-run.sh                        Runs a plan, then the analyzer
-results/                      .jtl output and recorded balances (gitignored)
+run.sh                        Runs a shape, then the analyzer
+results/                      .jtl, recorded balances, and the HTML
+                              dashboard per shape (gitignored)
 ```
