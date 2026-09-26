@@ -213,4 +213,16 @@ if (failures.length > 0) {
   process.exit(1);
 }
 
+/*
+ * Publish the headline numbers to the run summary too. Without this a green
+ * performance run reports only that it was green, and the figure that matters
+ * (how many debits committed against how many were refused) stays buried in a
+ * log nobody opens.
+ */
+if (process.env.GITHUB_ACTIONS === "true") {
+  const summary = [`${rows.length} samples`, ...notes.map(n => n.replace(/ +/g, " ").trim())]
+    .join("; ");
+  console.log(`::notice title=JMeter ${plan}::${summary}`);
+}
+
 console.log("\nPASSED — every enforced invariant held.");
