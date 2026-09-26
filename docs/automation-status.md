@@ -163,14 +163,15 @@ commit completely or are refused. That claim is now tested at a concurrency the
 database suite's `ConcurrencyTest` cannot reach, and through the API rather than
 through SQL:
 
-| Amount | Threads | 201 | 409 | Balance moved | Reconciles to |
-|---|---:|---:|---:|---:|---|
-| 50 EGP | 20 | 20 | 0 | 110,000 | 20 x (5,000 + 500) |
-| 7,890 EGP | 20 | 9 | 11 | 7,108,101 | 9 x (789,000 + 789) |
-| 500,000 EGP | 20 | 0 | 20 | 0 | nothing succeeded, nothing moved |
+| Where | Amount | Threads | 201 | 409 | Balance moved | Reconciles to |
+|---|---|---:|---:|---:|---:|---|
+| CI | 50 EGP | 30 | 30 | 0 | 165,000 | 30 x (5,000 + 500) |
+| CI | 20,000 EGP | 30 | 7 | 23 | 14,014,000 | 7 x (2,000,000 + 2,000) |
+| local | 7,890 EGP | 20 | 9 | 11 | 7,108,101 | 9 x (789,000 + 789) |
+| local | 500,000 EGP | 20 | 0 | 20 | 0 | nothing succeeded, nothing moved |
 
-The middle row is the one worth having. Nine debits committed and eleven were
-refused against a single balance, and the ledger came out exact to the minor
+The second row is the one worth having. Seven debits committed and twenty-three
+were refused against one balance, and the ledger came out exact to the minor
 unit. CI runs the plan twice for this reason — once sized to fit, once sized to
 exhaust — because a run where everything succeeds has not shown that refusal
 works.

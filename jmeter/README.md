@@ -144,17 +144,18 @@ from CI, then add `PERF` requirements to the catalog, then enforce them here.
 ## What the concurrency plan actually proves
 
 All threads are released together by a Synchronizing Timer, so the debits arrive
-as simultaneously as the client can make them. Three outcomes, all verified
-locally against a real PostgreSQL:
+as simultaneously as the client can make them. Outcomes verified in CI against a
+`postgres:16` container, and locally against Neon:
 
-| Amount | Threads | 201 | 409 | Balance moved | Reconciles |
-|---|---:|---:|---:|---:|---|
-| 50 EGP | 20 | 20 | 0 | 110,000 | 20 × (5,000 + 500) |
-| 7,890 EGP | 20 | 9 | 11 | 7,108,101 | 9 × (789,000 + 789) |
-| 500,000 EGP | 20 | 0 | 20 | 0 | nothing succeeded, nothing moved |
+| Where | Amount | Threads | 201 | 409 | Balance moved | Reconciles to |
+|---|---|---:|---:|---:|---:|---|
+| CI | 50 EGP | 30 | 30 | 0 | 165,000 | 30 x (5,000 + 500) |
+| CI | 20,000 EGP | 30 | 7 | 23 | 14,014,000 | 7 x (2,000,000 + 2,000) |
+| local | 7,890 EGP | 20 | 9 | 11 | 7,108,101 | 9 x (789,000 + 789) |
+| local | 500,000 EGP | 20 | 0 | 20 | 0 | nothing succeeded, nothing moved |
 
-The middle row is the one that matters. Nine debits committed and eleven were
-refused against a single balance, and the ledger came out exact to the minor
+The second row is the one that matters. Seven debits committed and twenty-three
+were refused against a single balance, and the ledger came out exact to the minor
 unit. That is the claim `lockAccounts` makes in `src/banking.js`, tested at a
 scale the database suite's `ConcurrencyTest` cannot reach.
 
