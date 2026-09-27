@@ -58,6 +58,23 @@ function readJtl(path) {
   });
 }
 
+/*
+ * Spreading an array into Math.max throws "Maximum call stack size exceeded"
+ * once it is large enough, and "large enough" is well within reach here: the
+ * stress shape at 400 threads produces hundreds of thousands of samples. It
+ * failed exactly that way, and the failure was silent because the throw
+ * happened before anything was printed.
+ */
+function extent(values) {
+  let min = Infinity;
+  let max = -Infinity;
+  for (const v of values) {
+    if (v < min) min = v;
+    if (v > max) max = v;
+  }
+  return { min, max };
+}
+
 function mean(values) {
   if (values.length === 0) return 0;
   return Math.round(values.reduce((a, b) => a + b, 0) / values.length);
@@ -67,8 +84,8 @@ function mean(values) {
 function throughput(rows) {
   if (rows.length < 2) return 0;
   const stamps = rows.map(r => Number(r.timeStamp)).filter(Number.isFinite);
-  const elapsedSeconds =
-    (Math.max(...stamps) - Math.min(...stamps)) / 1000;
+  const span = extent(stamps);
+  const elapsedSeconds = (span.max - span.min) / 1000;
   return elapsedSeconds > 0
     ? Math.round((rows.length / elapsedSeconds) * 10) / 10
     : 0;
@@ -273,7 +290,7 @@ console.log(`errors               ${assertionFailures.length} (${errorRate.toFix
 console.log(`throughput           ${throughput(rows)} req/s`);
 console.log(`avg                  ${mean(elapsed)} ms`);
 console.log(`p50 / p90            ${percentile(elapsed, 50)} / ${percentile(elapsed, 90)} ms`);
-console.log(`p95 / p99 / max      ${percentile(elapsed, 95)} / ${percentile(elapsed, 99)} / ${Math.max(...elapsed)} ms`);
+console.log(`p95 / p99 / max      ${percentile(elapsed, 95)} / ${percentile(elapsed, 99)} / ${extent(elapsed).max} ms`);
 notes.forEach(n => console.log(n));
 
 console.log("");
