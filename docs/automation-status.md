@@ -227,17 +227,50 @@ Every suite emits JUnit XML so the results are per test rather than per stage.
 Playwright gained a `junit` reporter for this; the JVM suites already had
 Surefire, Cypress `mocha-junit-reporter`, and Newman its own.
 
-**What has and has not been verified.** The pipeline is parsed as Groovy — the
-AST builds, so it has no syntax error — and its directives and steps are the
-standard Declarative set. It has **not** been executed on a Jenkins controller,
-because there is no Jenkins in the environment this was written in. Treat the
-first real run as the thing that proves it: expect to fix credential and tool
-availability on the agent before anything else, since those are the parts a
-Jenkinsfile cannot assert about itself.
+**Verified by running it.** A Jenkins 2.583 controller was stood up locally, the
+pipeline linted clean through `/pipeline-model-converter/validate`, and the whole
+job ran end to end against a throwaway database:
 
-That is also why the Preflight stage exists and why there is no `tools` block —
-the two failure modes most likely on a first run are made loud and early rather
-than left to surface midway through a suite.
+```text
+build #5   SUCCESS   19.9 min
+
+  Preflight               node v26.7.0, java 21.0.12, Maven 3.9.16
+  Start NovaBank          cloned, migrated --reset, seeded, healthy
+  API — REST Assured      130 passed
+  Database — JDBC          59 passed
+  Postman — Newman        104 requests, 440 assertions, 0 failed
+  UI — Playwright          67 passed
+  UI — Cypress             26 passed
+  UI — Selenium            27 passed
+  BDD — Cucumber           24 scenarios
+  Performance — JMeter    skipped (RUN_PERFORMANCE=false)
+  Ledger reconciliation   ran
+
+  post: 763 tests recorded, 0 failed, 13 artifacts archived
+```
+
+The JUnit publisher collected all 763 across seven suites, which is what the
+Playwright `junit` reporter was added for.
+
+**Two defects in the pipeline were found by running it, and neither would have
+been found by reading it.**
+
+`APP_REF` arrived empty on the job's *first* build. Jenkins registers a
+`parameters` block only after a build has parsed it, so the declared default of
+`main` was not applied and the clone ran `--branch ''`. Every later build worked,
+which makes it the worst kind of bug: it bites only the first person to set the
+job up. The shell now defaults the ref itself.
+
+The Newman stage passed `--env-var baseUrl` and no environment file. That file
+also carries the credentials the collection signs in with, so the first request
+failed 401 and cascaded into 153 of 407 assertions before the pipeline aborted.
+A lint cannot see either of these.
+
+One limit worth stating: the controller ran on Windows, where `sh` resolves to
+Git Bash (`MINGW64_NT`). The pipeline is written for a POSIX shell and got one, so
+this exercised the same code path a Linux agent would, but it is not proof
+against a Linux-specific difference such as `playwright install --with-deps`
+behaving differently there.
 
 The application repository keeps its own separate `Jenkinsfile`, which builds
 and smoke-tests the application alone. That one is not redundant with this: it

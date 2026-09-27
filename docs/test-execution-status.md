@@ -10,6 +10,7 @@ suites pass.
 | Layer | Executable | Result |
 |---|---|---|
 | Manual testing | Yes | Ready to execute |
+| Jenkins pipeline | Yes | **Verified end to end** — build #5 green in 19.9 min, 763 tests recorded |
 | Playwright | Yes | **67 passing**, 3 browsers |
 | Cypress | Yes | 26 passing |
 | Selenium | Yes | **27 passing** |
