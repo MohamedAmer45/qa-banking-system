@@ -9,6 +9,11 @@ on:
     branches: [main]
     paths: ["jmeter/**", ".github/workflows/jmeter.yml", ".github/actions/start-novabank/**"]
 
+  # LIM-008, on a weekly cadence rather than nightly: the shapes take several
+  # minutes and performance drifts more slowly than correctness does.
+  schedule:
+    - cron: "0 4 * * 1"
+
 permissions:
   contents: read
 

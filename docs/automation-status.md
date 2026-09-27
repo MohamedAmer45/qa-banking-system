@@ -14,7 +14,7 @@ inside Playwright rather than as a tenth.
 | Selenium + Java + TestNG | 27 | Chrome |
 | Cucumber JVM | 24 scenarios | Chrome |
 | Database (JDBC + TestNG) | 59 | n/a |
-| REST Assured | 113 | n/a |
+| REST Assured | 130 | n/a |
 | Postman / Newman | 103 requests, 440 assertions | n/a |
 | Jest (unit) | 134 | n/a |
 | JMeter (performance) | 5 shapes | n/a |
@@ -286,11 +286,56 @@ a screen reader announces a transfer coherently. Three test cases in
 deliberately absent from the automated count. A green run is a floor, not a claim
 that the application is accessible.
 
+## Security scanning
+
+Two layers, deliberately different in kind.
+
+**`rest-assured/.../SecurityHeadersTest` — 17 tests, one per `WEBSEC`
+requirement.** These run on every API build and hold the named controls in
+place: framing refused, MIME sniffing forbidden, referrer withheld, CORS granted
+to no unknown origin, account data uncacheable, no server version disclosed,
+unused browser features denied.
+
+**OWASP ZAP baseline scan — `.github/workflows/zap.yml`.** Passive: it reads the
+responses it receives while spidering and sends no attack payloads, so it cannot
+corrupt seeded data and the run repeats. It finds the things nobody thought to
+assert.
+
+A latch and a net. The assertions know what they are looking for; the scan does
+not, which is the point of having both.
+
+**The scan never targets the deployed environment.** It runs against an
+application started in the runner. Pointing a spider at the hosted deployment
+would probe infrastructure on a shared provider — traffic a provider is entitled
+to treat as an attack — and do it against the database every other suite reads.
+The same exception as JMeter, recorded in `docs/test-environment.md`.
+
+**What the first pass found.** The application sent no security headers at all;
+only HSTS was present, and that came from the hosting platform rather than the
+code. The API answered every preflight with `Access-Control-Allow-Origin: *` —
+for a bank, the wrong default even with bearer tokens rather than cookies. Both
+are fixed; the headers are now set centrally in `send`, `sendFile` and
+`serveStatic`, and on the static routes in `vercel.json`, because on the hosting
+platform the shell is served by the static builder and never reaches the
+application's own code. That last part is the sort of gap a test against
+localhost alone would never have shown.
+
+**A limitation stated rather than hidden.** `WEBSEC-001` asks for a CSP
+restricting script sources. The policy is set and blocks external script, plugins
+and base-tag injection, but `script-src` keeps `'unsafe-inline'` because the
+interface attaches 84 event handlers inline in markup — and a nonce does not help,
+since nonces apply to `<script>` elements and not to handler attributes. Closing
+it means moving every handler to `addEventListener`. The requirement stays stated
+at full strength, and a test asserts the weakness cannot spread to `'unsafe-eval'`
+or a wildcard source.
+
+`security/zap-rules.tsv` carries a reason beside every suppressed rule. An
+`IGNORE` without one is how a scanner quietly stops reporting things that matter.
+
 ## Not yet started
 
 | Area | Status |
 |---|---|
-| OWASP ZAP | Not started |
 
 ### Evaluated and not adopted
 
@@ -304,7 +349,7 @@ Recorded rather than silently dropped, since the original plan named them:
 
 ## Coverage
 
-**All 196 requirements across all 17 modules are covered.**
+**All 205 requirements across all 18 modules are covered.**
 
 `DASH` (7) was the last gap and is now automated, in
 `playwright/tests/dashboard/dashboard.spec.ts`. Closing it turned up something

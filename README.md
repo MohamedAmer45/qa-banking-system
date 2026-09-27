@@ -1010,7 +1010,7 @@ string `"completed"` without touching an account. That stub has been deleted.
 | Selenium | 27 | Chrome |
 | Cucumber | 24 scenarios | Chrome |
 | Database (JDBC + TestNG) | 59 | n/a |
-| REST Assured | 113 | n/a |
+| REST Assured | 130 | n/a |
 | Postman / Newman | 103 requests, 440 assertions | n/a |
 | Jest (unit, in the app repo) | 134 | n/a |
 | JMeter (performance) | 5 shapes | n/a |
@@ -1024,18 +1024,19 @@ driving the application), `BUG-API-001` (REST Assured) and `BUG-DASH-001`
 rendered, which is why the module had no coverage to begin with).
 
 All 65 endpoints the application serves are exercised by at least one suite,
-and all 196 requirements across all 17 modules are covered.
+and all 205 requirements across all 18 modules are covered.
 
 **No defect is open.** All eight are closed, each with regression cover in the
 suite that found it.
 
 ## Not yet started
 
-OWASP ZAP.
+Nothing. Every tool the original plan named is built.
 
 Done since this list was first written: JMeter (see [`jmeter/`](jmeter/)), the
-Jenkins pipeline (see [`Jenkinsfile`](Jenkinsfile)), and axe-core accessibility
-checks, which live inside the Playwright suite rather than as a tenth suite. k6 was not added
+Jenkins pipeline (see [`Jenkinsfile`](Jenkinsfile)), axe-core accessibility
+checks (inside the Playwright suite rather than as a tenth), and an OWASP ZAP
+baseline scan backed by per-requirement header assertions in REST Assured. k6 was not added
 alongside JMeter, because a second load tool would measure the same thing
 twice. Pact, WireMock and Testcontainers were evaluated and deliberately not
 adopted, with reasons recorded in

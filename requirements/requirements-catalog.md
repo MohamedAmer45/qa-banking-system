@@ -352,7 +352,50 @@ manual checks, not by the scanner.
 
 ---
 
-# 19. Requirement Traceability
+# 19. Web Security Hardening
+
+`SEC` covers security *features* a customer uses: passwords, MFA, sessions,
+authorization. This module covers the transport and browser controls underneath
+them — the headers and origin rules that decide what another site can do to a
+signed-in customer's session.
+
+They are separated because they fail differently. A `SEC` requirement fails when
+a feature misbehaves. A `WEBSEC` requirement fails silently, on every response,
+until someone looks.
+
+Referenced against the [OWASP Secure Headers
+Project](https://owasp.org/www-project-secure-headers/) rather than invented.
+
+| ID         | Requirement                                                                                                    | Control | Priority |
+| ---------- | ---------------------------------------------------------------------------------------------------------------- | ------- | -------- |
+| WEBSEC-001 | Responses shall declare a Content Security Policy restricting the sources of scripts, objects and document base.  | `Content-Security-Policy` | High |
+| WEBSEC-002 | The application shall refuse to be rendered inside a frame on another origin.                                     | `frame-ancestors`, `X-Frame-Options` | Critical |
+| WEBSEC-003 | Responses shall instruct browsers not to infer a content type other than the one declared.                        | `X-Content-Type-Options` | High |
+| WEBSEC-004 | Navigation away from the application shall not disclose the originating URL to a third party.                     | `Referrer-Policy` | Medium |
+| WEBSEC-005 | Cross-origin access to the API shall be limited to known origins rather than granted to any.                      | `Access-Control-Allow-Origin` | Critical |
+| WEBSEC-006 | Responses carrying account or transaction data shall not be retained by shared or browser caches.                 | `Cache-Control` | High |
+| WEBSEC-007 | The application shall be served over HTTPS and shall instruct browsers to refuse plaintext for a prolonged period. | `Strict-Transport-Security` | Critical |
+| WEBSEC-008 | Responses shall not advertise the server technology or its version.                                               | `X-Powered-By`, `Server` | Low |
+| WEBSEC-009 | Browser features the application does not use shall be denied to it.                                              | `Permissions-Policy` | Low |
+
+## A limitation recorded with the requirement, not after it
+
+`WEBSEC-001` cannot presently be met at full strength. The interface attaches 84
+inline event handlers (`onclick`, `onsubmit`, `onchange`) directly in markup, and
+inline handlers require `script-src 'unsafe-inline'`. A nonce does not help:
+nonces apply to `<script>` elements, not to event-handler attributes.
+
+So the policy restricts where scripts may be *loaded from*, and forbids plugins
+and base-tag hijacking, but cannot stop injected inline script. Closing that gap
+means moving every handler to `addEventListener`, which is a change to the
+application rather than to its configuration.
+
+The requirement is stated at full strength anyway. A requirement weakened to
+match what the code currently does stops being a requirement.
+
+---
+
+# 20. Requirement Traceability
 
 The following naming convention shall be used throughout the project:
 
@@ -383,7 +426,7 @@ This allows every test result to be traced back to the original system requireme
 
 ---
 
-# 20. Requirement Categories
+# 21. Requirement Categories
 
 | Prefix | Module                      |
 | ------ | --------------------------- |
@@ -404,6 +447,7 @@ This allows every test result to be traced back to the original system requireme
 | DB     | Database Integrity          |
 | SYS    | General System Requirements |
 | A11Y   | Accessibility               |
+| WEBSEC | Web Security Hardening      |
 
 <!-- NOVABANK-REQUIREMENTS-SYNC-START -->
 

@@ -1,0 +1,92 @@
+name: Security Scan (OWASP ZAP)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ["security/**", ".github/workflows/zap.yml", ".github/actions/start-novabank/**"]
+  pull_request:
+    branches: [main]
+    paths: ["security/**", ".github/workflows/zap.yml", ".github/actions/start-novabank/**"]
+  # Passive scanning finds things nobody thought to assert, and the application
+  # changes more often than this workflow does. A weekly run catches drift that
+  # the path filter above never would.
+  schedule:
+    - cron: "0 3 * * 1"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: zap-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  baseline:
+    name: ZAP baseline scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    # Scanned against an application started in this runner, never against the
+    # deployed environment.
+    #
+    # Pointing a scanner at the hosted deployment would spider and probe someone
+    # else's infrastructure, which is the kind of traffic a provider is entitled
+    # to treat as an attack, and it would do it against the shared database every
+    # other suite reads. The only safe target is one this job owns. JMeter runs
+    # against a local instance for the same reason; both exceptions are recorded
+    # in docs/test-environment.md.
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: novabank
+          POSTGRES_PASSWORD: novabank
+          POSTGRES_DB: novabank_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U novabank"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - name: Check out QA repository
+        uses: actions/checkout@v4
+
+      - name: Start NovaBank
+        uses: ./.github/actions/start-novabank
+        with:
+          database-url: postgresql://novabank:novabank@127.0.0.1:5432/novabank_test
+
+      # Passive only: ZAP reads the responses it receives while spidering. It
+      # sends no attack payloads, so it cannot corrupt the seeded data, and the
+      # run is repeatable.
+      - name: ZAP baseline scan
+        uses: zaproxy/action-baseline@v0.12.0
+        with:
+          target: http://127.0.0.1:3000
+          rules_file_name: security/zap-rules.tsv
+          # -I stops the action failing the build on warnings, which is wrong
+          # here: an unreviewed warning should fail and then be either fixed or
+          # given a reason in the rules file. So it is deliberately absent.
+          cmd_options: "-a -j"
+          allow_issue_writing: false
+          fail_action: true
+
+      - name: Upload the report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: zap-baseline-report-${{ github.run_id }}
+          path: |
+            report_html.html
+            report_json.json
+            report_md.md
+          retention-days: 30
+          if-no-files-found: warn
+
+      - name: Application log
+        if: always()
+        run: cat "${RUNNER_TEMP}/novabank.log" || true

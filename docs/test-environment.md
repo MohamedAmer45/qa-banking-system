@@ -55,6 +55,20 @@ mvn test -Dapi.base.url=http://localhost:3000        # REST Assured, Database
 npm run test:local                                   # Postman / Newman
 ```
 
+### The security-scan exception
+
+**`security/` (OWASP ZAP) does not target the deployed environment either**, and
+for a sharper reason than performance. A spider crawling a hosted deployment is
+traffic the provider is entitled to treat as an attack, and it would crawl the
+database every other suite reads. ZAP runs against an application started in the
+CI runner, against a throwaway container.
+
+The per-requirement header assertions in `rest-assured/` are a different matter
+and do run against the deployed environment: reading a response header is an
+ordinary request, and checking the live deployment is where a header set only in
+local code but missing from the hosting configuration actually shows up. That
+distinction found a real gap.
+
 ### The performance exception
 
 **`jmeter/` deliberately does not target the deployed environment.** It defaults

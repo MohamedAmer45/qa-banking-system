@@ -9,6 +9,13 @@ on:
     branches: [main]
     paths: ["postman/**", ".github/workflows/postman.yml", ".github/actions/start-novabank/**"]
 
+  # LIM-008. The path filter above means a change in the APPLICATION repository
+  # re-runs nothing here, so both repositories can be green while the pair is
+  # not. A nightly run closes that within a day and needs no cross-repository
+  # token. Offset per workflow so seven suites do not start at once.
+  schedule:
+    - cron: "40 2 * * *"
+
 permissions:
   contents: read
 

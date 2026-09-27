@@ -1,0 +1,44 @@
+# ZAP baseline rule configuration.
+#
+# Format: <rule id>	<WARN|IGNORE|FAIL>	<comment>
+#
+# The baseline scan is passive: it reads responses, it does not attack. Every
+# rule not listed here keeps its default, and the job fails on any alert at
+# WARN or above, so silence here means "we did not decide" rather than
+# "we accepted it".
+#
+# Only rules with a reason are listed. An IGNORE without one is how a scanner
+# quietly stops reporting things that matter.
+
+# ---------------------------------------------------------------- IGNORE
+
+# 10015 Incomplete or No Cache-control Header
+#   Applies to static assets, which are deliberately cacheable for 300s. Every
+#   response carrying account or transaction data sets no-store, and that is
+#   asserted directly by WEBSEC-006 in SecurityHeadersTest rather than left to
+#   the scanner.
+10015	IGNORE	Static assets are intentionally cacheable; account data sets no-store (WEBSEC-006)
+
+# 10063 Permissions Policy Header Not Set
+#   Set on the application shell, which is the document the policy governs.
+#   ZAP also raises it against JSON API responses, where a permissions policy
+#   has no meaning.
+10063	IGNORE	Set on the document; not meaningful on JSON responses (WEBSEC-009)
+
+# 90005 Sec-Fetch-Dest Header Is Not Set
+#   A request header the client sends, not something the server controls.
+90005	IGNORE	Client-sent request header, outside the application's control
+
+# ---------------------------------------------------------------- WARN, not ignored
+
+# 10038 Content Security Policy Header Not Set
+#   Kept reportable on purpose. The policy IS set, but if a future response
+#   path is added without it this must surface rather than pass quietly.
+10038	WARN	CSP is set; keep reporting so a new uncovered response path is noticed
+
+# 10098 Cross-Domain Misconfiguration
+#   The static shell carries Access-Control-Allow-Origin: * from the hosting
+#   platform's static file serving, which the application cannot remove. It is
+#   public markup with no credentials. The API grants no origin at all, which
+#   is what WEBSEC-005 requires and what SecurityHeadersTest asserts.
+10098	WARN	Platform wildcard on public static files; the API grants no origin (WEBSEC-005)

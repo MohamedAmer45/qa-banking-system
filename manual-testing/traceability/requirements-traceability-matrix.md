@@ -1,7 +1,7 @@
 # Requirements Traceability Matrix
 
 Last synchronized: 2026-09-26
-Source of truth: `requirements/requirements-catalog.md` — **196 requirements**
+Source of truth: `requirements/requirements-catalog.md` — **205 requirements**
 
 ## Purpose
 
@@ -28,6 +28,7 @@ the catalog's, the mapping is explicit:
 | `DASH-` | `DASH-TC-` | Dedicated file added 2026-09-23 |
 | `DB-`, `SYS-` | — | Verified by SQL and API layers, not manual cases |
 | `A11Y-` | `A11Y-TC-` | Added 2026-09-26 with the module |
+| `WEBSEC-` | — | Verified by API assertions and a passive scan, not manual cases |
 | — | `STMT-TC-` | Statements are catalogued under `ACC-` |
 | — | `PROF-TC-` | Profile is catalogued under `KYC-` |
 
@@ -57,6 +58,7 @@ no implementation) entered the project and survived unnoticed.
 | `DB` | 15 | — | `database-testing/` | Yes | Covered | **Automated** |
 | `SYS` | 10 | — | `rest-assured/` | Yes | Covered | **Automated** |
 | `A11Y` | 9 | `accessibility-scenarios.md` | `accessibility-test-cases.md` | Yes | Covered | **Automated** |
+| `WEBSEC` | 9 | — | `rest-assured/`, `security/` | Yes | Covered | **Automated** |
 
 "Automated" means at least one suite covers the module against the running
 application. Which suite, and why that one, is in `docs/automation-status.md`.
@@ -78,6 +80,22 @@ engine judges whether alt text is useful, whether reading order makes sense, or
 whether a screen reader announces a transfer coherently. "Automated" here means
 the machine-checkable part is checked every run, not that the application is
 accessible.
+
+**`WEBSEC` is covered twice over, on purpose.** Its nine requirements are
+asserted directly in `rest-assured/` — one test per header, running on every API
+build — and swept passively by OWASP ZAP in its own workflow. That is not
+duplication of the kind the suite-division table forbids: the assertions hold the
+specific controls the requirements name, and the scan finds the things nobody
+thought to name. A latch and a net.
+
+One requirement is knowingly unmet at full strength. `WEBSEC-001` asks for a
+Content Security Policy restricting script sources; the policy is in place, but
+`script-src` must keep `'unsafe-inline'` because the interface attaches 84 event
+handlers inline in markup. The catalog states the requirement at full strength
+anyway and records the gap beneath it — a requirement rewritten to match what the
+code does stops being a requirement. A test asserts the weakness stays confined
+to that one directive, so `'unsafe-eval'` or a wildcard source cannot join it
+unnoticed.
 
 **The JMeter suite adds no row and no module.** It exercises `DB-010`
 (*concurrent financial operations shall maintain correct balances*) at a
@@ -101,7 +119,7 @@ this matrix.
 
 ## Gaps
 
-**None.** All 196 requirements across all 17 modules are covered.
+**None.** All 205 requirements across all 18 modules are covered.
 
 `DASH` was the last one, and closing it turned up something worth recording.
 The module was not untested because nobody had got to it: three of its seven
