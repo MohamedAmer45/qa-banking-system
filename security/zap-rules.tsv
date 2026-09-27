@@ -42,3 +42,40 @@
 #   public markup with no credentials. The API grants no origin at all, which
 #   is what WEBSEC-005 requires and what SecurityHeadersTest asserts.
 10098	WARN	Platform wildcard on public static files; the API grants no origin (WEBSEC-005)
+
+# 10055 CSP: script-src unsafe-inline / style-src unsafe-inline
+#   The known limitation recorded against WEBSEC-001 in the requirements
+#   catalog, not a finding this scan discovered. The interface attaches 84
+#   event handlers inline in markup and uses inline style attributes; an
+#   inline handler cannot run without unsafe-inline, and a nonce does not
+#   help because nonces apply to <script> elements and not to handler
+#   attributes. The policy still blocks external script, plugins and
+#   base-tag injection. Closing this means moving every handler to
+#   addEventListener, which is application work rather than configuration.
+#
+#   SecurityHeadersTest asserts the weakness stays confined to this one
+#   directive: 'unsafe-eval' or a wildcard source cannot join it unnoticed.
+10055	IGNORE	Documented WEBSEC-001 limitation; inline handlers require it, and a test stops it spreading
+
+# 10049 Non-Storable Content
+#   Reports that responses cannot be cached, which is the intent. Account and
+#   transaction data sets no-store deliberately (WEBSEC-006). This alert
+#   fires because the application is doing the right thing.
+10049	IGNORE	Non-storable is the intended behaviour for account data (WEBSEC-006)
+
+# 10109 Modern Web Application
+#   Informational. It observes that the target is a single-page application
+#   and that links may be handled in script. True, and not a defect.
+10109	IGNORE	Informational SPA detection, not a finding
+
+# 10027 Information Disclosure - Suspicious Comments
+#   Triggered by ordinary words in the client source: select, admin,
+#   password as identifiers, and BUG where a comment cites a defect id such
+#   as BUG-UI-002.
+#
+#   Accepted with a caveat worth stating rather than hiding: public/app.js
+#   ships unminified, so its developer comments are readable by anyone. For
+#   this project that is close to a feature, since the source is the
+#   portfolio. A production bank would strip comments at build time, and
+#   there is no frontend build step here to do it.
+10027	IGNORE	Application identifiers and defect ids in comments; unminified source is accepted here
