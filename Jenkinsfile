@@ -178,7 +178,14 @@ pipeline {
         dir('postman') {
           sh '''
             npm ci
+            # The environment file is not optional. It carries the seeded
+            # credentials the collection signs in with (customerEmail,
+            # customerPassword, mfaCode and the rest), not just a base URL.
+            # Running without it fails the very first request with a 401 and
+            # cascades through every chained journey after it, which is what
+            # this pipeline's first real run did: 153 of 407 assertions.
             npx newman run NovaBank.postman_collection.json \
+              -e environments/ci.postman_environment.json \
               --env-var baseUrl="$TARGET_URL" \
               --reporters cli,junit \
               --reporter-junit-export results/newman-junit.xml
