@@ -353,14 +353,27 @@ platform the shell is served by the static builder and never reaches the
 application's own code. That last part is the sort of gap a test against
 localhost alone would never have shown.
 
-**A limitation stated rather than hidden.** `WEBSEC-001` asks for a CSP
-restricting script sources. The policy is set and blocks external script, plugins
-and base-tag injection, but `script-src` keeps `'unsafe-inline'` because the
-interface attaches 84 event handlers inline in markup — and a nonce does not help,
-since nonces apply to `<script>` elements and not to handler attributes. Closing
-it means moving every handler to `addEventListener`. The requirement stays stated
-at full strength, and a test asserts the weakness cannot spread to `'unsafe-eval'`
-or a wildcard source.
+**The limitation that was stated rather than hidden is now closed.**
+`WEBSEC-001` asks for a CSP restricting script sources, and for a while
+`script-src` had to keep `'unsafe-inline'`: the interface attached 62 handlers as
+inline attributes, and an inline handler cannot run without it — a nonce does not
+help, because nonces apply to `<script>` elements and not to handler attributes.
+
+All 62 are now delegated. Markup carries `data-action="cardAction" data-a1="7"
+data-a2="freeze"` and three delegated listeners resolve it against a whitelist of
+permitted action names — a whitelist rather than a `window[name]` lookup, because
+resolving an arbitrary action name through the global scope would be a smaller
+hole of exactly the kind this change closes. `script-src` is `'self'` alone.
+
+Verified by re-running every suite that drives the interface against the
+tightened policy: Playwright 67, Cypress 26 (which fails on any uncaught page
+exception), Selenium 27, Cucumber 24. A test asserts `'unsafe-inline'` cannot
+return, and the ZAP suppression for rule 10055 is narrowed to `style-src` so an
+alert naming `script-src` fails the scan instead of being absorbed.
+
+`style-src` still carries `'unsafe-inline'` for inline `style` attributes. That
+sits outside `WEBSEC-001`, which covers scripts, objects and document base: an
+inline style cannot execute script.
 
 `security/zap-rules.tsv` carries a reason beside every suppressed rule, and
 `security/analyze-zap.mjs` refuses an `IGNORE` that has none — the rules file
@@ -398,9 +411,6 @@ Jenkins pipeline.
 What that does **not** mean is that the testing is finished. Two things are worth
 naming, because an empty list invites the wrong conclusion:
 
-- **`WEBSEC-001` is not met at full strength.** The Content Security Policy keeps
-  `script-src 'unsafe-inline'` because the interface attaches 84 event handlers
-  inline in markup. Closing it means moving every one to `addEventListener`.
 - **Three accessibility test cases are manual-only** and deliberately outside the
   automated count: screen reader coherence, reading order, and 200% zoom.
   Automated checks find a minority of WCAG issues and none of the

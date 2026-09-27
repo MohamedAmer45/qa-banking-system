@@ -378,20 +378,32 @@ Project](https://owasp.org/www-project-secure-headers/) rather than invented.
 | WEBSEC-008 | Responses shall not advertise the server technology or its version.                                               | `X-Powered-By`, `Server` | Low |
 | WEBSEC-009 | Browser features the application does not use shall be denied to it.                                              | `Permissions-Policy` | Low |
 
-## A limitation recorded with the requirement, not after it
+## The limitation this module used to carry, and how it was closed
 
-`WEBSEC-001` cannot presently be met at full strength. The interface attaches 84
-inline event handlers (`onclick`, `onsubmit`, `onchange`) directly in markup, and
-inline handlers require `script-src 'unsafe-inline'`. A nonce does not help:
-nonces apply to `<script>` elements, not to event-handler attributes.
+`WEBSEC-001` was originally unmeetable at full strength. The interface attached 62
+event handlers as inline attributes (`onclick`, `onchange`, `oninput`), and an
+inline handler cannot run unless `script-src` carries `'unsafe-inline'` — a nonce
+does not help, because nonces apply to `<script>` elements and not to handler
+attributes. So the policy had to keep the one directive that permits injected
+script to execute.
 
-So the policy restricts where scripts may be *loaded from*, and forbids plugins
-and base-tag hijacking, but cannot stop injected inline script. Closing that gap
-means moving every handler to `addEventListener`, which is a change to the
-application rather than to its configuration.
+The requirement was stated at full strength anyway, and the gap recorded beneath
+it, on the grounds that a requirement rewritten to match what the code does stops
+being a requirement.
 
-The requirement is stated at full strength anyway. A requirement weakened to
-match what the code currently does stops being a requirement.
+It is now met. Markup carries intent rather than code —
+
+```html
+<button data-action="cardAction" data-a1="7" data-a2="freeze">
+```
+
+— and three delegated listeners resolve it against a whitelist of permitted
+action names. `script-src` is `'self'` alone.
+
+`style-src` still carries `'unsafe-inline'`, for inline `style` attributes. That is
+outside this requirement, which covers scripts, objects and document base: an
+inline style cannot execute script. It is recorded here so the remaining
+occurrence is a known one rather than a discovery.
 
 ---
 

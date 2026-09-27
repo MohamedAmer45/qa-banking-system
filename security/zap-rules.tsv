@@ -43,19 +43,16 @@
 #   is what WEBSEC-005 requires and what SecurityHeadersTest asserts.
 10098	WARN	Platform wildcard on public static files; the API grants no origin (WEBSEC-005)
 
-# 10055 CSP: script-src unsafe-inline / style-src unsafe-inline
-#   The known limitation recorded against WEBSEC-001 in the requirements
-#   catalog, not a finding this scan discovered. The interface attaches 84
-#   event handlers inline in markup and uses inline style attributes; an
-#   inline handler cannot run without unsafe-inline, and a nonce does not
-#   help because nonces apply to <script> elements and not to handler
-#   attributes. The policy still blocks external script, plugins and
-#   base-tag injection. Closing this means moving every handler to
-#   addEventListener, which is application work rather than configuration.
+# 10055 CSP: style-src unsafe-inline
+#   Only style-src now. script-src lost 'unsafe-inline' once the 62 inline event
+#   handlers became delegated data-action attributes, so an alert naming
+#   script-src would be a regression and must NOT be suppressed -- which is why
+#   this entry is scoped to the style directive by its comment and the assertion
+#   in SecurityHeadersTest checks script-src directly.
 #
-#   SecurityHeadersTest asserts the weakness stays confined to this one
-#   directive: 'unsafe-eval' or a wildcard source cannot join it unnoticed.
-10055	IGNORE	Documented WEBSEC-001 limitation; inline handlers require it, and a test stops it spreading
+#   Inline style attributes cannot execute script, and WEBSEC-001 covers scripts,
+#   objects and document base rather than styles.
+10055	IGNORE	style-src only; script-src no longer carries unsafe-inline and a test asserts it
 
 # 10049 Non-Storable Content
 #   Reports that responses cannot be cached, which is the intent. Account and

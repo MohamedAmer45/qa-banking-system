@@ -94,21 +94,31 @@ public class SecurityHeadersTest extends ApiTest {
                 "CSP must stop an injected <base> re-pointing relative URLs: " + csp);
     }
 
-    @Test(description = "WEBSEC-001: the known CSP weakness is where the catalog says it is")
-    @Description("Asserts the documented limitation so it cannot quietly spread")
-    public void scriptSrcWeaknessIsLimitedToInlineHandlers() {
+    @Test(description = "WEBSEC-001: script-src does not permit inline script")
+    @Description("The directive that decides whether injected script can execute")
+    public void scriptSourcesDoNotPermitInlineOrEval() {
         String csp = anonymous().get("/api/health").header("Content-Security-Policy");
 
+        String scriptSrc = java.util.Arrays.stream(csp.split(";"))
+                .map(String::trim)
+                .filter(d -> d.startsWith("script-src"))
+                .findFirst()
+                .orElse("");
+
+        assertFalse(scriptSrc.isEmpty(), "WEBSEC-001: the policy must declare script-src: " + csp);
+
         /*
-         * script-src needs 'unsafe-inline' because the interface attaches its
-         * handlers inline in markup. That is recorded against WEBSEC-001. What
-         * must NOT creep in alongside it is a wildcard source or 'unsafe-eval',
-         * either of which would make the policy decorative.
+         * This was permitted once, because the interface attached 62 handlers as
+         * inline attributes. They are delegated from data-action attributes now,
+         * so nothing in the page needs it and its return would be a regression
+         * that re-opens injected script rather than a documented compromise.
          */
-        assertFalse(csp.contains("'unsafe-eval'"),
-                "WEBSEC-001: the policy must never permit eval: " + csp);
-        assertFalse(csp.contains("script-src *") || csp.contains("script-src 'self' *"),
-                "WEBSEC-001: script sources must not be wildcarded: " + csp);
+        assertFalse(scriptSrc.contains("'unsafe-inline'"),
+                "WEBSEC-001: script-src must not permit inline script, was: " + scriptSrc);
+        assertFalse(scriptSrc.contains("'unsafe-eval'"),
+                "WEBSEC-001: script-src must not permit eval, was: " + scriptSrc);
+        assertFalse(scriptSrc.contains("*"),
+                "WEBSEC-001: script sources must not be wildcarded, was: " + scriptSrc);
     }
 
     @Test(description = "WEBSEC-005: cross-origin access is not granted to everyone")
