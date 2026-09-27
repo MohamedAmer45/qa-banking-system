@@ -21,7 +21,16 @@
  */
 
 import { readFileSync, existsSync } from "node:fs";
-import { join } from "node:path";
+import { join, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
+
+/*
+ * Latency thresholds live in thresholds.json beside this file, not in the
+ * arguments, so the number and the reasoning behind it sit together. Only the
+ * two steady shapes have one; the rest say why in the same file.
+ */
+const HERE = dirname(fileURLToPath(import.meta.url));
+const THRESHOLDS = JSON.parse(readFileSync(join(HERE, "thresholds.json"), "utf8"));
 
 function arg(name, fallback = undefined) {
   const i = process.argv.indexOf(`--${name}`);
@@ -230,6 +239,26 @@ if (plan === "concurrency") {
 
 const elapsed = rows.map(r => Number(r.elapsed)).filter(Number.isFinite);
 const errorRate = (assertionFailures.length / rows.length) * 100;
+
+/*
+ * Whether the latency budget applies at all.
+ *
+ * It was derived from CI, where the application and its database are both in the
+ * runner. Two conditions, and both are needed. A loopback URL is not enough on
+ * its own: a locally served application can still be talking to a database
+ * across the internet, which is how the first attempt at this gate failed a
+ * perfectly healthy run at 1372 ms. And CI alone is not enough either, since a
+ * CI job could be pointed at a deployment.
+ *
+ * Gated where the baseline came from; reported everywhere else.
+ */
+const targets = [...new Set(rows.map(r => r.URL).filter(Boolean))];
+const isLoopback = targets.length > 0 && targets.every(
+  u => /^https?:\/\/(127\.0\.0\.1|localhost|\[::1\])[:/]/.test(u)
+);
+const latencyBudget = THRESHOLDS.enforced?.latency?.[plan];
+const latencyGated =
+  Boolean(latencyBudget) && mode === "gate" && isLoopback && process.env.CI === "true";
 const byLabel = new Map();
 for (const r of rows) {
   if (!byLabel.has(r.label)) byLabel.set(r.label, []);
@@ -265,6 +294,8 @@ for (const [label, values] of [...byLabel].sort()) {
  * the signature of something accumulating, and an aggregate p95 hides that
  * completely by averaging a healthy beginning with a degraded end.
  */
+let quarterDrift = null;
+
 if (rows.length >= 40) {
   const ordered = [...rows].sort((a, b) => Number(a.timeStamp) - Number(b.timeStamp));
   const size = Math.floor(ordered.length / 4);
@@ -280,6 +311,7 @@ if (rows.length >= 40) {
   });
 
   const drift = percentile(quarters[3], 95) - percentile(quarters[0], 95);
+  quarterDrift = drift;
   console.log(`  drift in p95, first quarter to last: ${drift >= 0 ? "+" : ""}${drift} ms`);
   notes.push(
     "p95 by quarter       " + quarters.map(q => percentile(q, 95)).join(" -> ") +
@@ -287,9 +319,49 @@ if (rows.length >= 40) {
   );
 }
 
+console.log("");
 console.log(
-  "\nLatency above is reported, not enforced — see thresholds.json for why."
+  latencyGated
+    ? "Latency is gated for this shape; thresholds.json holds the budget and why."
+    : "Latency above is reported, not gated; thresholds.json says why."
 );
+
+/* ------------------------------------------------------ latency, where gated */
+
+/*
+ * The budget applies only against a loopback target.
+ *
+ * It was derived from CI, where the database is a container in the same runner.
+ * The same plan against a database across the internet measured a p95 near 37
+ * seconds, so enforcing the budget there would fail on network distance and
+ * teach everyone that the gate lies. Enforced where the baseline came from,
+ * reported everywhere else.
+ */
+if (latencyGated) {
+  const p95 = percentile(elapsed, 95);
+
+  if (p95 > latencyBudget.maxP95Ms) {
+    failures.push(
+      `p95 was ${p95} ms against a budget of ${latencyBudget.maxP95Ms} ms ` +
+      `(${latencyBudget.requirement}). The budget is empirically derived from CI ` +
+      `baselines with headroom, so check whether the target was ever right ` +
+      `before assuming the code got slower.`
+    );
+  } else {
+    notes.push(`p95 budget           ${p95} / ${latencyBudget.maxP95Ms} ms (${latencyBudget.requirement})`);
+  }
+
+  if (quarterDrift !== null && quarterDrift > latencyBudget.maxDriftMs) {
+    failures.push(
+      `p95 rose ${quarterDrift} ms from the first quarter of the run to the last, ` +
+      `against a limit of ${latencyBudget.maxDriftMs} ms (${latencyBudget.requirement}). ` +
+      `Sustained load is not meant to get slower as it goes.`
+    );
+  }
+} else if (THRESHOLDS.reported?.[plan]) {
+  notes.push(`latency              reported, not gated: ${THRESHOLDS.reported[plan]}`);
+}
+
 
 if (failures.length > 0) {
   console.error("\nFAILED");

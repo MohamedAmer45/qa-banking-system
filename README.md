@@ -1024,7 +1024,7 @@ driving the application), `BUG-API-001` (REST Assured) and `BUG-DASH-001`
 rendered, which is why the module had no coverage to begin with).
 
 All 65 endpoints the application serves are exercised by at least one suite,
-and all 205 requirements across all 18 modules are covered.
+and all 210 requirements across all 19 modules are covered.
 
 **No defect is open.** All eight are closed, each with regression cover in the
 suite that found it.

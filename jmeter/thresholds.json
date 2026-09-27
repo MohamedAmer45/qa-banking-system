@@ -2,38 +2,50 @@
   "enforced": {
     "serverErrors": 0,
     "assertionFailures": 0,
-    "concurrentTransferCodes": ["201", "409"],
-    "ledgerReconciles": true
+    "concurrentTransferCodes": [
+      "201",
+      "409"
+    ],
+    "ledgerReconciles": true,
+    "latency": {
+      "load": {
+        "maxP95Ms": 100,
+        "maxDriftMs": 200,
+        "requirement": "PERF-001, PERF-003"
+      },
+      "endurance": {
+        "maxP95Ms": 100,
+        "maxDriftMs": 200,
+        "requirement": "PERF-001, PERF-003"
+      }
+    }
   },
-
   "reported": {
-    "latency": "p50, p95 and max, per request label"
+    "stress": "Observed. A ramp past capacity is meant to degrade; a threshold would fail the test for working.",
+    "spike": "Observed. Recovery is visible in the per-quarter latency, but 'recovered' is a judgement about shape rather than a number (PERF-005).",
+    "concurrency": "Observed. Thirty debits serialising on one row lock are meant to queue, so a p95 measures queue length rather than health. Correctness is enforced absolutely by PERF-004."
   },
-
-  "why_latency_is_not_enforced": [
-    "There is no performance requirement in requirements/requirements-catalog.md",
-    "to enforce. Inventing a number here would put an SLA in the repository that",
-    "no requirement asked for and no stakeholder agreed, which is how a test",
-    "starts measuring the wrong thing.",
-
-    "The figures are also dominated by where the database is rather than by the",
-    "application. A local run reaches Neon over the internet, so a single",
-    "transfer costs a few hundred milliseconds before the application does any",
-    "work, and twenty concurrent debits serialising on row locks over that link",
-    "measured p95 near 37 seconds. The same plan against the postgres:16",
-    "container CI starts in the runner is an order of magnitude faster. A",
-    "threshold that passes in one and fails in the other tests the network.",
-
-    "So latency is recorded every run and gated on nothing. To turn it into a",
-    "gate: collect a baseline from several CI runs, add PERF requirements to the",
-    "catalog with targets that baseline supports, then enforce those here. That",
-    "order matters — the requirement first, then the threshold."
+  "how_these_numbers_were_chosen": [
+    "The order matters and was followed: baseline from CI, then PERF requirements",
+    "in requirements/requirements-catalog.md, then these thresholds. Setting a",
+    "number before there was a requirement to justify it is how an invented SLA",
+    "ends up in a repository.",
+    "100 ms against an observed CI p95 of 2-7 ms is roughly fifteen times the",
+    "headroom. That is deliberate. A threshold set near the observed figure fails",
+    "on ordinary runner variance, and a gate that cries wolf gets ignored, which",
+    "is worse than no gate. This one tolerates a slow morning on shared",
+    "infrastructure and still catches a serious regression.",
+    "They are empirically derived, not business-mandated. If one is missed, the",
+    "first question is whether the target was ever right."
   ],
-
-  "what_is_enforced_and_why_it_travels": [
-    "The correctness invariants hold on any machine at any speed. A concurrent",
-    "debit answering anything but 201 or 409, a 5xx, or a balance that does not",
-    "fall by exactly the amount plus fee of every success is a defect wherever",
-    "it appears. Those are safe to fail a build on."
+  "what_travels_between_machines": [
+    "The correctness invariants hold anywhere at any speed: a concurrent debit",
+    "answering something other than 201 or 409, a 5xx, or a balance that does not",
+    "fall by exactly the amount plus fee of every success. Those are safe to fail",
+    "a build on regardless of where it runs.",
+    "Latency is not like that, which is why it is enforced only for the two",
+    "steady shapes and only in CI, where the database is a container in the same",
+    "runner. The same plan against a database across the internet measured a p95",
+    "near 37 seconds -- a figure about network distance, not about this code."
   ]
 }

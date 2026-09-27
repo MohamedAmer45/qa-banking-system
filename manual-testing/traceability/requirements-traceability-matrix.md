@@ -1,7 +1,7 @@
 # Requirements Traceability Matrix
 
 Last synchronized: 2026-09-26
-Source of truth: `requirements/requirements-catalog.md` — **205 requirements**
+Source of truth: `requirements/requirements-catalog.md` — **210 requirements**
 
 ## Purpose
 
@@ -28,6 +28,7 @@ the catalog's, the mapping is explicit:
 | `DASH-` | `DASH-TC-` | Dedicated file added 2026-09-23 |
 | `DB-`, `SYS-` | — | Verified by SQL and API layers, not manual cases |
 | `A11Y-` | `A11Y-TC-` | Added 2026-09-26 with the module |
+| `PERF-` | — | Verified by JMeter shapes, not manual cases |
 | `WEBSEC-` | — | Verified by API assertions and a passive scan, not manual cases |
 | — | `STMT-TC-` | Statements are catalogued under `ACC-` |
 | — | `PROF-TC-` | Profile is catalogued under `KYC-` |
@@ -59,6 +60,7 @@ no implementation) entered the project and survived unnoticed.
 | `SYS` | 10 | — | `rest-assured/` | Yes | Covered | **Automated** |
 | `A11Y` | 9 | `accessibility-scenarios.md` | `accessibility-test-cases.md` | Yes | Covered | **Automated** |
 | `WEBSEC` | 9 | — | `rest-assured/`, `security/` | Yes | Covered | **Automated** |
+| `PERF` | 5 | — | `jmeter/` | Yes | Covered | **Automated** |
 
 "Automated" means at least one suite covers the module against the running
 application. Which suite, and why that one, is in `docs/automation-status.md`.
@@ -97,16 +99,16 @@ code does stops being a requirement. A test asserts the weakness stays confined
 to that one directive, so `'unsafe-eval'` or a wildcard source cannot join it
 unnoticed.
 
-**The JMeter suite adds no row and no module.** It exercises `DB-010`
-(*concurrent financial operations shall maintain correct balances*) at a
-concurrency the database suite cannot reach, and through the API rather than
-through SQL: thirty threads debiting one balance at the same instant, with the
-ledger asserted to reconcile exactly. `DB-010` was already covered, so the
-figure above does not change. No `PERF` module is invented for it either — this
-matrix is explicit that test material must not introduce a module the catalog
-does not define, and performance targets belong in the catalog first if they are
-ever to be enforced. `jmeter/thresholds.json` records why latency is reported
-rather than gated until then.
+**`PERF` replaces what the JMeter suite used to have no requirement for.** Its
+five requirements were added only once there was a CI baseline to derive them
+from, in the order `jmeter/thresholds.json` had prescribed all along: baseline
+first, then requirements, then thresholds. Two are absolute and always gated
+(`PERF-002` no 5xx, `PERF-004` every concurrent debit answers 201 or 409 and the
+ledger reconciles exactly). Two are gated with roughly fifteen times the observed
+headroom, and only in CI against a loopback target, because that is the only
+environment the baseline describes. One is reported rather than gated, because
+"recovered from a spike" is a judgement about shape and a threshold would be
+inventing one.
 
 **The Jest unit suite is deliberately not counted in that column.** It covers
 functions, not modules, and it never starts the application, so counting it
@@ -119,7 +121,7 @@ this matrix.
 
 ## Gaps
 
-**None.** All 205 requirements across all 18 modules are covered.
+**None.** All 210 requirements across all 19 modules are covered.
 
 `DASH` was the last one, and closing it turned up something worth recording.
 The module was not untested because nobody had got to it: three of its seven

@@ -194,13 +194,32 @@ database rather than this application: the same plan measured p95 near 37 second
 locally over the internet. `jmeter/README.md` and `docs/test-environment.md` both
 record the exception.
 
-**Latency is reported, not gated.** There is no performance requirement in the
-catalog to enforce, and a p95 target invented here would be an SLA nobody asked
-for. What is gated is correctness, which travels between machines: no 5xx, every
-concurrent debit `201` or `409`, and the balance falling by exactly the amount
-plus fee of every success. `jmeter/thresholds.json` records the order for
-changing that — baseline from CI, add `PERF` requirements to the catalog, then
-enforce them.
+**Latency is now gated for the two steady shapes**, in the order
+`jmeter/thresholds.json` had prescribed: baseline from CI, then the `PERF`
+requirements in the catalog, then the thresholds. `PERF-001` sets p95 under 100 ms
+and `PERF-003` caps drift across a run at 200 ms.
+
+The budget applies only in CI against a loopback target, and both conditions are
+needed. The first attempt used loopback alone and failed a perfectly healthy run
+at 1372 ms — a locally served application can still be talking to a database
+across the internet, which is exactly the cross-environment flakiness the file
+warned about. Elsewhere the figures are printed and gated on nothing.
+
+The headroom is deliberate: 100 ms against an observed 2–7 ms. A threshold set
+near the observed figure fails on ordinary runner variance, and a gate that cries
+wolf gets ignored, which is worse than no gate.
+
+Stress, spike and concurrency stay reported. A ramp past capacity is *meant* to
+degrade; thirty debits serialising on one row lock are *meant* to queue, so a p95
+there measures queue length rather than health. Their correctness is gated
+absolutely by `PERF-002` and `PERF-004`.
+
+**The stress ceiling is raised from 150 threads to 400.** At 150 the application
+sustained 79,845 samples with zero errors and a flat 3–4 ms p95 across every
+quarter, which means the ramp never reached the knee it exists to find. If 400
+also comes back flat, the honest conclusion is that the bottleneck is the runner
+or JMeter rather than the application, and the answer is a bigger load generator
+rather than a bigger number.
 
 ## Jenkins
 
@@ -428,7 +447,7 @@ Recorded rather than silently dropped, since the original plan named them:
 
 ## Coverage
 
-**All 205 requirements across all 18 modules are covered.**
+**All 210 requirements across all 19 modules are covered.**
 
 `DASH` (7) was the last gap and is now automated, in
 `playwright/tests/dashboard/dashboard.spec.ts`. Closing it turned up something

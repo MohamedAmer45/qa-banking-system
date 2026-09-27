@@ -108,7 +108,7 @@ jobs:
           JMETER_HOME: ${{ github.workspace }}/.jmeter
           JMETER_HOST: 127.0.0.1
           JMETER_PORT: "3000"
-        run: bash run.sh stress 150 120
+        run: bash run.sh stress 400 180
 
       # Steady traffic, then a burst of simultaneous sign-ins. The per-quarter
       # latency in the report shows whether it recovered afterwards.

@@ -77,7 +77,16 @@ case "$SHAPE" in
     # Far more threads than the load shape, ramped over most of the run, so the
     # offered rate climbs steadily and the point where it degrades is visible in
     # the per-quarter latency the analyzer prints.
-    THREADS="${2:-150}"; DURATION="${3:-180}"
+    #
+    # Raised from 150 to 400. At 150 the application sustained 79,845 samples
+    # with zero errors and a flat 3-4 ms p95 across every quarter, which means
+    # the ramp never reached the knee it exists to find. A stress shape that
+    # finds no limit has measured nothing.
+    #
+    # If 400 also comes back flat, the honest conclusion is that the bottleneck
+    # is the runner or JMeter itself rather than the application, and the next
+    # step is a bigger load generator rather than a bigger number here.
+    THREADS="${2:-400}"; DURATION="${3:-180}"
     echo "Stress: ramping to ${THREADS} threads over ${DURATION}s"
     run_jmeter plans/read-path-load.jmx \
       -Jthreads="$THREADS" -Jrampup=$(( DURATION * 2 / 3 )) -Jduration="$DURATION" \

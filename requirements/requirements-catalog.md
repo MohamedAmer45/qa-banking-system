@@ -407,7 +407,50 @@ occurrence is a known one rather than a discovery.
 
 ---
 
-# 20. Requirement Traceability
+# 20. Performance
+
+These targets are **empirically derived, not business-mandated.** No stakeholder
+set them; they come from observed CI baselines with headroom, and that provenance
+matters when one is missed — the first question is whether the target was ever
+right, not only whether the code got slower.
+
+Measured against an application started in the CI runner with a `postgres:16`
+container, which is the only environment where the figures describe this
+application rather than the distance to a hosted database. `jmeter/README.md`
+records why.
+
+| ID       | Requirement                                                                                               | Basis | Priority |
+| -------- | --------------------------------------------------------------------------------------------------------- | ----- | -------- |
+| PERF-001 | The read path shall answer with a p95 under 100 ms at 20 concurrent paced sessions.                        | Observed p95 2–7 ms in CI | High |
+| PERF-002 | No request shall fail with a 5xx under load within expected capacity.                                      | Absolute | Critical |
+| PERF-003 | Sustained load shall not degrade: p95 in the final quarter of a run shall not exceed the first by more than 200 ms. | Observed drift −5 to +0 ms in CI | High |
+| PERF-004 | Beyond capacity the application shall refuse work rather than corrupt it: every concurrent debit answers 201 or 409, and the ledger reconciles exactly. | Absolute | Critical |
+| PERF-005 | A traffic spike shall not leave the application degraded once it passes.                                    | Observed recovery within one quarter | Medium |
+
+## Which of these are enforced, and which are reported
+
+`PERF-002` and `PERF-004` are absolute: they hold on any machine at any speed, so
+they fail a build. They were enforced before this module existed.
+
+`PERF-001` and `PERF-003` are enforced with deliberate headroom — a threshold set
+at the observed figure would fail on ordinary runner variance and teach everyone
+to ignore it. 100 ms against an observed 2–7 ms catches a serious regression while
+tolerating a slow morning on shared infrastructure.
+
+`PERF-005` is reported, not enforced. Recovery is visible in the per-quarter
+latency the analyzer prints, but "recovered" is a judgement about shape rather
+than a number, and a threshold would be inventing one.
+
+## What is deliberately absent
+
+No target for the concurrency shape's latency. Thirty debits serialising on one
+row lock are *meant* to queue, so a p95 there measures how long the queue is, not
+whether the application is well. Its correctness is covered absolutely by
+`PERF-004`, which is the property worth having.
+
+---
+
+# 21. Requirement Traceability
 
 The following naming convention shall be used throughout the project:
 
@@ -438,7 +481,7 @@ This allows every test result to be traced back to the original system requireme
 
 ---
 
-# 21. Requirement Categories
+# 22. Requirement Categories
 
 | Prefix | Module                      |
 | ------ | --------------------------- |
@@ -460,6 +503,7 @@ This allows every test result to be traced back to the original system requireme
 | SYS    | General System Requirements |
 | A11Y   | Accessibility               |
 | WEBSEC | Web Security Hardening      |
+| PERF   | Performance                 |
 
 <!-- NOVABANK-REQUIREMENTS-SYNC-START -->
 
