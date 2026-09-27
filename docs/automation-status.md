@@ -18,7 +18,7 @@ inside Playwright rather than as a tenth.
 | Postman / Newman | 103 requests, 440 assertions | n/a |
 | Jest (unit) | 134 | n/a |
 | JMeter (performance) | 5 shapes | n/a |
-| axe-core (accessibility) | 30 | Chromium |
+| axe-core (accessibility) | 30, counted within the Playwright total above | Chromium |
 
 Every suite starts the application inside the CI runner against a `postgres:16`
 service container, so runs are isolated and begin from an identical seed. No
@@ -391,8 +391,20 @@ rather than passes quietly.
 
 ## Not yet started
 
-| Area | Status |
-|---|---|
+Nothing. Every tool the original plan named is built, wired into CI, and has
+been run: the seven functional suites, Jest, JMeter, axe-core, OWASP ZAP and the
+Jenkins pipeline.
+
+What that does **not** mean is that the testing is finished. Two things are worth
+naming, because an empty list invites the wrong conclusion:
+
+- **`WEBSEC-001` is not met at full strength.** The Content Security Policy keeps
+  `script-src 'unsafe-inline'` because the interface attaches 84 event handlers
+  inline in markup. Closing it means moving every one to `addEventListener`.
+- **Three accessibility test cases are manual-only** and deliberately outside the
+  automated count: screen reader coherence, reading order, and 200% zoom.
+  Automated checks find a minority of WCAG issues and none of the
+  judgement-based ones.
 
 ### Evaluated and not adopted
 
