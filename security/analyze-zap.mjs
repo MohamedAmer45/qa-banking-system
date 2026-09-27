@@ -154,4 +154,17 @@ if (failing.length > 0) {
 }
 
 console.log("");
+
+/*
+ * A green security scan that says only "green" hides the thing worth
+ * knowing: which alerts were raised and why each was accepted. Put that on
+ * the run summary so the accepted list is reviewed rather than forgotten.
+ */
+if (process.env.GITHUB_ACTIONS === "true") {
+  const summary = suppressed.length === 0
+    ? `${alerts.length} alerts, none needing review`
+    : `${alerts.length} alerts, all accepted: ` +
+      suppressed.map(r => `${r.id} ${r.name} (${r.risk})`).join("; ");
+  console.log(`::notice title=ZAP baseline::${summary}`);
+}
 console.log("PASSED — every alert is either absent or accepted with a reason.");

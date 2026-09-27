@@ -329,8 +329,32 @@ it means moving every handler to `addEventListener`. The requirement stays state
 at full strength, and a test asserts the weakness cannot spread to `'unsafe-eval'`
 or a wildcard source.
 
-`security/zap-rules.tsv` carries a reason beside every suppressed rule. An
-`IGNORE` without one is how a scanner quietly stops reporting things that matter.
+`security/zap-rules.tsv` carries a reason beside every suppressed rule, and
+`security/analyze-zap.mjs` refuses an `IGNORE` that has none — the rules file
+enforces its own discipline, because an unexplained suppression is how a scanner
+quietly stops reporting things that matter.
+
+**The gate is ours, not the tool's**, and that was not the first design. The
+`zaproxy/action-baseline` wrapper was tried first and did two things badly: it
+copies its rules file into the container by basename while handing ZAP the full
+relative path, so ZAP found no config and applied none of the suppressions with
+nothing in the output to say so; and its own internal artifact upload fails on
+current runners, failing the step regardless of `fail_action`. ZAP is now run
+directly from the same image, its exit code discarded, and
+`security/analyze-zap.mjs` decides — the same shape as `jmeter/analyze.mjs`, for
+the same reason. A tool whose exit code is the only gate is a tool you cannot
+reason about, and this one can be run against a saved report on a laptop.
+
+**What the first scan reported, and what was done with each of the ten alerts.**
+One was fixed: `Cross-Origin-Embedder-Policy` was missing, and `require-corp` is
+safe here because the interface loads nothing cross-origin — checked before
+setting it. Five were accepted with reasons: the two `unsafe-inline` CSP alerts
+(the documented `WEBSEC-001` limitation), `Non-Storable Content` (which fires
+because account data sets `no-store` on purpose), `Modern Web Application`
+(informational SPA detection), `Suspicious Comments` (ordinary identifiers plus
+`BUG` where a comment cites a defect id), and the `Sec-Fetch-*` request headers
+the client sends rather than the server. Two stay at `WARN` so a change surfaces
+rather than passes quietly.
 
 ## Not yet started
 
