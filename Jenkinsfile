@@ -98,8 +98,18 @@ pipeline {
       steps {
         sh '''
           set -e
+
+          # APP_REF is defaulted here as well as in the parameters block, because
+          # on a pipeline's FIRST build Jenkins has not yet registered the
+          # parameter definitions and every params value arrives empty. Without
+          # this the first run of a new job clones --branch '' and dies with
+          # "Remote branch  not found in upstream origin" -- a confusing failure
+          # for something that works on every subsequent build.
+          ref="${APP_REF:-main}"
+          echo "Testing against ${APP_REPO} @ ${ref}"
+
           rm -rf "$APP_DIR"
-          git clone --depth 1 --branch "$APP_REF" "$APP_REPO" "$APP_DIR"
+          git clone --depth 1 --branch "$ref" "$APP_REPO" "$APP_DIR"
 
           cd "$APP_DIR"
           npm ci
