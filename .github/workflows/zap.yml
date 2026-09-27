@@ -75,6 +75,50 @@ jobs:
           allow_issue_writing: false
           fail_action: true
 
+      # The action fails the build on alerts but leaves the detail in a log and
+      # an artifact. A failure that does not say what it found makes the next
+      # person open a zip to learn anything, so the alerts are summarised onto
+      # the run itself.
+      - name: Summarise the alerts
+        if: always()
+        run: |
+          if [ ! -f report_json.json ]; then
+            echo "No ZAP report was produced."
+            exit 0
+          fi
+
+          node -e '
+            const report = JSON.parse(require("fs").readFileSync("report_json.json", "utf8"));
+            const sites = report.site ?? [];
+            const rows = [];
+
+            for (const site of sites) {
+              for (const alert of site.alerts ?? []) {
+                rows.push({
+                  risk: alert.riskdesc ?? "",
+                  id: alert.pluginid,
+                  name: alert.name,
+                  count: (alert.instances ?? []).length,
+                  example: (alert.instances ?? [])[0]?.uri ?? ""
+                });
+              }
+            }
+
+            if (rows.length === 0) {
+              console.log("ZAP reported no alerts.");
+              process.exit(0);
+            }
+
+            const order = { High: 0, Medium: 1, Low: 2, Informational: 3 };
+            rows.sort((a, b) => (order[a.risk.split(" ")[0]] ?? 9) - (order[b.risk.split(" ")[0]] ?? 9));
+
+            console.log("ZAP alerts:");
+            for (const r of rows) {
+              console.log(`  [${r.risk}] ${r.id} ${r.name} x${r.count}  ${r.example}`);
+              console.log(`::error title=ZAP ${r.id} (${r.risk})::${r.name} - ${r.count} instance(s), e.g. ${r.example}`);
+            }
+          '
+
       - name: Upload the report
         if: always()
         uses: actions/upload-artifact@v4
