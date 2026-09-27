@@ -59,9 +59,29 @@ rm -f results/balance-before.txt results/balance-after.txt results/beneficiary-b
 # -e -o generates the HTML dashboard the reporting stack advertises: the
 # response-time-over-time and throughput graphs a percentile table cannot show.
 run_jmeter() {
+  # JMeter failing to run is not the same as a test failing, and the two used to
+  # look identical: a non-zero exit killed the step under `set -e` before the
+  # analyzer ran, so the build failed with nothing said about why. At high thread
+  # counts that is usually the load generator running out of memory or threads
+  # rather than anything wrong with the application, and it needs saying.
+  set +e
   "$JMETER" -n -t "$1" -l "$JTL" -e -o "$DASHBOARD" \
     -Jhost="$HOST" -Jport="$PORT" -Jprotocol="$PROTOCOL" \
     "${@:2}"
+  local code=$?
+  set -e
+
+  if [ "$code" -ne 0 ]; then
+    echo "JMeter itself exited ${code} before the run completed."
+    echo "--- tail of jmeter.log ---"
+    tail -40 jmeter.log 2>/dev/null || echo "(no jmeter.log)"
+
+    if [ "${GITHUB_ACTIONS:-}" = "true" ]; then
+      detail=$(tail -5 jmeter.log 2>/dev/null | tr '\n' " " | tr -d '\r')
+      echo "::error title=JMeter did not run::exit ${code}. ${detail}"
+    fi
+    return "$code"
+  fi
 }
 
 case "$SHAPE" in
