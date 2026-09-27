@@ -63,38 +63,45 @@ jobs:
       # Passive only: ZAP reads the responses it receives while spidering. It
       # sends no attack payloads, so it cannot corrupt the seeded data, and the
       # run is repeatable.
-      # ZAP reports; security/analyze-zap.mjs decides.
+      # ZAP is run directly rather than through zaproxy/action-baseline.
       #
-      # The action can gate on its own via a rules file passed with -c. That was
-      # tried and silently did nothing: the action copies the rules file into the
-      # container by basename but hands ZAP the full relative path, so ZAP found
-      # no config and applied none of the suppressions. Nothing in the output
-      # said so. fail_action is therefore off and the same rules file is applied
-      # by a script that says what it decided and can be run against a saved
-      # report locally.
+      # Two reasons, both learned the hard way on this workflow. The action
+      # copies its rules file into the container by basename but hands ZAP the
+      # full relative path, so ZAP found no config and silently applied none of
+      # the suppressions. And its own internal artifact upload fails on the
+      # current runners -- "the artifact name zap_scan is not valid" -- which
+      # fails the step whatever fail_action is set to.
+      #
+      # The image is the same one the action wraps. Running it directly means the
+      # only thing that can fail this job is our own review of the report.
       - name: ZAP baseline scan
-        uses: zaproxy/action-baseline@v0.12.0
-        with:
-          target: http://127.0.0.1:3000
-          cmd_options: "-a -j"
-          allow_issue_writing: false
-          fail_action: false
+        run: |
+          mkdir -p zap-out
+          # The image runs as a non-root user, so the mount has to be writable
+          # by it or the reports silently never appear.
+          chmod 777 zap-out
+
+          # --network host: the application is on the runner's own 127.0.0.1.
+          # The exit code is discarded on purpose; zap-baseline.py exits non-zero
+          # on any warning, and which warnings are acceptable is decided by
+          # security/zap-rules.tsv in the next step.
+          docker run --rm --network host             -v "$PWD/zap-out:/zap/wrk:rw"             ghcr.io/zaproxy/zaproxy:stable             zap-baseline.py               -t http://127.0.0.1:3000               -J report_json.json               -r report_html.html               -w report_md.md               -a -j             || echo "zap-baseline exited non-zero; the review step decides."
+
+          ls -la zap-out/
 
       # The gate. Fails on any alert that has neither been fixed nor given a
       # reason in the rules file, and prints both lists either way.
       - name: Review the alerts
         if: always()
-        run: node security/analyze-zap.mjs --report report_json.json --rules security/zap-rules.tsv
+        run: |
+          node security/analyze-zap.mjs             --report zap-out/report_json.json             --rules security/zap-rules.tsv
 
       - name: Upload the report
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: zap-baseline-report-${{ github.run_id }}
-          path: |
-            report_html.html
-            report_json.json
-            report_md.md
+          path: zap-out/
           retention-days: 30
           if-no-files-found: warn
 
