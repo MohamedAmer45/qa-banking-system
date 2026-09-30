@@ -214,12 +214,26 @@ degrade; thirty debits serialising on one row lock are *meant* to queue, so a p9
 there measures queue length rather than health. Their correctness is gated
 absolutely by `PERF-002` and `PERF-004`.
 
-**The stress ceiling is raised from 150 threads to 400.** At 150 the application
-sustained 79,845 samples with zero errors and a flat 3–4 ms p95 across every
-quarter, which means the ramp never reached the knee it exists to find. If 400
-also comes back flat, the honest conclusion is that the bottleneck is the runner
-or JMeter rather than the application, and the answer is a bigger load generator
-rather than a bigger number.
+**The stress ceiling was raised from 150 threads to 400, and it found the knee.**
+At 150 the application sustained 79,845 samples with a flat 3–4 ms p95 in every
+quarter — a ramp that never reached a limit has measured nothing. At 400 it
+reported 293,156 samples and a curve that finally bends:
+
+```text
+p95 by quarter   13 → 27 → 41 → 51 ms   (drift +38)
+```
+
+Latency climbing monotonically as the ramp loads up is what a stress shape is
+for. Still no errors at that rate, so this is the application getting slower
+under pressure rather than failing, which is the better of the two ways to
+degrade.
+
+Raising it also found a bug — in the tooling, not the application.
+`Math.max(...elapsed)` throws once the array is large enough, and 293,156
+samples is well past it. The stress step ran its full 180 seconds, JMeter exited
+clean, and the analyzer then died before printing anything. At 150 threads the
+gate had been passing while sitting just under a limit that would have broken
+it, with nothing in the output hinting at that.
 
 ## Jenkins
 

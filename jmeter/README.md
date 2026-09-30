@@ -138,6 +138,23 @@ passed on a re-run, which is the signature worth distrusting.
 With a think time the offered rate is `threads / think time`, set by the plan
 rather than discovered by it.
 
+## What the shapes measured in CI
+
+The figures the gate is built on, from a run against a `postgres:16` container
+in the runner:
+
+| Shape | Samples | p95 by quarter | Verdict |
+|---|---:|---|---|
+| load | 3,178 | 7 → 2 → 2 → 2 ms | gated, 2 ms against a 100 ms budget |
+| stress (400 threads) | 293,156 | 13 → 27 → 41 → 51 ms | observed; the ramp finally bends |
+| spike | 5,359 | 3 → 1929 → 2 → 2 ms | observed; degrades and recovers within a quarter |
+| concurrency | 30 debits | — | 7 created, 23 refused, ledger exact |
+
+The stress row is the one that changed. At 150 threads it was flat at 3–4 ms in
+every quarter, which means the ramp never reached a limit — a stress test that
+finds nothing has measured nothing. At 400 the curve bends, with no errors, so
+the application slows under pressure rather than failing.
+
 ## What is gated, and what is only reported
 
 JMeter's non-GUI mode exits 0 whether or not the numbers were acceptable, so on
