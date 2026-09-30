@@ -16,7 +16,7 @@ inside Playwright rather than as a tenth.
 | Database (JDBC + TestNG) | 59 | n/a |
 | REST Assured | 130 | n/a |
 | Postman / Newman | 103 requests, 440 assertions | n/a |
-| Jest (unit) | 134 | n/a |
+| Jest (unit) | 141 | n/a |
 | JMeter (performance) | 5 shapes | n/a |
 | axe-core (accessibility) | 30, counted within the Playwright total above | Chromium |
 
@@ -31,6 +31,15 @@ repository, not this one, because it imports application internals directly.
 Holding it here would mean either publishing those internals as a package or
 reaching across repositories on every run. It is listed here because it is part
 of the same testing stack and the same coverage argument.
+
+That suite is also the only one measured by **mutation testing**. Stryker
+changes the application source — flips a comparison, removes a `.sort()` — and
+re-runs the tests to see whether any of them notice. The first run found five
+faults that 134 green tests had missed, which is why the suite is 141 now. CI
+reports the score and gates on nothing; the reasoning, and the caveats that
+make the raw number misleading, are in
+[`MUTATION.md`](https://github.com/MohamedAmer45/novabank-banking-system/blob/main/MUTATION.md)
+in the application repository.
 
 ## How the suites divide the work
 

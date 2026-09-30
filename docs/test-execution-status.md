@@ -15,11 +15,11 @@ suites pass.
 | Cypress | Yes | 26 passing |
 | Selenium | Yes | **27 passing** |
 | Cucumber | Yes | **24 scenarios passing** |
-| REST Assured | Yes | **113 passing** |
+| REST Assured | Yes | **130 passing** |
 | Postman / Newman | Yes | **103 requests, 440 assertions passing** |
 | Database (SQL) | Yes | **59 passing** |
-| Jest (unit, app repo) | Yes | **134 passing** |
-| Performance (JMeter) | Yes | **2 plans passing** — read load and transfer concurrency |
+| Jest (unit, app repo) | Yes | **141 passing**, mutation score 78.8% of covered mutants |
+| Performance (JMeter) | Yes | **5 shapes passing** — load, stress, spike, endurance, concurrency |
 
 Seven of the eight drive the running application. Jest is the exception: it
 imports application internals directly, so it lives in the application

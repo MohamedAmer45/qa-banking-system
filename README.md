@@ -44,6 +44,17 @@ file. Neither is visible to a linter, and a third — a spread that throws once 
 results file gets large enough — only appeared when the stress load was raised
 far enough to produce one.
 
+Different again: **five gaps in the tests themselves**, found by mutation
+testing rather than by any failing assertion. Stryker changed the application
+source underneath the 134 green unit tests — `<=` to `<`, `length - 4` to
+`+ 4`, a `.sort()` deleted — and five of those faults went unnoticed. The most
+instructive was a deliberate choice that backfired: assertions written to check
+the *property* ("only the last four digits are legible") rather than the exact
+output turned out to be robust to cosmetic change and blind to magnitude.
+Eighteen mask characters satisfy that property as well as six do. All five are
+closed, the suite is 141, and the caveats are in
+[`MUTATION.md`](https://github.com/MohamedAmer45/novabank-banking-system/blob/main/MUTATION.md).
+
 ### Things that were measured, not assumed
 
 - **Concurrency.** 30 threads debiting one account simultaneously: 7 committed,
@@ -68,7 +79,7 @@ far enough to produce one.
 | REST Assured | 130 | n/a |
 | Database (JDBC + TestNG) | 59 | n/a |
 | Postman / Newman | 103 requests, 440 assertions | n/a |
-| Jest (unit, in the app repo) | 134 | n/a |
+| Jest (unit, in the app repo) | 141 | n/a |
 | JMeter | 5 load shapes | n/a |
 
 Accessibility is 30 of Playwright's 67, not a tenth suite. All **65 endpoints**
@@ -106,6 +117,7 @@ without installing PostgreSQL, seeding a database or starting a server.
 | Postman / Newman | `npm ci && npm test` | `postman/` |
 | Database | `DATABASE_URL=… mvn clean test` | `database-testing/` |
 | Jest (unit) | `npm test` | the application repository |
+| Mutation (Stryker) | `npm run test:mutation` | the application repository |
 | JMeter | `JMETER_HOME=… npm test` | `jmeter/` — local or CI, never the deployed app |
 
 Two are different. The **database suite** needs a connection string rather than
