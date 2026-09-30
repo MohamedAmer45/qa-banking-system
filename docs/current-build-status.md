@@ -25,8 +25,35 @@ Error: You need to add a Login Connection to your GitHub account first. (400)
 
 Vercel needs a GitHub login connection on the account before it can link a
 repository, which is a browser authorization. Until that is done in
-**vercel.com → Account Settings → Authentication**, every deployment stays
-manual and this environment can fall behind `main` again.
+**vercel.com → Account Settings → Authentication**, the Git integration cannot
+be used at all.
+
+So the application repository takes the other route. A `Deploy` workflow runs
+the Vercel CLI after **NovaBank CI** finishes green on `main`, which reaches the
+same outcome without linking the two accounts — and is arguably the better
+trigger, since the Git integration deploys on push and would not wait for the
+suite that decides whether the ledger still reconciles.
+
+Deploying is not the same as working: a missing environment variable, an
+unreachable database or a broken `vercel.json` all deploy green and fail at
+runtime. The workflow is not finished until four things hold on the new build.
+
+| Check | What it would catch |
+|---|---|
+| `/api/health` serves JSON and reports `ok` | The function did not boot |
+| A wrong password returns `401`, not `5xx` | The database is unreachable. Being *rejected* means the row was looked up, which a health endpoint returning a static object cannot tell you. A rejected login reads and writes nothing. |
+| CSP, `nosniff`, frame-options and referrer-policy on the static shell | An edit to `vercel.json`, which no unit test can reach |
+| `novabank-banking-system.vercel.app` serves *this* build | Promotion failed. The first three pass against the deployment URL even then, leaving the address everyone uses on the old build. |
+
+The verification script was run against the live deployment before it was
+committed, and against a host that is not it, to confirm it fails with the
+right message rather than only passing.
+
+It needs three repository secrets — `VERCEL_TOKEN`, `VERCEL_ORG_ID`,
+`VERCEL_PROJECT_ID` — which only the account owner can create. Until they
+exist the workflow skips with a notice naming the missing ones rather than
+failing, so deployment stays manual and this environment can still fall behind
+`main`.
 
 A correction worth keeping, since it was recorded here as fact. That staleness
 was first reported as reaching back to the 2026-09-22 `413` fix. It did not: the

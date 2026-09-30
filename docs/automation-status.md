@@ -457,9 +457,13 @@ invites exactly that conclusion. What remains:
   automated count: screen reader coherence, reading order, and 200% zoom.
   Automated checks find a minority of WCAG issues and none of the
   judgement-based ones.
-- **Deployment is still manual.** `vercel git connect` is blocked on a GitHub
-  login connection only the account owner can authorize, so the live environment
-  can fall behind `main` again. Recorded in `docs/current-build-status.md`.
+- **Deployment is automated but not switched on.** `vercel git connect` is
+  blocked on a GitHub login connection only the account owner can authorize, so
+  the application repository takes the other route: a `Deploy` workflow that
+  runs the Vercel CLI once CI is green. It needs three repository secrets that
+  only the account owner can create, and skips with a notice until they exist,
+  so the live environment can still fall behind `main` in the meantime.
+  Recorded in `docs/current-build-status.md`.
 - **`style-src` keeps `'unsafe-inline'`** for inline style attributes. Outside
   `WEBSEC-001`, which covers scripts, objects and document base, and an inline
   style cannot execute script — but it is the one CSP directive still relaxed.

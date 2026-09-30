@@ -97,8 +97,12 @@ build green in 19.9 minutes, 763 tests published.
   none of the judgement-based ones.
 - **`style-src` still allows `'unsafe-inline'`** for inline style attributes.
   Outside `WEBSEC-001`, which covers scripts, objects and document base.
-- **Deployment is manual.** `vercel git connect` is blocked on a GitHub login
-  connection only the account owner can authorize.
+- **Deployment is automated but not switched on.** `vercel git connect` is
+  blocked on a GitHub login connection only the account owner can authorize, so
+  the application repository deploys through a workflow that runs the CLI after
+  CI goes green and then verifies the result — health, database reachability,
+  security headers and the production alias. It skips with a notice until three
+  repository secrets exist.
 
 ---
 
