@@ -9,13 +9,24 @@ Last synchronized: 2026-09-26
 Application source: [`novabank-banking-system`](https://github.com/MohamedAmer45/novabank-banking-system)
 (a separate repository; this one holds only the QA project).
 
-**Deployed and current as of 2026-09-26**, and the default target for every
-suite. All eight suites pass against it; see `docs/automation-status.md`.
+**Deployed and current as of 2026-09-27**, and the default target for every
+suite except the two that must not touch it. See `docs/automation-status.md`.
 
 Deployment is manual (`vercel --prod`): the Vercel project is CLI-linked rather
 than connected to the GitHub repository, so pushing to `main` does not redeploy.
-That is why this environment was four commits behind on 2026-09-23. Running
-`vercel git connect` once would remove the gap.
+That is why this environment was four commits behind on 2026-09-23.
+
+`vercel git connect` was attempted and is blocked on something only the account
+owner can do:
+
+```text
+Error: You need to add a Login Connection to your GitHub account first. (400)
+```
+
+Vercel needs a GitHub login connection on the account before it can link a
+repository, which is a browser authorization. Until that is done in
+**vercel.com → Account Settings → Authentication**, every deployment stays
+manual and this environment can fall behind `main` again.
 
 A correction worth keeping, since it was recorded here as fact. That staleness
 was first reported as reaching back to the 2026-09-22 `413` fix. It did not: the

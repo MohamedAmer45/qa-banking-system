@@ -441,13 +441,19 @@ Nothing. Every tool the original plan named is built, wired into CI, and has
 been run: the seven functional suites, Jest, JMeter, axe-core, OWASP ZAP and the
 Jenkins pipeline.
 
-What that does **not** mean is that the testing is finished. Two things are worth
-naming, because an empty list invites the wrong conclusion:
+What that does **not** mean is that the testing is finished, and an empty list
+invites exactly that conclusion. What remains:
 
-- **Three accessibility test cases are manual-only** and deliberately outside the
+- **Three accessibility test cases are manual-only**, deliberately outside the
   automated count: screen reader coherence, reading order, and 200% zoom.
   Automated checks find a minority of WCAG issues and none of the
   judgement-based ones.
+- **Deployment is still manual.** `vercel git connect` is blocked on a GitHub
+  login connection only the account owner can authorize, so the live environment
+  can fall behind `main` again. Recorded in `docs/current-build-status.md`.
+- **`style-src` keeps `'unsafe-inline'`** for inline style attributes. Outside
+  `WEBSEC-001`, which covers scripts, objects and document base, and an inline
+  style cannot execute script — but it is the one CSP directive still relaxed.
 
 ### Evaluated and not adopted
 

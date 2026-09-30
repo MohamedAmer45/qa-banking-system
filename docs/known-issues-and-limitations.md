@@ -37,7 +37,7 @@ given a real Pass or Fail.
 
 ## Open defects
 
-**None.** All eight recorded defects are closed, each with regression cover in
+**None.** All nine recorded defects are closed, each with regression cover in
 the suite that found it. See `docs/defects/` and the table in
 `docs/test-execution-status.md`.
 

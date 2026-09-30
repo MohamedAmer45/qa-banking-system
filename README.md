@@ -1026,7 +1026,7 @@ rendered, which is why the module had no coverage to begin with).
 All 65 endpoints the application serves are exercised by at least one suite,
 and all 210 requirements across all 19 modules are covered.
 
-**No defect is open.** All eight are closed, each with regression cover in the
+**No defect is open.** All nine are closed, each with regression cover in the
 suite that found it.
 
 ## Not yet started
